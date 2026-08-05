@@ -1,0 +1,2473 @@
+openapi: 3.1.0
+info:
+  title: Margem.AI - Financial Decision Assistant
+  description: |
+    Margem.AI REST API, a financial management assistant aimed at
+    Brazilian Individual Microentrepreneurs (MEIs). The API provides
+    automated pricing calculations, profit margin, cash flow,
+    and financial health monitoring, helping MEIs make informed
+    business decisions.
+
+    ## Modules
+    - **Authentication**: registration, login, and JWT token renewal
+    - **MEI Profile**: registration data and entrepreneur settings
+    - **Fixed and Variable Costs**: registration and management of business costs
+    - **Products and Services**: product/service catalog with base prices
+    - **Sales**: sales registration with payment methods
+    - **Pricing**: selling price calculator based on Markup
+    - **Dashboard**: cash flow and financial summary
+    - **Alerts**: MEI revenue cap monitoring
+  version: 1.0.0
+  license:
+    name: MIT License
+    identifier: MIT
+
+servers:
+  - url: https://api.margem.ai/v1
+    description: Production
+  - url: https://staging-api.margem.ai/v1
+    description: Staging
+  - url: http://localhost:8080/v1
+    description: Local development
+
+tags:
+  - name: Authentication
+    description: Registration, login, and token renewal operations
+  - name: MEI Profile
+    description: Entrepreneur profile management
+  - name: Fixed Costs
+    description: Registration and management of recurring fixed costs
+  - name: Variable Costs
+    description: Registration and management of variable costs per product/service
+  - name: Products and Services
+    description: MEI product and service catalog
+  - name: Sales
+    description: Registration and query of completed sales
+  - name: Pricing
+    description: Selling price and margin calculator
+  - name: Dashboard
+    description: Cash flow and financial summary panel
+  - name: Alerts
+    description: MEI cap monitoring and alerts
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new MEI user
+      description: Creates a new MEI user account and returns access tokens.
+      operationId: registerUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              name: "Maria Silva"
+              email: "maria@email.com"
+              password: "Senha@123"
+              cnpj: "12.345.678/0001-90"
+              segment: "COMERCIO"
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email or CNPJ already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user
+      description: Performs login and returns JWT access and refresh tokens.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "maria@email.com"
+              password: "Senha@123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Uses the refresh token to generate a new JWT token pair.
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Tokens successfully refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /profile:
+    get:
+      tags:
+        - MEI Profile
+      summary: Get authenticated user profile
+      description: Returns the registration data and settings of the logged-in MEI.
+      operationId: getProfile
+      responses:
+        '200':
+          description: Profile successfully returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeiProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - MEI Profile
+      summary: Update user profile
+      description: Updates the registration data of the authenticated MEI.
+      operationId: updateProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Profile successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeiProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - MEI Profile
+      summary: Partially update user profile
+      operationId: patchProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Profile successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeiProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /costs/fixed:
+    get:
+      tags:
+        - Fixed Costs
+      summary: List fixed costs
+      description: Returns all fixed costs registered by the MEI.
+      operationId: listFixedCosts
+      parameters:
+        - name: month
+          in: query
+          description: Reference month (YYYY-MM format)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+            example: "2026-06"
+        - name: category
+          in: query
+          description: Filter by category
+          schema:
+            $ref: '#/components/schemas/FixedCostCategory'
+        - name: page
+          in: query
+          description: Page number (starts at 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: sizeßß
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of fixed costs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFixedCosts'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Fixed Costs
+      summary: Create fixed cost
+      description: Registers a new recurring fixed cost for the business.
+      operationId: createFixedCost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FixedCostRequest'
+            example:
+              name: "Commercial space rent"
+              amount: 1500.00
+              category: "ALUGUEL"
+              dueDate: "2026-07-05"
+              recurring: true
+      responses:
+        '201':
+          description: Fixed cost successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedCost'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /costs/fixed/{id}:
+    get:
+      tags:
+        - Fixed Costs
+      summary: Get fixed cost by ID
+      operationId: getFixedCost
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Fixed cost found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedCost'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Fixed Costs
+      summary: Update fixed cost
+      operationId: updateFixedCost
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FixedCostRequest'
+      responses:
+        '200':
+          description: Fixed cost updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedCost'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - Fixed Costs
+      summary: Partially update fixed cost
+      operationId: patchFixedCost
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FixedCostRequest'
+      responses:
+        '200':
+          description: Fixed cost updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedCost'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Fixed Costs
+      summary: Deactivate fixed cost
+      description: Soft-deletes the fixed cost by setting it to inactive. The record remains in the database.
+      operationId: removeFixedCost
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Fixed cost deactivated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /costs/variable:
+    get:
+      tags:
+        - Variable Costs
+      summary: List variable costs
+      description: Returns variable costs, optionally filtered by product.
+      operationId: listVariableCosts
+      parameters:
+        - name: productId
+          in: query
+          description: Filter by product/service
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          description: Page number (starts at 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of variable costs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedVariableCosts'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Variable Costs
+      summary: Create variable cost
+      description: Registers a variable cost associated with a product or service.
+      operationId: createVariableCost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VariableCostRequest'
+            example:
+              name: "Raw material (fabric)"
+              unitAmount: 25.50
+              category: "MATERIA_PRIMA"
+              productId: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '201':
+          description: Variable cost created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VariableCost'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /costs/variable/{id}:
+    get:
+      tags:
+        - Variable Costs
+      summary: Get variable cost by ID
+      operationId: getVariableCost
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Variable cost found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VariableCost'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Variable Costs
+      summary: Update variable cost
+      operationId: updateVariableCost
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VariableCostRequest'
+      responses:
+        '200':
+          description: Variable cost updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VariableCost'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - Variable Costs
+      summary: Partially update variable cost
+      operationId: patchVariableCost
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VariableCostRequest'
+      responses:
+        '200':
+          description: Variable cost updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VariableCost'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Variable Costs
+      summary: Remove variable cost
+      operationId: removeVariableCost
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Variable cost removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /products:
+    get:
+      tags:
+        - Products and Services
+      summary: List products and services
+      description: Returns the MEI product and service catalog.
+      operationId: listProducts
+      parameters:
+        - name: type
+          in: query
+          description: Filter by type (product or service)
+          schema:
+            $ref: '#/components/schemas/ProductType'
+        - name: name
+          in: query
+          description: Partial search by name
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number (starts at 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of products/services
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProducts'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Products and Services
+      summary: Create product or service
+      description: Registers a new product or service in the MEI catalog.
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+            example:
+              name: "Chocolate cake"
+              description: "Decorated cake 1kg"
+              type: "PRODUTO"
+              baseCost: 18.50
+              currentSellingPrice: 45.00
+      responses:
+        '201':
+          description: Product/service created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /products/{id}:
+    get:
+      tags:
+        - Products and Services
+      summary: Get product/service by ID
+      operationId: getProduct
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Product/service found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Products and Services
+      summary: Update product/service
+      operationId: updateProduct
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+      responses:
+        '200':
+          description: Product/service updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - Products and Services
+      summary: Partially update product/service
+      operationId: patchProduct
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductPatchRequest'
+      responses:
+        '200':
+          description: Product/service updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Products and Services
+      summary: Deactivate product/service
+      description: Soft-deletes the product/service by setting it to inactive. The record remains in the database.
+      operationId: removeProduct
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Product/service deactivated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /products/{id}/costs:
+    get:
+      tags:
+        - Products and Services
+      summary: List costs of a product/service
+      description: Returns all costs (allocated fixed costs and variable costs) associated with a product/service.
+      operationId: listProductCosts
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Product cost breakdown
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostBreakdown'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /sales:
+    get:
+      tags:
+        - Sales
+      summary: List sales
+      description: Returns registered sales with optional filters by period and payment method.
+      operationId: listSales
+      parameters:
+        - name: startDate
+          in: query
+          description: Period start date (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2026-06-01"
+        - name: endDate
+          in: query
+          description: Period end date (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2026-06-30"
+        - name: paymentMethod
+          in: query
+          description: Filter by payment method
+          schema:
+            $ref: '#/components/schemas/PaymentMethod'
+        - name: productId
+          in: query
+          description: Filter by product/service
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          description: Page number (starts at 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paginated list of sales
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSales'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Sales
+      summary: Register sale
+      description: Registers a new completed sale, feeding the cash flow and margin engine.
+      operationId: registerSale
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleRequest'
+            example:
+              productId: "550e8400-e29b-41d4-a716-446655440000"
+              quantity: 2
+              unitAmount: 45.00
+              paymentMethod: "PIX"
+              saleDate: "2026-06-15"
+              notes: "Frequent customer"
+      responses:
+        '201':
+          description: Sale successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sale'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /sales/{id}:
+    get:
+      tags:
+        - Sales
+      summary: Get sale by ID
+      operationId: getSale
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Sale found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sale'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Sales
+      summary: Update sale
+      operationId: updateSale
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleRequest'
+      responses:
+        '200':
+          description: Sale updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sale'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Sales
+      summary: Cancel sale
+      description: Removes the sale record and reverts its impact on cash flow.
+      operationId: cancelSale
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Sale cancelled
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /pricing/calculate:
+    post:
+      tags:
+        - Pricing
+      summary: Calculate selling price
+      description: |
+        Calculates the minimum viable selling price based on the product/service cost,
+        allocated fixed costs, taxes, and desired profit margin. Uses the Markup concept
+        as per SEBRAE guidelines.
+      operationId: calculatePricing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingRequest'
+            example:
+              productId: "550e8400-e29b-41d4-a716-446655440000"
+              desiredMargin: 30.0
+              includeFixedCosts: true
+      responses:
+        '200':
+          description: Pricing calculation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /pricing/simulate-discount:
+    post:
+      tags:
+        - Pricing
+      summary: Simulate discount impact
+      description: Calculates the impact of a discount on the net profit of a transaction.
+      operationId: simulateDiscount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulateDiscountRequest'
+            example:
+              productId: "550e8400-e29b-41d4-a716-446655440000"
+              sellingPrice: 45.00
+              discountPercentage: 10.0
+      responses:
+        '200':
+          description: Simulation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulateDiscountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /pricing/margins/{productId}:
+    get:
+      tags:
+        - Pricing
+      summary: Get margins of a product/service
+      description: Returns the Gross Margin, Markup, and Break-Even Point calculated for the product/service.
+      operationId: getProductMargins
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: Product/service ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Calculated margins
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarginsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/cash-flow:
+    get:
+      tags:
+        - Dashboard
+      summary: Get cash flow
+      description: |
+        Returns the financial evolution of the business for the given period,
+        with indicators for revenue, expenses, and available balance.
+      operationId: getCashFlow
+      parameters:
+        - name: period
+          in: query
+          description: Query period
+          schema:
+            type: string
+            enum: [DIARIO, SEMANAL, MENSAL, ANUAL]
+            default: MENSAL
+        - name: startDate
+          in: query
+          description: Period start date
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Period end date
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Cash flow data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashFlowResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/summary:
+    get:
+      tags:
+        - Dashboard
+      summary: Get financial summary
+      description: Returns a consolidated summary of the MEI financial indicators for the current period.
+      operationId: getFinancialSummary
+      parameters:
+        - name: referenceMonth
+          in: query
+          description: Reference month (YYYY-MM format). Defaults to current month.
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+      responses:
+        '200':
+          description: Financial summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/accumulated-revenue:
+    get:
+      tags:
+        - Dashboard
+      summary: Get accumulated revenue for the year
+      description: Returns the accumulated revenue for the current year and the percentage relative to the MEI cap.
+      operationId: getAccumulatedRevenue
+      parameters:
+        - name: year
+          in: query
+          description: Reference year. Defaults to current year.
+          schema:
+            type: integer
+            minimum: 2020
+            maximum: 2100
+      responses:
+        '200':
+          description: Accumulated revenue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccumulatedRevenue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /alerts:
+    get:
+      tags:
+        - Alerts
+      summary: List alerts
+      description: Returns MEI alerts, including revenue cap and minimum margin alerts.
+      operationId: listAlerts
+      parameters:
+        - name: read
+          in: query
+          description: Filter by read status
+          schema:
+            type: boolean
+        - name: type
+          in: query
+          description: Filter by alert type
+          schema:
+            $ref: '#/components/schemas/AlertType'
+        - name: page
+          in: query
+          description: Page number (starts at 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAlerts'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /alerts/{id}/read:
+    post:
+      tags:
+        - Alerts
+      summary: Mark alert as read
+      operationId: markAlertRead
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Alert marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /alerts/read-all:
+    post:
+      tags:
+        - Alerts
+      summary: Mark all alerts as read
+      operationId: markAllAlertsRead
+      responses:
+        '204':
+          description: All alerts marked as read
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from the authentication endpoint
+
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      description: Unique resource identifier (UUID)
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "VALIDATION_ERROR"
+            message: "Invalid data in request"
+            details:
+              - field: "email"
+                message: "Invalid email format"
+    Unauthorized:
+      description: Not authenticated or invalid/expired token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "UNAUTHORIZED"
+            message: "Invalid or expired authentication token"
+    Forbidden:
+      description: Authenticated but not authorized to access this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "FORBIDDEN"
+            message: "You do not have permission to access this resource"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "NOT_FOUND"
+            message: "Resource not found"
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "RATE_LIMIT_EXCEEDED"
+            message: "Too many requests. Please try again later."
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error identifier code
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Descriptive error message
+          example: "Invalid data in request"
+        details:
+          type: array
+          description: List of field-level validation errors
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "email"
+              message:
+                type: string
+                example: "Invalid email format"
+        timestamp:
+          type: string
+          format: date-time
+
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - email
+        - password
+        - cnpj
+        - segment
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 150
+          description: Full name of the entrepreneur
+          example: "Maria Silva"
+        email:
+          type: string
+          format: email
+          description: Email for login and communications
+          example: "maria@email.com"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=])[A-Za-z\d@$!%*?&#^()_+\-=]{8,128}$'
+          description: "Password with minimum 8 characters, at least one uppercase letter, one lowercase letter, one number, and one special character"
+          example: "Senha@123"
+        cnpj:
+          type: string
+          pattern: '^(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}|\d{14})$'
+          description: MEI CNPJ (formatted or raw digits)
+          example: "12.345.678/0001-90"
+        segment:
+          $ref: '#/components/schemas/MeiSegment'
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "maria@email.com"
+        password:
+          type: string
+          example: "Senha@123"
+
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token obtained during login/registration
+          example: "eyJhbGciOiJIUzI1NiIs..."
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token (expires in 1 hour)
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        refreshToken:
+          type: string
+          description: Refresh token (expires in 7 days)
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        type:
+          type: string
+          enum: [Bearer]
+          example: "Bearer"
+        expiresIn:
+          type: integer
+          description: Access token expiration time in seconds
+          example: 3600
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            email:
+              type: string
+
+    MeiSegment:
+      type: string
+      description: MEI business segment
+      enum:
+        - COMERCIO
+        - SERVICOS
+        - INDUSTRIA
+        - ALIMENTACAO
+        - BELEZA
+        - VESTUARIO
+        - TECNOLOGIA
+        - AUTOMOTIVO
+        - CONSTRUCAO
+        - OUTRO
+
+    MeiProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: "Maria Silva"
+        email:
+          type: string
+          format: email
+          example: "maria@email.com"
+        cnpj:
+          type: string
+          example: "12.345.678/0001-90"
+        segment:
+          $ref: '#/components/schemas/MeiSegment'
+        customAnnualCap:
+          type: number
+          x-currency: BRL
+          description: Custom annual revenue cap (default R$ 81,000.00)
+          example: 81000.00
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ProfileUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 150
+        segment:
+          $ref: '#/components/schemas/MeiSegment'
+        customAnnualCap:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          description: Custom annual revenue cap
+
+    FixedCostCategory:
+      type: string
+      description: Fixed cost category
+      enum:
+        - ALUGUEL
+        - ENERGIA
+        - AGUA
+        - INTERNET
+        - TELEFONE
+        - SALARIOS
+        - TAXA_MAQUININHA
+        - IMPOSTOS
+        - SEGUROS
+        - CONTABILIDADE
+        - MARKETING
+        - SOFTWARE
+        - MANUTENCAO
+        - DEPRECIACAO
+        - OUTRO
+
+    FixedCost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: "Commercial space rent"
+        amount:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          example: 1500.00
+        category:
+          $ref: '#/components/schemas/FixedCostCategory'
+        dueDate:
+          type: string
+          format: date
+          example: "2026-07-05"
+        recurring:
+          type: boolean
+          description: Indicates whether the cost recurs monthly
+          example: true
+        active:
+          type: boolean
+          default: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    FixedCostRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - amount
+        - category
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Commercial space rent"
+        amount:
+          type: number
+          x-currency: BRL
+          minimum: 0.01
+          example: 1500.00
+        category:
+          $ref: '#/components/schemas/FixedCostCategory'
+        dueDate:
+          type: string
+          format: date
+          example: "2026-07-05"
+        recurring:
+          type: boolean
+          default: true
+
+    VariableCostCategory:
+      type: string
+      description: Variable cost category
+      enum:
+        - MATERIA_PRIMA
+        - EMBALAGEM
+        - FRETE
+        - COMISSAO
+        - TAXA_PAGAMENTO
+        - IMPOSTO_VENDA
+        - DESPERDICIO
+        - OUTRO
+
+    VariableCost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: "Raw material (fabric)"
+        unitAmount:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          example: 25.50
+        category:
+          $ref: '#/components/schemas/VariableCostCategory'
+        productId:
+          type: string
+          format: uuid
+          description: Associated product/service ID
+        productName:
+          type: string
+          readOnly: true
+          description: Associated product name
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    VariableCostRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - unitAmount
+        - category
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Raw material (fabric)"
+        unitAmount:
+          type: number
+          x-currency: BRL
+          minimum: 0.01
+          example: 25.50
+        category:
+          $ref: '#/components/schemas/VariableCostCategory'
+        productId:
+          type: string
+          format: uuid
+          description: Associated product/service ID (optional)
+
+    ProductType:
+      type: string
+      description: Item type (physical product or service)
+      enum:
+        - PRODUTO
+        - SERVICO
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: "Chocolate cake"
+        description:
+          type: string
+          example: "Decorated cake 1kg"
+        type:
+          $ref: '#/components/schemas/ProductType'
+        baseCost:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          description: Base unit cost of the product/service
+          example: 18.50
+        currentSellingPrice:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          description: Current selling price
+          example: 45.00
+        totalVariableCost:
+          type: number
+          x-currency: BRL
+          readOnly: true
+          description: Sum of associated variable costs
+          example: 32.00
+        currentMargin:
+          type: number
+          readOnly: true
+          description: Current gross margin as a percentage
+          example: 28.89
+        markup:
+          type: number
+          readOnly: true
+          description: Applied markup
+          example: 1.41
+        active:
+          type: boolean
+          default: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ProductRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - type
+        - baseCost
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Chocolate cake"
+        description:
+          type: string
+          maxLength: 500
+          example: "Decorated cake 1kg"
+        type:
+          $ref: '#/components/schemas/ProductType'
+        baseCost:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          example: 18.50
+        currentSellingPrice:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          example: 45.00
+
+    ProductPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 500
+        type:
+          $ref: '#/components/schemas/ProductType'
+        baseCost:
+          type: number
+          minimum: 0
+        currentSellingPrice:
+          type: number
+          minimum: 0
+
+    CostBreakdown:
+      type: object
+      description: Complete cost breakdown of a product/service
+      properties:
+        productId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+        variableCosts:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariableCost'
+        totalVariableCosts:
+          type: number
+          x-currency: BRL
+          example: 32.00
+        fixedCostAllocation:
+          type: number
+          x-currency: BRL
+          description: Allocated fixed cost per estimated unit
+          example: 5.00
+        taxes:
+          type: number
+          x-currency: BRL
+          description: Estimated taxes (Simples Nacional)
+          example: 2.70
+        totalCost:
+          type: number
+          x-currency: BRL
+          description: Total unit cost
+          example: 39.70
+
+    PaymentMethod:
+      type: string
+      description: Sale payment method
+      enum:
+        - DINHEIRO
+        - PIX
+        - DEBITO
+        - CREDITO_A_VISTA
+        - CREDITO_PARCELADO
+        - BOLETO
+        - OUTRO
+
+    Sale:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        productId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+        unitAmount:
+          type: number
+          minimum: 0
+          example: 45.00
+        totalAmount:
+          type: number
+          x-currency: BRL
+          readOnly: true
+          example: 90.00
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        saleDate:
+          type: string
+          format: date
+          example: "2026-06-15"
+        notes:
+          type: string
+          maxLength: 500
+        obtainedMargin:
+          type: number
+          readOnly: true
+          description: Gross margin obtained from the sale as a percentage
+          example: 28.89
+        netProfit:
+          type: number
+          readOnly: true
+          description: Estimated net profit from the sale
+          example: 25.60
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    SaleRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - productId
+        - quantity
+        - unitAmount
+        - paymentMethod
+        - saleDate
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+        unitAmount:
+          type: number
+          minimum: 0.01
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        saleDate:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 500
+
+    PaginatedSales:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sale'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 45
+        totalPages:
+          type: integer
+          example: 3
+        last:
+          type: boolean
+
+    PaginatedFixedCosts:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedCost'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        last:
+          type: boolean
+
+    PaginatedVariableCosts:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariableCost'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        last:
+          type: boolean
+
+    PaginatedProducts:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        last:
+          type: boolean
+
+    PaginatedAlerts:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        last:
+          type: boolean
+
+    PricingRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - productId
+        - desiredMargin
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: Product/service ID for calculation
+        desiredMargin:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Desired profit margin as a percentage
+          example: 30.0
+        includeFixedCosts:
+          type: boolean
+          default: true
+          description: Include fixed cost allocation in the calculation
+
+    PricingResponse:
+      type: object
+      description: Pricing calculation result
+      properties:
+        productId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+        baseCost:
+          type: number
+          x-currency: BRL
+          example: 18.50
+        totalVariableCosts:
+          type: number
+          x-currency: BRL
+          example: 13.50
+        allocatedFixedCosts:
+          type: number
+          x-currency: BRL
+          example: 5.00
+        estimatedTaxes:
+          type: number
+          x-currency: BRL
+          example: 2.70
+        totalUnitCost:
+          type: number
+          x-currency: BRL
+          description: Sum of all costs per unit
+          example: 39.70
+        desiredMargin:
+          type: number
+          example: 30.0
+        minimumSellingPrice:
+          type: number
+          x-currency: BRL
+          description: Minimum selling price calculated via Markup
+          example: 56.71
+        markup:
+          type: number
+          description: Applied markup factor
+          example: 1.43
+        unitProfit:
+          type: number
+          x-currency: BRL
+          example: 17.01
+
+    SimulateDiscountRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - productId
+        - sellingPrice
+        - discountPercentage
+      properties:
+        productId:
+          type: string
+          format: uuid
+        sellingPrice:
+          type: number
+          minimum: 0.01
+          example: 45.00
+        discountPercentage:
+          type: number
+          minimum: 0
+          maximum: 100
+          example: 10.0
+
+    SimulateDiscountResponse:
+      type: object
+      properties:
+        originalPrice:
+          type: number
+          x-currency: BRL
+          example: 45.00
+        discount:
+          type: number
+          x-currency: BRL
+          example: 4.50
+        discountedPrice:
+          type: number
+          x-currency: BRL
+          example: 40.50
+        totalCost:
+          type: number
+          x-currency: BRL
+          example: 39.70
+        originalProfit:
+          type: number
+          x-currency: BRL
+          example: 5.30
+        discountedProfit:
+          type: number
+          x-currency: BRL
+          example: 0.80
+        originalMargin:
+          type: number
+          example: 11.78
+        discountedMargin:
+          type: number
+          example: 1.98
+        viable:
+          type: boolean
+          description: Indicates whether the discounted sale still generates profit
+          example: true
+        recommendation:
+          type: string
+          description: Recommendation based on SEBRAE guidelines
+          example: "A 10% discount significantly reduces the margin. Consider offering at most 5%."
+
+    MarginsResponse:
+      type: object
+      description: Calculated margins of a product/service
+      properties:
+        productId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+        sellingPrice:
+          type: number
+          x-currency: BRL
+          example: 45.00
+        totalCost:
+          type: number
+          x-currency: BRL
+          example: 39.70
+        grossMargin:
+          type: number
+          description: Gross margin as a percentage ((price - cost) / price * 100)
+          example: 11.78
+        markup:
+          type: number
+          description: Markup factor (price / cost)
+          example: 1.13
+        breakEvenPoint:
+          type: integer
+          description: Minimum monthly sales quantity to cover fixed costs
+          example: 95
+        unitContributionMargin:
+          type: number
+          x-currency: BRL
+          description: Amount remaining from each sale to cover fixed costs and generate profit
+          example: 5.30
+
+    CashFlowResponse:
+      type: object
+      properties:
+        period:
+          type: string
+          enum: [DIARIO, SEMANAL, MENSAL, ANUAL]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashFlowEntry'
+        totalRevenue:
+          type: number
+          x-currency: BRL
+          example: 12500.00
+        totalExpenses:
+          type: number
+          x-currency: BRL
+          example: 8300.00
+        balance:
+          type: number
+          x-currency: BRL
+          example: 4200.00
+        accumulatedBalance:
+          type: number
+          x-currency: BRL
+          description: Accumulated balance since the beginning of the year
+          example: 25600.00
+
+    CashFlowEntry:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        type:
+          type: string
+          enum: [RECEITA, DESPESA]
+        category:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+          x-currency: BRL
+        balanceAfter:
+          type: number
+          description: Balance after this transaction
+        referenceId:
+          type: string
+          format: uuid
+          description: ID of the sale or cost that originated this entry
+
+    FinancialSummary:
+      type: object
+      properties:
+        referenceMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: "2026-06"
+        totalRevenue:
+          type: number
+          x-currency: BRL
+          example: 12500.00
+        totalFixedCosts:
+          type: number
+          x-currency: BRL
+          example: 4500.00
+        totalVariableCosts:
+          type: number
+          x-currency: BRL
+          example: 3800.00
+        grossProfit:
+          type: number
+          x-currency: BRL
+          example: 4200.00
+        grossMargin:
+          type: number
+          example: 33.60
+        totalSales:
+          type: integer
+          example: 85
+        averageTicket:
+          type: number
+          x-currency: BRL
+          example: 147.06
+        bestSellingProduct:
+          type: object
+          properties:
+            name:
+              type: string
+            quantity:
+              type: integer
+        predominantPaymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        projectedAnnualRevenue:
+          type: number
+          description: Projected annual revenue based on the average of recent months
+          example: 75000.00
+
+    AccumulatedRevenue:
+      type: object
+      properties:
+        year:
+          type: integer
+          example: 2026
+        accumulatedRevenue:
+          type: number
+          x-currency: BRL
+          example: 45000.00
+        meiCap:
+          type: number
+          x-currency: BRL
+          description: MEI annual cap (R$ 81,000.00)
+          example: 81000.00
+        percentageUsed:
+          type: number
+          example: 55.56
+        proportionalCap:
+          type: number
+          x-currency: BRL
+          description: Proportional cap based on months elapsed in the year
+          example: 40500.00
+        exceededProportionalCap:
+          type: boolean
+          example: true
+        remainingMonths:
+          type: integer
+          example: 6
+        yearEndProjection:
+          type: number
+          x-currency: BRL
+          example: 75000.00
+
+    AlertType:
+      type: string
+      description: System alert type
+      enum:
+        - TETO_MEI_PROXIMO
+        - TETO_MEI_ULTRAPASSADO
+        - MARGEM_ABAIXO_MINIMO
+        - CUSTO_ELEVADO
+        - CREDITO_PARCELADO_RISCO
+        - FLUXO_CAIXA_NEGATIVO
+
+    AlertSeverity:
+      type: string
+      enum:
+        - INFO
+        - AVISO
+        - CRITICO
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          $ref: '#/components/schemas/AlertType'
+        severity:
+          $ref: '#/components/schemas/AlertSeverity'
+        title:
+          type: string
+          example: "Warning: 80% of MEI revenue cap reached"
+        message:
+          type: string
+          example: "Your accumulated revenue has reached 80% of the MEI annual cap. Monitor closely to avoid disqualification."
+        details:
+          type: object
+          description: Additional data related to the alert
+          additionalProperties: true
+          example:
+            faturamentoAtual: 64800.00
+            teto: 81000.00
+            percentual: 80.0
+        read:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
