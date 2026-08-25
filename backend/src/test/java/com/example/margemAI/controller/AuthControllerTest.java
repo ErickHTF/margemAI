@@ -42,7 +42,7 @@ public class AuthControllerTest {
                 .name("Maria Silva")
                 .email("maria@email.com")
                 .password("Senha@123")
-                .cnpj("12.345.678/0001-90")
+                .cnpj("12.ABC.345/0001-90")
                 .segment(MeiSegment.COMERCIO)
                 .build();
 
@@ -55,6 +55,8 @@ public class AuthControllerTest {
                         .id(UUID.randomUUID())
                         .name("Maria Silva")
                         .email("maria@email.com")
+                        .cnpj("12.ABC.345/0001-90")
+                        .segment(MeiSegment.COMERCIO)
                         .build())
                 .build();
 
@@ -69,7 +71,9 @@ public class AuthControllerTest {
                 .andExpect(jsonPath("$.type").value("Bearer"))
                 .andExpect(jsonPath("$.expiresIn").value(3600))
                 .andExpect(jsonPath("$.user.name").value("Maria Silva"))
-                .andExpect(jsonPath("$.user.email").value("maria@email.com"));
+                .andExpect(jsonPath("$.user.email").value("maria@email.com"))
+                .andExpect(jsonPath("$.user.cnpj").value("12.ABC.345/0001-90"))
+                .andExpect(jsonPath("$.user.segment").value("COMERCIO"));
     }
 
     @Test
@@ -78,7 +82,7 @@ public class AuthControllerTest {
                 .name("Maria Silva")
                 .email("maria@email.com")
                 .password("Senha@123")
-                .cnpj("12.345.678/0001-90")
+                .cnpj("12.ABC.345/0001-90")
                 .segment(MeiSegment.COMERCIO)
                 .build();
 
@@ -99,7 +103,7 @@ public class AuthControllerTest {
                 .name("Maria Silva")
                 .email("maria@email.com")
                 .password("123456")
-                .cnpj("12.345.678/0001-90")
+                .cnpj("12.ABC.345/0001-90")
                 .segment(MeiSegment.COMERCIO)
                 .build();
 

@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,7 +47,7 @@ public class AuthServiceTest {
                 .name("Maria Silva")
                 .email("maria@email.com")
                 .password("Senha@123")
-                .cnpj("12.345.678/0001-90")
+                .cnpj("12.ABC.345/0001-90")
                 .segment(MeiSegment.COMERCIO)
                 .build();
 
@@ -57,7 +56,7 @@ public class AuthServiceTest {
                 .name("Maria Silva")
                 .email("maria@email.com")
                 .password("encoded_password")
-                .cnpj("12.345.678/0001-90")
+                .cnpj("12.ABC.345/0001-90")
                 .segment(MeiSegment.COMERCIO)
                 .build();
     }
@@ -65,7 +64,7 @@ public class AuthServiceTest {
     @Test
     void shouldRegisterUserSuccessfully() {
         when(userRepository.existsByEmail("maria@email.com")).thenReturn(false);
-        when(userRepository.existsByCnpj("12.345.678/0001-90")).thenReturn(false);
+        when(userRepository.existsByCnpj("12.ABC.345/0001-90")).thenReturn(false);
         when(passwordEncoder.encode("Senha@123")).thenReturn("encoded_password");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(jwtService.generateAccessToken(savedUser)).thenReturn("access_token_sample");
@@ -82,6 +81,8 @@ public class AuthServiceTest {
         assertEquals(savedUser.getId(), response.getUser().getId());
         assertEquals("Maria Silva", response.getUser().getName());
         assertEquals("maria@email.com", response.getUser().getEmail());
+        assertEquals("12.ABC.345/0001-90", response.getUser().getCnpj());
+        assertEquals(MeiSegment.COMERCIO, response.getUser().getSegment());
 
         verify(userRepository).save(any(User.class));
     }
@@ -101,7 +102,7 @@ public class AuthServiceTest {
     @Test
     void shouldThrowExceptionWhenCnpjAlreadyExists() {
         when(userRepository.existsByEmail("maria@email.com")).thenReturn(false);
-        when(userRepository.existsByCnpj("12.345.678/0001-90")).thenReturn(true);
+        when(userRepository.existsByCnpj("12.ABC.345/0001-90")).thenReturn(true);
 
         DuplicateResourceException exception = assertThrows(
                 DuplicateResourceException.class,

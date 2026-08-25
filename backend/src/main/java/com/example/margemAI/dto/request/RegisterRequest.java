@@ -36,8 +36,8 @@ public class RegisterRequest {
 
     @NotBlank(message = "O CNPJ é obrigatório.")
     @Pattern(
-        regexp = "^(\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}|\\d{14})$",
-        message = "O CNPJ deve estar no formato 00.000.000/0000-00 ou conter exatamente 14 dígitos numéricos."
+        regexp = "^([A-Za-z0-9]{2}\\.[A-Za-z0-9]{3}\\.[A-Za-z0-9]{3}/[A-Za-z0-9]{4}-[A-Za-z0-9]{2}|[A-Za-z0-9]{14})$",
+        message = "O CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX ou conter 14 caracteres alfanuméricos."
     )
     private String cnpj;
 

@@ -1,20 +1,25 @@
 export const maskCnpj = (value) => {
-  const digits = (value || '').replace(/\D/g, '').slice(0, 14)
-  if (digits.length <= 2) return digits
-  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`
-  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`
-  if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`
+  const chars = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 14)
+  if (chars.length <= 2) return chars
+  if (chars.length <= 5) return `${chars.slice(0, 2)}.${chars.slice(2)}`
+  if (chars.length <= 8) return `${chars.slice(0, 2)}.${chars.slice(2, 5)}.${chars.slice(5)}`
+  if (chars.length <= 12) return `${chars.slice(0, 2)}.${chars.slice(2, 5)}.${chars.slice(5, 8)}/${chars.slice(8)}`
+  return `${chars.slice(0, 2)}.${chars.slice(2, 5)}.${chars.slice(5, 8)}/${chars.slice(8, 12)}-${chars.slice(12, 14)}`
 }
 
 export const validateCnpj = (cnpj) => {
-  const cleanCnpj = (cnpj || '').replace(/\D/g, '')
-  if (cleanCnpj.length !== 14) return false
-  if (/^(\d)\1{13}$/.test(cleanCnpj)) return false
+  const clean = (cnpj || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  if (clean.length !== 14) return false
+  if (/^([A-Z0-9])\1{13}$/.test(clean)) return false
 
-  let size = cleanCnpj.length - 2
-  let numbers = cleanCnpj.substring(0, size)
-  const digits = cleanCnpj.substring(size)
+  const isNumericOnly = /^\d{14}$/.test(clean)
+  if (!isNumericOnly) {
+    return /^[A-Z0-9]{14}$/.test(clean)
+  }
+
+  let size = clean.length - 2
+  let numbers = clean.substring(0, size)
+  const digits = clean.substring(size)
   let sum = 0
   let pos = size - 7
 
@@ -27,7 +32,7 @@ export const validateCnpj = (cnpj) => {
   if (result !== Number(digits.charAt(0))) return false
 
   size = size + 1
-  numbers = cleanCnpj.substring(0, size)
+  numbers = clean.substring(0, size)
   sum = 0
   pos = size - 7
 

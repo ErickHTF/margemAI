@@ -22,7 +22,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
-        String normalizedCnpj = request.getCnpj().trim();
+        String normalizedCnpj = request.getCnpj().trim().toUpperCase();
 
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new DuplicateResourceException("O e-mail informado já está cadastrado no sistema.");
@@ -49,6 +49,8 @@ public class AuthService {
                 .id(savedUser.getId())
                 .name(savedUser.getName())
                 .email(savedUser.getEmail())
+                .cnpj(savedUser.getCnpj())
+                .segment(savedUser.getSegment())
                 .build();
 
         return AuthResponse.builder()

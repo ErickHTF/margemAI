@@ -64,9 +64,9 @@ export default function RegisterForm({ onRegisterSuccess }) {
 
       case 'cnpj': {
         if (!value.trim()) return 'O CNPJ é obrigatório.'
-        const digits = value.replace(/\D/g, '')
-        if (digits.length !== 14) return 'O CNPJ deve conter exatamente 14 dígitos.'
-        if (!validateCnpj(value)) return 'CNPJ inválido. Verifique os números digitados.'
+        const clean = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+        if (clean.length !== 14) return 'O CNPJ deve conter 14 caracteres alfanuméricos.'
+        if (!validateCnpj(value)) return 'CNPJ inválido. Verifique os caracteres digitados.'
         return null
       }
 

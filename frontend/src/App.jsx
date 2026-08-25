@@ -32,14 +32,28 @@ export default function App() {
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-2">
-              Bem-vindo ao Margem.AI!
+              Conta Criada com Sucesso!
             </h2>
             <p className="text-sm text-slate-600 mb-6">
-              Olá, <strong className="text-slate-900">{registeredUser.user?.name}</strong>. Sua conta de MEI ({registeredUser.user?.segment}) foi configurada com sucesso.
+              Olá, <strong className="text-slate-900">{registeredUser.user?.name}</strong>. Sua conta MEI foi cadastrada com sucesso.
             </p>
-            <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-500 mb-6 text-left space-y-1">
-              <p><strong>E-mail:</strong> {registeredUser.user?.email}</p>
-              <p><strong>CNPJ:</strong> {registeredUser.user?.cnpj}</p>
+            <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-700 mb-6 text-left space-y-2 border border-slate-100">
+              <p className="flex justify-between">
+                <span className="text-slate-500">Nome:</span>
+                <span className="font-semibold text-slate-900">{registeredUser.user?.name}</span>
+              </p>
+              <p className="flex justify-between">
+                <span className="text-slate-500">E-mail:</span>
+                <span className="font-semibold text-slate-900">{registeredUser.user?.email}</span>
+              </p>
+              <p className="flex justify-between">
+                <span className="text-slate-500">CNPJ:</span>
+                <span className="font-semibold text-slate-900">{registeredUser.user?.cnpj}</span>
+              </p>
+              <p className="flex justify-between">
+                <span className="text-slate-500">Segmento:</span>
+                <span className="font-semibold text-indigo-600">{registeredUser.user?.segment}</span>
+              </p>
             </div>
             <button
               type="button"
