@@ -3,7 +3,7 @@ package com.example.margemAI.service;
 import com.example.margemAI.dto.request.RegisterRequest;
 import com.example.margemAI.dto.response.AuthResponse;
 import com.example.margemAI.exception.DuplicateResourceException;
-import com.example.margemAI.model.MeiSegment;
+import com.example.margemAI.model.Segment;
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +30,9 @@ public class AuthServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private SegmentService segmentService;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -39,16 +42,24 @@ public class AuthServiceTest {
     private AuthService authService;
 
     private RegisterRequest validRequest;
+    private Segment segment;
     private User savedUser;
 
     @BeforeEach
     void setUp() {
+        segment = Segment.builder()
+                .id(UUID.randomUUID())
+                .code("COMERCIO")
+                .name("Comércio")
+                .active(true)
+                .build();
+
         validRequest = RegisterRequest.builder()
                 .name("Maria Silva")
                 .email("maria@email.com")
                 .password("Senha@123")
                 .cnpj("12.ABC.345/0001-90")
-                .segment(MeiSegment.COMERCIO)
+                .segment("COMERCIO")
                 .build();
 
         savedUser = User.builder()
@@ -57,7 +68,7 @@ public class AuthServiceTest {
                 .email("maria@email.com")
                 .password("encoded_password")
                 .cnpj("12.ABC.345/0001-90")
-                .segment(MeiSegment.COMERCIO)
+                .segment(segment)
                 .build();
     }
 
@@ -65,6 +76,7 @@ public class AuthServiceTest {
     void shouldRegisterUserSuccessfully() {
         when(userRepository.existsByEmail("maria@email.com")).thenReturn(false);
         when(userRepository.existsByCnpj("12.ABC.345/0001-90")).thenReturn(false);
+        when(segmentService.findByCode("COMERCIO")).thenReturn(segment);
         when(passwordEncoder.encode("Senha@123")).thenReturn("encoded_password");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(jwtService.generateAccessToken(savedUser)).thenReturn("access_token_sample");
@@ -82,7 +94,7 @@ public class AuthServiceTest {
         assertEquals("Maria Silva", response.getUser().getName());
         assertEquals("maria@email.com", response.getUser().getEmail());
         assertEquals("12.ABC.345/0001-90", response.getUser().getCnpj());
-        assertEquals(MeiSegment.COMERCIO, response.getUser().getSegment());
+        assertEquals("COMERCIO", response.getUser().getSegment());
 
         verify(userRepository).save(any(User.class));
     }

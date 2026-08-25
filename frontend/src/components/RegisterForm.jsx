@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   User,
   Mail,
@@ -14,6 +14,7 @@ import {
   Check
 } from 'lucide-react'
 import authService from '../services/authService'
+import segmentService from '../services/segmentService'
 import { MEI_SEGMENTS } from '../constants/segments'
 import {
   maskCnpj,
@@ -32,12 +33,32 @@ export default function RegisterForm({ onRegisterSuccess }) {
     segment: ''
   })
 
+  const [availableSegments, setAvailableSegments] = useState(MEI_SEGMENTS)
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState(null)
   const [serverSuccess, setServerSuccess] = useState(null)
+
+  useEffect(() => {
+    const fetchSegments = async () => {
+      try {
+        const data = await segmentService.getSegments()
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.map((seg) => ({
+            value: seg.code,
+            label: seg.name,
+            description: seg.description
+          }))
+          setAvailableSegments(mapped)
+        }
+      } catch {
+        setAvailableSegments(MEI_SEGMENTS)
+      }
+    }
+    fetchSegments()
+  }, [])
 
   const passwordValidation = validatePasswordStrength(formData.password)
 
@@ -331,7 +352,7 @@ export default function RegisterForm({ onRegisterSuccess }) {
                 }`}
               >
                 <option value="">Selecione o segmento...</option>
-                {MEI_SEGMENTS.map((seg) => (
+                {availableSegments.map((seg) => (
                   <option key={seg.value} value={seg.value}>
                     {seg.label}
                   </option>

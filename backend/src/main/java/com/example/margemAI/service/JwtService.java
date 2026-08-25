@@ -36,7 +36,7 @@ public class JwtService {
         claims.put("email", user.getEmail());
         claims.put("name", user.getName());
         claims.put("cnpj", user.getCnpj());
-        claims.put("segment", user.getSegment().name());
+        claims.put("segment", user.getSegment() != null ? user.getSegment().getCode() : "");
 
         return Jwts.builder()
                 .claims(claims)

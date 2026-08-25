@@ -28,7 +28,7 @@ backend/src/main/java/com/example/margemAI/
 * **Entidades de Domínio:** **SEMPRE NO SINGULAR**
   * ✅ `User`, `Product`, `Sale`, `FixedCost`, `VariableCost`, `Pricing`, `CashFlow`
   * ❌ `Users`, `Products`, `Sales`, `Costs`
-  * **Tabelas do Banco de Dados:** Singular em minúsculo (`user`, `product`, `sale`, `fixed_cost`).
+  * **Tabelas do Banco de Dados:** Plural em minúsculo (`users`, `products`, `sales`, `fixed_costs`).
 * **Identificadores (ID):** Utilizar preferencialmente `UUID` para chaves primárias.
 * **Campos de Auditoria:** Toda entidade persistida deve conter `createdAt` e `updatedAt`.
 * **Valores Financeiros:** **SEMPRE utilizar `BigDecimal`** para qualquer cálculo monetário, percentual ou taxa. É terminantemente proibido o uso de `double` ou `float` em operações financeiras.

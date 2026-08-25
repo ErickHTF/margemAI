@@ -4,6 +4,7 @@ import com.example.margemAI.dto.request.RegisterRequest;
 import com.example.margemAI.dto.response.AuthResponse;
 import com.example.margemAI.dto.response.UserResponse;
 import com.example.margemAI.exception.DuplicateResourceException;
+import com.example.margemAI.model.Segment;
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final SegmentService segmentService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
@@ -32,12 +34,14 @@ public class AuthService {
             throw new DuplicateResourceException("O CNPJ informado já está cadastrado no sistema.");
         }
 
+        Segment segment = segmentService.findByCode(request.getSegment());
+
         User user = User.builder()
                 .name(request.getName().trim())
                 .email(normalizedEmail)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .cnpj(normalizedCnpj)
-                .segment(request.getSegment())
+                .segment(segment)
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -50,7 +54,7 @@ public class AuthService {
                 .name(savedUser.getName())
                 .email(savedUser.getEmail())
                 .cnpj(savedUser.getCnpj())
-                .segment(savedUser.getSegment())
+                .segment(savedUser.getSegment().getCode())
                 .build();
 
         return AuthResponse.builder()

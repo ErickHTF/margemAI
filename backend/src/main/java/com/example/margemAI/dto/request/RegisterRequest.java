@@ -1,9 +1,7 @@
 package com.example.margemAI.dto.request;
 
-import com.example.margemAI.model.MeiSegment;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -41,6 +39,6 @@ public class RegisterRequest {
     )
     private String cnpj;
 
-    @NotNull(message = "O segmento de atuação do MEI é obrigatório.")
-    private MeiSegment segment;
+    @NotBlank(message = "O segmento de atuação do MEI é obrigatório.")
+    private String segment;
 }

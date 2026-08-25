@@ -4,7 +4,6 @@ import com.example.margemAI.dto.request.RegisterRequest;
 import com.example.margemAI.dto.response.AuthResponse;
 import com.example.margemAI.dto.response.UserResponse;
 import com.example.margemAI.exception.DuplicateResourceException;
-import com.example.margemAI.model.MeiSegment;
 import com.example.margemAI.service.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -43,7 +42,7 @@ public class AuthControllerTest {
                 .email("maria@email.com")
                 .password("Senha@123")
                 .cnpj("12.ABC.345/0001-90")
-                .segment(MeiSegment.COMERCIO)
+                .segment("COMERCIO")
                 .build();
 
         AuthResponse response = AuthResponse.builder()
@@ -56,7 +55,7 @@ public class AuthControllerTest {
                         .name("Maria Silva")
                         .email("maria@email.com")
                         .cnpj("12.ABC.345/0001-90")
-                        .segment(MeiSegment.COMERCIO)
+                        .segment("COMERCIO")
                         .build())
                 .build();
 
@@ -83,7 +82,7 @@ public class AuthControllerTest {
                 .email("maria@email.com")
                 .password("Senha@123")
                 .cnpj("12.ABC.345/0001-90")
-                .segment(MeiSegment.COMERCIO)
+                .segment("COMERCIO")
                 .build();
 
         when(authService.register(any(RegisterRequest.class)))
@@ -104,7 +103,7 @@ public class AuthControllerTest {
                 .email("maria@email.com")
                 .password("123456")
                 .cnpj("12.ABC.345/0001-90")
-                .segment(MeiSegment.COMERCIO)
+                .segment("COMERCIO")
                 .build();
 
         mockMvc.perform(post("/v1/auth/register")
@@ -121,7 +120,7 @@ public class AuthControllerTest {
                 .email("maria@email.com")
                 .password("Senha@123")
                 .cnpj("1234")
-                .segment(MeiSegment.COMERCIO)
+                .segment("COMERCIO")
                 .build();
 
         mockMvc.perform(post("/v1/auth/register")

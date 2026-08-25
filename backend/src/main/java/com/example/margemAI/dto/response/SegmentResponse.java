@@ -13,10 +13,9 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserResponse {
+public class SegmentResponse {
     private UUID id;
+    private String code;
     private String name;
-    private String email;
-    private String cnpj;
-    private String segment;
+    private String description;
 }
