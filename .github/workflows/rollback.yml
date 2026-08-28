@@ -1,0 +1,93 @@
+name: Rollback de Emergência
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_tag:
+        description: 'Tag da versão estável anterior para a qual deseja reverter (ex: v0.1.34, v1.0.0)'
+        required: true
+      environment:
+        description: 'Ambiente para execução do Rollback'
+        required: true
+        type: choice
+        options:
+          - 'production'
+          - 'homologation'
+        default: 'production'
+      reason:
+        description: 'Motivo do Rollback (para registro e auditoria)'
+        required: true
+        default: 'Instabilidade detectada na versão recente.'
+
+permissions:
+  contents: write
+
+jobs:
+  execute-rollback:
+    name: Executar Rollback de Versão
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validar existência da Tag Alvo
+        id: check-tag
+        run: |
+          TARGET="${{ github.event.inputs.target_tag }}"
+          if git rev-parse "$TARGET" >/dev/null 2>&1; then
+            echo "Tag $TARGET encontrada no repositório."
+          else
+            echo "::error::A tag informada ($TARGET) não foi encontrada no histórico do Git."
+            exit 1
+          fi
+
+      - name: Baixar Assets da Release Alvo
+        run: |
+          TARGET="${{ github.event.inputs.target_tag }}"
+          echo "Baixando artefatos da release $TARGET..."
+          gh release download "$TARGET" --pattern "*" --dir ./rollback-assets || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Gerar Tag de Rollback e Metadados
+        id: meta
+        run: |
+          DATE=$(date +'%Y%m%d-%H%M')
+          TARGET="${{ github.event.inputs.target_tag }}"
+          ENV="${{ github.event.inputs.environment }}"
+          ROLLBACK_TAG="rollback-${ENV}-${TARGET}-${DATE}"
+          echo "rollback_tag=${ROLLBACK_TAG}" >> $GITHUB_OUTPUT
+          echo "rollback_name=🚨 Rollback para ${TARGET} (${ENV})" >> $GITHUB_OUTPUT
+
+      - name: Publicar Release de Auditoria do Rollback
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.rollback_tag }}
+          name: ${{ steps.meta.outputs.rollback_name }}
+          draft: false
+          prerelease: ${{ github.event.inputs.environment == 'homologation' }}
+          body: |
+            ## 🚨 Registro de Rollback de Emergência
+            * **Ambiente:** `${{ github.event.inputs.environment }}`
+            * **Versão Restaurada:** `${{ github.event.inputs.target_tag }}`
+            * **Executado por:** `@${{ github.actor }}`
+            * **Data/Hora:** `$(date -u +'%Y-%m-%d %H:%M:%S UTC')`
+            * **Motivo Declarado:** ${{ github.event.inputs.reason }}
+            
+            ---
+            > Os artefatos desta versão são cópias fiéis e verificadas da versão **${{ github.event.inputs.target_tag }}**.
+          files: |
+            ./rollback-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resumo do Rollback
+        run: |
+          echo "### 🚨 Rollback Concluído com Sucesso!" >> $GITHUB_STEP_SUMMARY
+          echo "* **Ambiente:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "* **Versão Restaurada:** ${{ github.event.inputs.target_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "* **Tag de Auditoria Criada:** ${{ steps.meta.outputs.rollback_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "* **Motivo:** ${{ github.event.inputs.reason }}" >> $GITHUB_STEP_SUMMARY
