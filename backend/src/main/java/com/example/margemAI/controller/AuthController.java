@@ -1,5 +1,7 @@
 package com.example.margemAI.controller;
 
+import com.example.margemAI.dto.request.LoginRequest;
+import com.example.margemAI.dto.request.RefreshRequest;
 import com.example.margemAI.dto.request.RegisterRequest;
 import com.example.margemAI.dto.response.AuthResponse;
 import com.example.margemAI.service.AuthService;
@@ -25,5 +27,17 @@ public class AuthController {
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         AuthResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        AuthResponse response = authService.refresh(request);
+        return ResponseEntity.ok(response);
     }
 }

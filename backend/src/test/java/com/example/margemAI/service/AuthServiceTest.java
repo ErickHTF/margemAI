@@ -1,8 +1,12 @@
 package com.example.margemAI.service;
 
+import com.example.margemAI.dto.request.LoginRequest;
+import com.example.margemAI.dto.request.RefreshRequest;
 import com.example.margemAI.dto.request.RegisterRequest;
 import com.example.margemAI.dto.response.AuthResponse;
 import com.example.margemAI.exception.DuplicateResourceException;
+import com.example.margemAI.exception.InvalidCredentialsException;
+import com.example.margemAI.exception.InvalidTokenException;
 import com.example.margemAI.model.Segment;
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.UserRepository;
@@ -14,12 +18,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -122,5 +128,107 @@ public class AuthServiceTest {
         );
 
         assertEquals("O CNPJ informado já está cadastrado no sistema.", exception.getMessage());
+    }
+
+    @Test
+    void shouldLoginSuccessfully() {
+        when(userRepository.findByEmail("maria@email.com")).thenReturn(Optional.of(savedUser));
+        when(passwordEncoder.matches("Senha@123", "encoded_password")).thenReturn(true);
+        when(jwtService.generateAccessToken(savedUser)).thenReturn("access_token_sample");
+        when(jwtService.generateRefreshToken(savedUser)).thenReturn("refresh_token_sample");
+
+        LoginRequest request = LoginRequest.builder()
+                .email("  Maria@Email.com ")
+                .password("Senha@123")
+                .build();
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertEquals("access_token_sample", response.getAccessToken());
+        assertEquals("refresh_token_sample", response.getRefreshToken());
+        assertEquals("Bearer", response.getType());
+        assertEquals(3600L, response.getExpiresIn());
+        assertEquals(savedUser.getId(), response.getUser().getId());
+        assertEquals("maria@email.com", response.getUser().getEmail());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenPasswordDoesNotMatch() {
+        when(userRepository.findByEmail("maria@email.com")).thenReturn(Optional.of(savedUser));
+        when(passwordEncoder.matches("SenhaErrada@1", "encoded_password")).thenReturn(false);
+
+        LoginRequest request = LoginRequest.builder()
+                .email("maria@email.com")
+                .password("SenhaErrada@1")
+                .build();
+
+        InvalidCredentialsException exception = assertThrows(
+                InvalidCredentialsException.class,
+                () -> authService.login(request)
+        );
+
+        assertEquals("E-mail ou senha inválidos.", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUserDoesNotExist() {
+        when(userRepository.findByEmail("nao.existe@email.com")).thenReturn(Optional.empty());
+
+        LoginRequest request = LoginRequest.builder()
+                .email("nao.existe@email.com")
+                .password("Senha@123")
+                .build();
+
+        assertThrows(InvalidCredentialsException.class, () -> authService.login(request));
+    }
+
+    @Test
+    void shouldRefreshTokenSuccessfully() {
+        when(jwtService.isRefreshTokenValid("valid_refresh_jwt")).thenReturn(true);
+        when(jwtService.extractUserId("valid_refresh_jwt")).thenReturn(savedUser.getId());
+        when(userRepository.findById(savedUser.getId())).thenReturn(Optional.of(savedUser));
+        when(jwtService.generateAccessToken(savedUser)).thenReturn("new_access_token");
+        when(jwtService.generateRefreshToken(savedUser)).thenReturn("new_refresh_token");
+
+        RefreshRequest request = RefreshRequest.builder()
+                .refreshToken("valid_refresh_jwt")
+                .build();
+
+        AuthResponse response = authService.refresh(request);
+
+        assertNotNull(response);
+        assertEquals("new_access_token", response.getAccessToken());
+        assertEquals("new_refresh_token", response.getRefreshToken());
+        assertEquals(savedUser.getId(), response.getUser().getId());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenRefreshTokenIsInvalid() {
+        when(jwtService.isRefreshTokenValid(eq("expired_refresh_jwt"))).thenReturn(false);
+
+        RefreshRequest request = RefreshRequest.builder()
+                .refreshToken("expired_refresh_jwt")
+                .build();
+
+        InvalidTokenException exception = assertThrows(
+                InvalidTokenException.class,
+                () -> authService.refresh(request)
+        );
+
+        assertEquals("O refresh token informado é inválido ou expirou.", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenRefreshUserDoesNotExist() {
+        when(jwtService.isRefreshTokenValid("valid_refresh_jwt")).thenReturn(true);
+        when(jwtService.extractUserId("valid_refresh_jwt")).thenReturn(UUID.randomUUID());
+        when(userRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+
+        RefreshRequest request = RefreshRequest.builder()
+                .refreshToken("valid_refresh_jwt")
+                .build();
+
+        assertThrows(InvalidTokenException.class, () -> authService.refresh(request));
     }
 }
