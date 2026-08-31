@@ -123,8 +123,36 @@ O arquivo `.zip` contém os arquivos estáticos pré-compilados (`index.html`, `
 | Variável / Propriedade | Padrão | Descrição |
 | :--- | :--- | :--- |
 | `SERVER_PORT` / `server.port` | `8080` | Porta HTTP da API backend |
-| `JWT_SECRET` / `jwt.secret` | *(chave 256-bit padrão)* | Segredo HMAC-SHA para assinatura de tokens JWT |
-| `SPRING_DATASOURCE_URL` | `jdbc:h2:mem:margemdb` | URL de conexão com o banco de dados (H2 ou PostgreSQL) |
-| `SPRING_DATASOURCE_USERNAME` | `sa` | Usuário do banco de dados |
-| `SPRING_DATASOURCE_PASSWORD` | ` ` | Senha do banco de dados |
+| `JWT_SECRET` / `jwt.secret` | *(obrigatório em produção)* | Segredo HMAC-SHA (≥ 256 bits) para assinatura de tokens JWT. Injetado via variável de ambiente — nunca commitado |
+| `JWT_ACCESS_TOKEN_EXPIRATION` / `jwt.access-token-expiration` | `3600` | Expiração do access token em segundos (1h) |
+| `JWT_REFRESH_TOKEN_EXPIRATION` / `jwt.refresh-token-expiration` | `604800` | Expiração do refresh token em segundos (7 dias) |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/margemai` | URL de conexão com o banco de dados (PostgreSQL 16) |
+| `SPRING_DATASOURCE_USERNAME` | `margemai` | Usuário do banco de dados |
+| `SPRING_DATASOURCE_PASSWORD` | `margemai` | Senha do banco de dados |
 | `VITE_API_BASE_URL` | `http://localhost:8080/v1` | URL base do backend consumida pelo frontend |
+
+Todas as configurações são resolvidas a partir de **variáveis de ambiente** (com fallback padrão) diretamente no `application.properties`. Não há arquivo `.env`.
+
+### Executando Localmente com Docker (PostgreSQL 16)
+
+O backend usa **PostgreSQL 16** por padrão. Para subir o banco localmente com Docker:
+
+```bash
+cd backend
+docker compose up -d
+```
+
+As credenciais padrão são `margemai` / `margemai` / banco `margemai`. Os dados ficam persistidos no volume `margemai_pgdata`.
+
+Para executar o backend localmente, use o profile `local` (que já traz valores de desenvolvimento no `application-local.properties`) ou exporte as variáveis de ambiente:
+
+```bash
+SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
+```
+
+```bash
+export JWT_SECRET=$(openssl rand -base64 48)
+./mvnw spring-boot:run
+```
+
+> 💡 Os testes automatizados (`mvn test`) rodam em **H2 em memória** via `src/test/resources/application.properties` (com segredo JWT de teste separado), sem depender do Docker.
