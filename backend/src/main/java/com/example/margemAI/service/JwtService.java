@@ -12,11 +12,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
+    @Value("${jwt.secret}")
     private String secret;
 
     @Value("${jwt.access-token-expiration:3600}")
@@ -37,21 +38,24 @@ public class JwtService {
         claims.put("name", user.getName());
         claims.put("cnpj", user.getCnpj());
         claims.put("segment", user.getSegment() != null ? user.getSegment().getCode() : "");
+        claims.put("type", "ACCESS");
 
-        return Jwts.builder()
-                .claims(claims)
-                .subject(user.getId().toString())
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + (accessTokenExpiration * 1000)))
-                .signWith(getSigningKey())
-                .compact();
+        return buildToken(user.getId(), claims, accessTokenExpiration);
     }
 
     public String generateRefreshToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("type", "REFRESH");
+
+        return buildToken(user.getId(), claims, refreshTokenExpiration);
+    }
+
+    private String buildToken(UUID subject, Map<String, Object> claims, long expirationSeconds) {
         return Jwts.builder()
-                .subject(user.getId().toString())
+                .claims(claims)
+                .subject(subject.toString())
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + (refreshTokenExpiration * 1000)))
+                .expiration(new Date(System.currentTimeMillis() + (expirationSeconds * 1000)))
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -62,5 +66,27 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public UUID extractUserId(String token) {
+        return UUID.fromString(extractAllClaims(token).getSubject());
+    }
+
+    public boolean isAccessTokenValid(String token) {
+        return isValidToken(token, "ACCESS");
+    }
+
+    public boolean isRefreshTokenValid(String token) {
+        return isValidToken(token, "REFRESH");
+    }
+
+    private boolean isValidToken(String token, String expectedType) {
+        try {
+            Claims claims = extractAllClaims(token);
+            return expectedType.equals(claims.get("type", String.class))
+                    && claims.getExpiration().after(new Date());
+        } catch (RuntimeException ex) {
+            return false;
+        }
     }
 }

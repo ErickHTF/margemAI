@@ -1,9 +1,13 @@
 package com.example.margemAI.controller;
 
+import com.example.margemAI.dto.request.LoginRequest;
+import com.example.margemAI.dto.request.RefreshRequest;
 import com.example.margemAI.dto.request.RegisterRequest;
 import com.example.margemAI.dto.response.AuthResponse;
 import com.example.margemAI.dto.response.UserResponse;
 import com.example.margemAI.exception.DuplicateResourceException;
+import com.example.margemAI.exception.InvalidCredentialsException;
+import com.example.margemAI.exception.InvalidTokenException;
 import com.example.margemAI.service.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -124,6 +128,134 @@ public class AuthControllerTest {
                 .build();
 
         mockMvc.perform(post("/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void shouldLoginAndReturn200Ok() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .email("maria@email.com")
+                .password("Senha@123")
+                .build();
+
+        AuthResponse response = AuthResponse.builder()
+                .accessToken("sample_access_jwt")
+                .refreshToken("sample_refresh_jwt")
+                .type("Bearer")
+                .expiresIn(3600L)
+                .user(UserResponse.builder()
+                        .id(UUID.randomUUID())
+                        .name("Maria Silva")
+                        .email("maria@email.com")
+                        .cnpj("12.ABC.345/0001-90")
+                        .segment("COMERCIO")
+                        .build())
+                .build();
+
+        when(authService.login(any(LoginRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("sample_access_jwt"))
+                .andExpect(jsonPath("$.refreshToken").value("sample_refresh_jwt"))
+                .andExpect(jsonPath("$.type").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(3600))
+                .andExpect(jsonPath("$.user.email").value("maria@email.com"));
+    }
+
+    @Test
+    void shouldReturn401WhenCredentialsAreInvalid() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .email("maria@email.com")
+                .password("SenhaErrada@1")
+                .build();
+
+        when(authService.login(any(LoginRequest.class)))
+                .thenThrow(new InvalidCredentialsException("E-mail ou senha inválidos."));
+
+        mockMvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.message").value("E-mail ou senha inválidos."));
+    }
+
+    @Test
+    void shouldReturn400BadRequestWhenLoginBodyIsInvalid() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .email("email-invalido")
+                .password("")
+                .build();
+
+        mockMvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void shouldRefreshTokenAndReturn200Ok() throws Exception {
+        RefreshRequest request = RefreshRequest.builder()
+                .refreshToken("sample_refresh_jwt")
+                .build();
+
+        AuthResponse response = AuthResponse.builder()
+                .accessToken("new_access_jwt")
+                .refreshToken("new_refresh_jwt")
+                .type("Bearer")
+                .expiresIn(3600L)
+                .user(UserResponse.builder()
+                        .id(UUID.randomUUID())
+                        .name("Maria Silva")
+                        .email("maria@email.com")
+                        .cnpj("12.ABC.345/0001-90")
+                        .segment("COMERCIO")
+                        .build())
+                .build();
+
+        when(authService.refresh(any(RefreshRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("new_access_jwt"))
+                .andExpect(jsonPath("$.refreshToken").value("new_refresh_jwt"))
+                .andExpect(jsonPath("$.type").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(3600));
+    }
+
+    @Test
+    void shouldReturn401WhenRefreshTokenIsInvalid() throws Exception {
+        RefreshRequest request = RefreshRequest.builder()
+                .refreshToken("invalid_refresh_jwt")
+                .build();
+
+        when(authService.refresh(any(RefreshRequest.class)))
+                .thenThrow(new InvalidTokenException("O refresh token informado é inválido ou expirou."));
+
+        mockMvc.perform(post("/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"))
+                .andExpect(jsonPath("$.message").value("O refresh token informado é inválido ou expirou."));
+    }
+
+    @Test
+    void shouldReturn400BadRequestWhenRefreshBodyIsInvalid() throws Exception {
+        RefreshRequest request = RefreshRequest.builder()
+                .refreshToken("")
+                .build();
+
+        mockMvc.perform(post("/v1/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())

@@ -1,9 +1,13 @@
 package com.example.margemAI.service;
 
+import com.example.margemAI.dto.request.LoginRequest;
+import com.example.margemAI.dto.request.RefreshRequest;
 import com.example.margemAI.dto.request.RegisterRequest;
 import com.example.margemAI.dto.response.AuthResponse;
 import com.example.margemAI.dto.response.UserResponse;
 import com.example.margemAI.exception.DuplicateResourceException;
+import com.example.margemAI.exception.InvalidCredentialsException;
+import com.example.margemAI.exception.InvalidTokenException;
 import com.example.margemAI.model.Segment;
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.UserRepository;
@@ -11,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -46,15 +52,46 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
 
-        String accessToken = jwtService.generateAccessToken(savedUser);
-        String refreshToken = jwtService.generateRefreshToken(savedUser);
+        return buildAuthResponse(savedUser);
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse login(LoginRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new InvalidCredentialsException("E-mail ou senha inválidos."));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new InvalidCredentialsException("E-mail ou senha inválidos.");
+        }
+
+        return buildAuthResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse refresh(RefreshRequest request) {
+        if (!jwtService.isRefreshTokenValid(request.getRefreshToken())) {
+            throw new InvalidTokenException("O refresh token informado é inválido ou expirou.");
+        }
+
+        UUID userId = jwtService.extractUserId(request.getRefreshToken());
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new InvalidTokenException("O usuário associado ao token não existe mais."));
+
+        return buildAuthResponse(user);
+    }
+
+    private AuthResponse buildAuthResponse(User user) {
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
 
         UserResponse userResponse = UserResponse.builder()
-                .id(savedUser.getId())
-                .name(savedUser.getName())
-                .email(savedUser.getEmail())
-                .cnpj(savedUser.getCnpj())
-                .segment(savedUser.getSegment().getCode())
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .cnpj(user.getCnpj())
+                .segment(user.getSegment().getCode())
                 .build();
 
         return AuthResponse.builder()

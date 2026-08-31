@@ -38,6 +38,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler({InvalidCredentialsException.class, InvalidTokenException.class})
+    public ResponseEntity<ErrorResponse> handleAuthenticationErrors(RuntimeException ex) {
+        String code = ex instanceof InvalidCredentialsException ? "INVALID_CREDENTIALS" : "INVALID_TOKEN";
+        ErrorResponse response = ErrorResponse.builder()
+                .code(code)
+                .message(ex.getMessage())
+                .details(List.of(ex.getMessage()))
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex) {
         List<String> errors = new ArrayList<>();
