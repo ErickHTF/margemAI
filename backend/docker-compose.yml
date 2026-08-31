@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:13.22
+    container_name: margemai-postgres
+    environment:
+      POSTGRES_DB: margemai
+      POSTGRES_USER: margemai
+      POSTGRES_PASSWORD: margemai
+    ports:
+      - "5432:5432"
+    volumes:
+      - margemai_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U margemai -d margemai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  margemai_pgdata:
