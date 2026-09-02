@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Mail,
+  Fingerprint,
   Lock,
   Eye,
   EyeOff,
@@ -8,10 +8,10 @@ import {
   Loader2,
   LogIn
 } from 'lucide-react'
-import { validateEmail } from '../utils/validators'
+import { validateCnpj, validateEmail } from '../utils/validators'
 
 export default function LoginForm({ onLoginSuccess }) {
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
@@ -19,11 +19,17 @@ export default function LoginForm({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState(null)
 
+  const isCnpj = (value) => !value.includes('@')
+
   const validateField = (field, value) => {
     switch (field) {
-      case 'email':
-        if (!value.trim()) return 'O e-mail é obrigatório.'
-        if (!validateEmail(value)) return 'O e-mail informado é inválido.'
+      case 'identifier':
+        if (!value.trim()) return 'Informe seu e-mail ou CNPJ.'
+        if (isCnpj(value)) {
+          if (!validateCnpj(value)) return 'O CNPJ informado é inválido.'
+        } else if (!validateEmail(value)) {
+          return 'O e-mail informado é inválido.'
+        }
         return null
 
       case 'password':
@@ -36,7 +42,7 @@ export default function LoginForm({ onLoginSuccess }) {
   }
 
   const handleChange = (field, value) => {
-    if (field === 'email') setEmail(value)
+    if (field === 'identifier') setIdentifier(value)
     if (field === 'password') setPassword(value)
 
     if (touched[field]) {
@@ -59,11 +65,11 @@ export default function LoginForm({ onLoginSuccess }) {
 
   const validateAll = () => {
     const newErrors = {
-      email: validateField('email', email),
+      identifier: validateField('identifier', identifier),
       password: validateField('password', password)
     }
     setErrors(newErrors)
-    setTouched({ email: true, password: true })
+    setTouched({ identifier: true, password: true })
     return !Object.values(newErrors).some(Boolean)
   }
 
@@ -75,7 +81,7 @@ export default function LoginForm({ onLoginSuccess }) {
 
     setLoading(true)
     try {
-      const data = await onLoginSuccess({ email: email.trim(), password })
+      const data = await onLoginSuccess({ identifier: identifier.trim(), password })
       if (!data) setServerError({ message: 'Não foi possível entrar. Tente novamente.' })
     } catch (err) {
       if (err.response?.data) {
@@ -132,29 +138,29 @@ export default function LoginForm({ onLoginSuccess }) {
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5 text-left">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
-            E-mail
+          <label htmlFor="identifier" className="block text-sm font-medium text-slate-700 mb-1.5">
+            E-mail ou CNPJ
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Mail className="w-5 h-5" />
+              <Fingerprint className="w-5 h-5" />
             </div>
             <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => handleChange('email', e.target.value)}
-              onBlur={(e) => handleBlur('email', e.target.value)}
-              placeholder="seu.email@exemplo.com"
-              className={inputClass('email')}
+              id="identifier"
+              name="identifier"
+              type="text"
+              autoComplete="username"
+              value={identifier}
+              onChange={(e) => handleChange('identifier', e.target.value)}
+              onBlur={(e) => handleBlur('identifier', e.target.value)}
+              placeholder="seu.email@exemplo.com ou 00.000.000/0000-00"
+              className={inputClass('identifier')}
             />
           </div>
-          {touched.email && errors.email && (
+          {touched.identifier && errors.identifier && (
             <p className="text-xs text-rose-600 mt-1.5 flex items-center gap-1">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {errors.email}
+              {errors.identifier}
             </p>
           )}
         </div>

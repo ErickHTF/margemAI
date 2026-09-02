@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -30,7 +31,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
-        String normalizedCnpj = request.getCnpj().trim().toUpperCase();
+        String normalizedCnpj = normalizeCnpj(request.getCnpj());
 
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new DuplicateResourceException("O e-mail informado já está cadastrado no sistema.");
@@ -57,16 +58,31 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        String identifier = request.getIdentifier().trim();
 
-        User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new InvalidCredentialsException("E-mail ou senha inválidos."));
+        User user = findByLoginIdentifier(identifier)
+                .orElseThrow(() -> new InvalidCredentialsException("E-mail/CNPJ ou senha inválidos."));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new InvalidCredentialsException("E-mail ou senha inválidos.");
+            throw new InvalidCredentialsException("E-mail/CNPJ ou senha inválidos.");
         }
 
         return buildAuthResponse(user);
+    }
+
+    private Optional<User> findByLoginIdentifier(String identifier) {
+        if (isEmail(identifier)) {
+            return userRepository.findByEmail(identifier.toLowerCase());
+        }
+        return userRepository.findByCnpj(normalizeCnpj(identifier));
+    }
+
+    private boolean isEmail(String value) {
+        return value.contains("@");
+    }
+
+    private String normalizeCnpj(String cnpj) {
+        return cnpj.trim().toUpperCase().replaceAll("[^A-Z0-9]", "");
     }
 
     @Transactional(readOnly = true)

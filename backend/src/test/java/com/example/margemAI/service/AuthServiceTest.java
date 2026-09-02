@@ -73,7 +73,7 @@ public class AuthServiceTest {
                 .name("Maria Silva")
                 .email("maria@email.com")
                 .password("encoded_password")
-                .cnpj("12.ABC.345/0001-90")
+                .cnpj("12ABC345000190")
                 .segment(segment)
                 .build();
     }
@@ -81,7 +81,7 @@ public class AuthServiceTest {
     @Test
     void shouldRegisterUserSuccessfully() {
         when(userRepository.existsByEmail("maria@email.com")).thenReturn(false);
-        when(userRepository.existsByCnpj("12.ABC.345/0001-90")).thenReturn(false);
+        when(userRepository.existsByCnpj("12ABC345000190")).thenReturn(false);
         when(segmentService.findByCode("COMERCIO")).thenReturn(segment);
         when(passwordEncoder.encode("Senha@123")).thenReturn("encoded_password");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
@@ -99,7 +99,7 @@ public class AuthServiceTest {
         assertEquals(savedUser.getId(), response.getUser().getId());
         assertEquals("Maria Silva", response.getUser().getName());
         assertEquals("maria@email.com", response.getUser().getEmail());
-        assertEquals("12.ABC.345/0001-90", response.getUser().getCnpj());
+        assertEquals("12ABC345000190", response.getUser().getCnpj());
         assertEquals("COMERCIO", response.getUser().getSegment());
 
         verify(userRepository).save(any(User.class));
@@ -120,7 +120,7 @@ public class AuthServiceTest {
     @Test
     void shouldThrowExceptionWhenCnpjAlreadyExists() {
         when(userRepository.existsByEmail("maria@email.com")).thenReturn(false);
-        when(userRepository.existsByCnpj("12.ABC.345/0001-90")).thenReturn(true);
+        when(userRepository.existsByCnpj("12ABC345000190")).thenReturn(true);
 
         DuplicateResourceException exception = assertThrows(
                 DuplicateResourceException.class,
@@ -138,7 +138,7 @@ public class AuthServiceTest {
         when(jwtService.generateRefreshToken(savedUser)).thenReturn("refresh_token_sample");
 
         LoginRequest request = LoginRequest.builder()
-                .email("  Maria@Email.com ")
+                .identifier("  Maria@Email.com ")
                 .password("Senha@123")
                 .build();
 
@@ -154,12 +154,49 @@ public class AuthServiceTest {
     }
 
     @Test
+    void shouldLoginSuccessfullyWithMaskedNumericCnpj() {
+        when(userRepository.findByCnpj("12ABC345000190")).thenReturn(Optional.of(savedUser));
+        when(passwordEncoder.matches("Senha@123", "encoded_password")).thenReturn(true);
+        when(jwtService.generateAccessToken(savedUser)).thenReturn("access_token_sample");
+        when(jwtService.generateRefreshToken(savedUser)).thenReturn("refresh_token_sample");
+
+        LoginRequest request = LoginRequest.builder()
+                .identifier("12.ABC.345/0001-90")
+                .password("Senha@123")
+                .build();
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertEquals(savedUser.getId(), response.getUser().getId());
+        assertEquals("12ABC345000190", response.getUser().getCnpj());
+    }
+
+    @Test
+    void shouldLoginSuccessfullyWithUnmaskedNumericCnpj() {
+        when(userRepository.findByCnpj("12ABC345000190")).thenReturn(Optional.of(savedUser));
+        when(passwordEncoder.matches("Senha@123", "encoded_password")).thenReturn(true);
+        when(jwtService.generateAccessToken(savedUser)).thenReturn("access_token_sample");
+        when(jwtService.generateRefreshToken(savedUser)).thenReturn("refresh_token_sample");
+
+        LoginRequest request = LoginRequest.builder()
+                .identifier("12ABC345000190")
+                .password("Senha@123")
+                .build();
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertEquals(savedUser.getId(), response.getUser().getId());
+    }
+
+    @Test
     void shouldThrowExceptionWhenPasswordDoesNotMatch() {
         when(userRepository.findByEmail("maria@email.com")).thenReturn(Optional.of(savedUser));
         when(passwordEncoder.matches("SenhaErrada@1", "encoded_password")).thenReturn(false);
 
         LoginRequest request = LoginRequest.builder()
-                .email("maria@email.com")
+                .identifier("maria@email.com")
                 .password("SenhaErrada@1")
                 .build();
 
@@ -168,7 +205,7 @@ public class AuthServiceTest {
                 () -> authService.login(request)
         );
 
-        assertEquals("E-mail ou senha inválidos.", exception.getMessage());
+        assertEquals("E-mail/CNPJ ou senha inválidos.", exception.getMessage());
     }
 
     @Test
@@ -176,11 +213,41 @@ public class AuthServiceTest {
         when(userRepository.findByEmail("nao.existe@email.com")).thenReturn(Optional.empty());
 
         LoginRequest request = LoginRequest.builder()
-                .email("nao.existe@email.com")
+                .identifier("nao.existe@email.com")
                 .password("Senha@123")
                 .build();
 
         assertThrows(InvalidCredentialsException.class, () -> authService.login(request));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCnpjUserDoesNotExist() {
+        when(userRepository.findByCnpj("99999999000199")).thenReturn(Optional.empty());
+
+        LoginRequest request = LoginRequest.builder()
+                .identifier("999.999.990/0019-9")
+                .password("Senha@123")
+                .build();
+
+        assertThrows(InvalidCredentialsException.class, () -> authService.login(request));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenPasswordDoesNotMatchForCnpjLogin() {
+        when(userRepository.findByCnpj("12ABC345000190")).thenReturn(Optional.of(savedUser));
+        when(passwordEncoder.matches("SenhaErrada@1", "encoded_password")).thenReturn(false);
+
+        LoginRequest request = LoginRequest.builder()
+                .identifier("12.ABC.345/0001-90")
+                .password("SenhaErrada@1")
+                .build();
+
+        InvalidCredentialsException exception = assertThrows(
+                InvalidCredentialsException.class,
+                () -> authService.login(request)
+        );
+
+        assertEquals("E-mail/CNPJ ou senha inválidos.", exception.getMessage());
     }
 
     @Test

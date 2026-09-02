@@ -53,7 +53,7 @@ public class SecurityIntegrationTest {
                 .name("Maria Silva")
                 .email("maria@email.com")
                 .password(passwordEncoder.encode("Senha@123"))
-                .cnpj("12.ABC.345/0001-90")
+                .cnpj("12ABC345000190")
                 .segment(segment)
                 .build());
     }
