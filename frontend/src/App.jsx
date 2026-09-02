@@ -3,6 +3,7 @@ import { Sparkles, LogOut, LayoutDashboard, CheckCircle2 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
+import { maskCnpj } from './utils/validators'
 
 export default function App() {
   const { user, login, logout, isAuthenticated } = useAuth()
@@ -38,7 +39,7 @@ export default function App() {
             </p>
             <p className="flex justify-between">
               <span className="text-slate-500">CNPJ:</span>
-              <span className="font-semibold text-slate-900">{user.cnpj}</span>
+              <span className="font-semibold text-slate-900">{maskCnpj(user.cnpj)}</span>
             </p>
             <p className="flex justify-between">
               <span className="text-slate-500">Segmento:</span>
