@@ -137,7 +137,7 @@ public class AuthControllerTest {
     @Test
     void shouldLoginAndReturn200Ok() throws Exception {
         LoginRequest request = LoginRequest.builder()
-                .email("maria@email.com")
+                .identifier("maria@email.com")
                 .password("Senha@123")
                 .build();
 
@@ -169,27 +169,88 @@ public class AuthControllerTest {
     }
 
     @Test
+    void shouldLoginWithMaskedCnpjAndReturn200Ok() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .identifier("12.ABC.345/0001-90")
+                .password("Senha@123")
+                .build();
+
+        AuthResponse response = AuthResponse.builder()
+                .accessToken("sample_access_jwt")
+                .refreshToken("sample_refresh_jwt")
+                .type("Bearer")
+                .expiresIn(3600L)
+                .user(UserResponse.builder()
+                        .id(UUID.randomUUID())
+                        .name("Maria Silva")
+                        .email("maria@email.com")
+                        .cnpj("12ABC345000190")
+                        .segment("COMERCIO")
+                        .build())
+                .build();
+
+        when(authService.login(any(LoginRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("sample_access_jwt"))
+                .andExpect(jsonPath("$.user.cnpj").value("12ABC345000190"));
+    }
+
+    @Test
+    void shouldLoginWithAlphanumericCnpjAndReturn200Ok() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .identifier("AB12CDE34000123")
+                .password("Senha@123")
+                .build();
+
+        AuthResponse response = AuthResponse.builder()
+                .accessToken("sample_access_jwt")
+                .refreshToken("sample_refresh_jwt")
+                .type("Bearer")
+                .expiresIn(3600L)
+                .user(UserResponse.builder()
+                        .id(UUID.randomUUID())
+                        .name("Maria Silva")
+                        .email("maria@email.com")
+                        .cnpj("AB12CDE34000123")
+                        .segment("COMERCIO")
+                        .build())
+                .build();
+
+        when(authService.login(any(LoginRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.cnpj").value("AB12CDE34000123"));
+    }
+
+    @Test
     void shouldReturn401WhenCredentialsAreInvalid() throws Exception {
         LoginRequest request = LoginRequest.builder()
-                .email("maria@email.com")
+                .identifier("maria@email.com")
                 .password("SenhaErrada@1")
                 .build();
 
         when(authService.login(any(LoginRequest.class)))
-                .thenThrow(new InvalidCredentialsException("E-mail ou senha inválidos."));
+                .thenThrow(new InvalidCredentialsException("E-mail/CNPJ ou senha inválidos."));
 
         mockMvc.perform(post("/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
-                .andExpect(jsonPath("$.message").value("E-mail ou senha inválidos."));
+                .andExpect(jsonPath("$.message").value("E-mail/CNPJ ou senha inválidos."));
     }
 
     @Test
     void shouldReturn400BadRequestWhenLoginBodyIsInvalid() throws Exception {
         LoginRequest request = LoginRequest.builder()
-                .email("email-invalido")
+                .identifier("")
                 .password("")
                 .build();
 
