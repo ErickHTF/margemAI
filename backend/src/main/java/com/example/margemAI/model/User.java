@@ -17,6 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -28,6 +29,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
+
+    public static final BigDecimal DEFAULT_MEI_ANNUAL_CAP = new BigDecimal("81000.00");
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -49,6 +52,10 @@ public class User {
     @JoinColumn(name = "segment_id", nullable = false)
     private Segment segment;
 
+    @Builder.Default
+    @Column(name = "custom_annual_cap", precision = 12, scale = 2)
+    private BigDecimal customAnnualCap = DEFAULT_MEI_ANNUAL_CAP;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -59,6 +66,9 @@ public class User {
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        if (this.customAnnualCap == null) {
+            this.customAnnualCap = DEFAULT_MEI_ANNUAL_CAP;
+        }
     }
 
     @PreUpdate
