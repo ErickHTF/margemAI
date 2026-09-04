@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Sparkles, LogOut, LayoutDashboard, CheckCircle2 } from 'lucide-react'
+import { Sparkles, LogOut, CheckCircle2 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
-import { maskCnpj } from './utils/validators'
+import ProfilePanel from './components/ProfilePanel'
 
 export default function App() {
-  const { user, login, logout, isAuthenticated } = useAuth()
+  const { user, login, logout, updateUser, isAuthenticated } = useAuth()
   const [showRegister, setShowRegister] = useState(false)
   const [registeredUser, setRegisteredUser] = useState(null)
 
@@ -24,37 +24,19 @@ export default function App() {
   const renderContent = () => {
     if (isAuthenticated && user) {
       return (
-        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-slate-100 text-center">
-          <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-5">
-            <LayoutDashboard className="w-8 h-8" />
+        <>
+          <ProfilePanel user={user} onUserUpdate={updateUser} />
+          <div className="mt-4 w-full max-w-md">
+            <button
+              type="button"
+              onClick={logout}
+              className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sair</span>
+            </button>
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Olá, {user.name}!</h2>
-          <p className="text-sm text-slate-600 mb-6">
-            Você está autenticado e sua sessão será renovada automaticamente.
-          </p>
-          <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-700 mb-6 text-left space-y-2 border border-slate-100">
-            <p className="flex justify-between">
-              <span className="text-slate-500">E-mail:</span>
-              <span className="font-semibold text-slate-900">{user.email}</span>
-            </p>
-            <p className="flex justify-between">
-              <span className="text-slate-500">CNPJ:</span>
-              <span className="font-semibold text-slate-900">{maskCnpj(user.cnpj)}</span>
-            </p>
-            <p className="flex justify-between">
-              <span className="text-slate-500">Segmento:</span>
-              <span className="font-semibold text-indigo-600">{user.segment}</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sair</span>
-          </button>
-        </div>
+        </>
       )
     }
 
