@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { Sparkles, LogOut, CheckCircle2 } from 'lucide-react'
+import { Sparkles, LogOut, CheckCircle2, LayoutDashboard, Wallet } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
 import ProfilePanel from './components/ProfilePanel'
+import CostsDashboard from './components/CostsDashboard'
 
 export default function App() {
   const { user, login, logout, updateUser, isAuthenticated } = useAuth()
   const [showRegister, setShowRegister] = useState(false)
   const [registeredUser, setRegisteredUser] = useState(null)
+  const [activeSection, setActiveSection] = useState('profile')
 
   const handleLoginSuccess = async (credentials) => {
     const data = await login(credentials)
@@ -21,23 +23,52 @@ export default function App() {
     setShowRegister(false)
   }
 
+  const sectionTabs = [
+    { key: 'profile', label: 'Meu Perfil', Icon: LayoutDashboard },
+    { key: 'costs', label: 'Custos', Icon: Wallet }
+  ]
+
+  const renderAuthenticated = () => (
+    <div className="w-full flex flex-col items-center">
+      <div className="w-full max-w-3xl mb-6">
+        <div className="bg-white/70 backdrop-blur rounded-2xl p-1.5 border border-slate-200 grid grid-cols-2 gap-1 shadow-sm">
+          {sectionTabs.map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveSection(key)}
+              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                activeSection === key
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeSection === 'profile' && <ProfilePanel user={user} onUserUpdate={updateUser} />}
+      {activeSection === 'costs' && <CostsDashboard />}
+
+      <div className="mt-6 w-full max-w-md">
+        <button
+          type="button"
+          onClick={logout}
+          className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Sair</span>
+        </button>
+      </div>
+    </div>
+  )
+
   const renderContent = () => {
     if (isAuthenticated && user) {
-      return (
-        <>
-          <ProfilePanel user={user} onUserUpdate={updateUser} />
-          <div className="mt-4 w-full max-w-md">
-            <button
-              type="button"
-              onClick={logout}
-              className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Sair</span>
-            </button>
-          </div>
-        </>
-      )
+      return renderAuthenticated()
     }
 
     if (registeredUser) {
