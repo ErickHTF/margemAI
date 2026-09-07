@@ -1,4 +1,4 @@
-package com.example.margemAI.service;
+package com.example.margemAI.security.service;
 
 import com.example.margemAI.model.User;
 import io.jsonwebtoken.Claims;

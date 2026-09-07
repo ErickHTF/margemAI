@@ -1,4 +1,4 @@
-package com.example.margemAI.dto.request;
+package com.example.margemAI.security.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -12,11 +12,8 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoginRequest {
+public class RefreshRequest {
 
-    @NotBlank(message = "Informe seu e-mail ou CNPJ.")
-    private String identifier;
-
-    @NotBlank(message = "A senha é obrigatória.")
-    private String password;
+    @NotBlank(message = "O refresh token é obrigatório.")
+    private String refreshToken;
 }

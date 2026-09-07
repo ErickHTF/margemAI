@@ -1,8 +1,8 @@
-package com.example.margemAI.config;
+package com.example.margemAI.security.filter;
 
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.UserRepository;
-import com.example.margemAI.service.JwtService;
+import com.example.margemAI.security.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

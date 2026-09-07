@@ -1,10 +1,10 @@
 package com.example.margemAI.controller;
 
-import com.example.margemAI.dto.request.LoginRequest;
-import com.example.margemAI.dto.request.RefreshRequest;
-import com.example.margemAI.dto.request.RegisterRequest;
-import com.example.margemAI.dto.response.AuthResponse;
-import com.example.margemAI.service.AuthService;
+import com.example.margemAI.security.dto.request.LoginRequest;
+import com.example.margemAI.security.dto.request.RefreshRequest;
+import com.example.margemAI.security.dto.request.RegisterRequest;
+import com.example.margemAI.security.dto.response.AuthResponse;
+import com.example.margemAI.security.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

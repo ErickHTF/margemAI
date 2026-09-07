@@ -1,4 +1,4 @@
-package com.example.margemAI.dto.request;
+package com.example.margemAI.security.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

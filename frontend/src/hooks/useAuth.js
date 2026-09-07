@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react'
-import authService from '../services/authService'
-import { getAccessToken, setTokens, clearTokens } from '../utils/tokenStorage'
+import { authService, getAccessToken, setTokens, clearTokens } from '../security'
 
 export default function useAuth() {
   const [user, setUser] = useState(null)

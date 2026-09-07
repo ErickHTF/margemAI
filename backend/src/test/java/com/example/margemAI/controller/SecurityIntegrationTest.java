@@ -4,7 +4,7 @@ import com.example.margemAI.model.Segment;
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.SegmentRepository;
 import com.example.margemAI.repository.UserRepository;
-import com.example.margemAI.service.JwtService;
+import com.example.margemAI.security.service.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

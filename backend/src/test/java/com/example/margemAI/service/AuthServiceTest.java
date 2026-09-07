@@ -1,15 +1,17 @@
 package com.example.margemAI.service;
 
-import com.example.margemAI.dto.request.LoginRequest;
-import com.example.margemAI.dto.request.RefreshRequest;
-import com.example.margemAI.dto.request.RegisterRequest;
-import com.example.margemAI.dto.response.AuthResponse;
 import com.example.margemAI.exception.DuplicateResourceException;
 import com.example.margemAI.exception.InvalidCredentialsException;
 import com.example.margemAI.exception.InvalidTokenException;
 import com.example.margemAI.model.Segment;
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.UserRepository;
+import com.example.margemAI.security.dto.request.LoginRequest;
+import com.example.margemAI.security.dto.request.RefreshRequest;
+import com.example.margemAI.security.dto.request.RegisterRequest;
+import com.example.margemAI.security.dto.response.AuthResponse;
+import com.example.margemAI.security.service.AuthService;
+import com.example.margemAI.security.service.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
