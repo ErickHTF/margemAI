@@ -16,7 +16,6 @@ export default function PricingCalculator() {
 
   const [discountPercent, setDiscountPercent] = useState('10')
   const [discountResult, setDiscountResult] = useState(null)
-  const [simulatingDiscount, setSimulatingDiscount] = useState(false)
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -62,7 +61,6 @@ export default function PricingCalculator() {
 
   const runDiscountSimulation = async (sellingPrice, discount, baseCost, fixedPercent, varPercent) => {
     if (!sellingPrice) return
-    setSimulatingDiscount(true)
     try {
       const data = await simulateDiscount({
         sellingPrice: parseFloat(sellingPrice),
@@ -74,13 +72,43 @@ export default function PricingCalculator() {
       setDiscountResult(data)
     } catch (err) {
       console.error(err)
-    } finally {
-      setSimulatingDiscount(false)
     }
   }
 
   useEffect(() => {
-    handleCalculate()
+    let isMounted = true
+    const init = async () => {
+      try {
+        const data = await calculatePricing({
+          baseCost: 50.0,
+          fixedCostPercent: 10.0,
+          variableCostPercent: 15.0,
+          desiredMargin: 25.0,
+          includeFixedCosts: true
+        })
+        if (isMounted) {
+          setPricingResult(data)
+          if (data?.minimumSellingPrice) {
+            const discData = await simulateDiscount({
+              sellingPrice: parseFloat(data.minimumSellingPrice),
+              discountPercentage: 10.0,
+              baseCost: 50.0,
+              fixedCostPercent: 10.0,
+              variableCostPercent: 15.0
+            })
+            if (isMounted) {
+              setDiscountResult(discData)
+            }
+          }
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    init()
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const handleDiscountChange = (newDiscount) => {
