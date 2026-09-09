@@ -6,6 +6,7 @@ import com.example.margemAI.dto.response.VariableCostResponse;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.VariableCost;
+import com.example.margemAI.model.VariableCostCategory;
 import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.repository.VariableCostRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -36,7 +37,7 @@ public class VariableCostService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<VariableCostResponse> findAll(UUID userId, UUID productId, int page, int size) {
+    public PaginatedResponse<VariableCostResponse> findAll(UUID userId, UUID productId, VariableCostCategory category, int page, int size) {
         validatePagination(page, size);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
@@ -46,6 +47,9 @@ public class VariableCostService {
             predicates.add(cb.isTrue(root.get("active")));
             if (productId != null) {
                 predicates.add(cb.equal(root.get("productId"), productId));
+            }
+            if (category != null) {
+                predicates.add(cb.equal(root.get("category"), category));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };

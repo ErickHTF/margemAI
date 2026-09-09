@@ -138,7 +138,7 @@ public class VariableCostServiceTest {
         Page<VariableCost> page = new PageImpl<>(List.of(fabricCost, freight), PageRequest.of(0, 20), 2);
         when(variableCostRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
 
-        var result = variableCostService.findAll(userId, null, 0, 20);
+        var result = variableCostService.findAll(userId, null, null, 0, 20);
 
         assertEquals(2, result.getContent().size());
         assertEquals(2, result.getTotalElements());
@@ -152,7 +152,18 @@ public class VariableCostServiceTest {
         when(variableCostRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(fabricCost), PageRequest.of(0, 20), 1));
 
-        var result = variableCostService.findAll(userId, productId, 0, 20);
+        var result = variableCostService.findAll(userId, productId, null, 0, 20);
+
+        assertEquals(1, result.getContent().size());
+        assertEquals(VariableCostCategory.MATERIA_PRIMA, result.getContent().get(0).getCategory());
+    }
+
+    @Test
+    void shouldListVariableCostsFilteredByCategory() {
+        when(variableCostRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(fabricCost), PageRequest.of(0, 20), 1));
+
+        var result = variableCostService.findAll(userId, null, VariableCostCategory.MATERIA_PRIMA, 0, 20);
 
         assertEquals(1, result.getContent().size());
         assertEquals(VariableCostCategory.MATERIA_PRIMA, result.getContent().get(0).getCategory());
@@ -312,19 +323,19 @@ public class VariableCostServiceTest {
     @Test
     void shouldRejectNegativePageOnListing() {
         assertThrows(InvalidRequestException.class,
-                () -> variableCostService.findAll(userId, null, -1, 20));
+                () -> variableCostService.findAll(userId, null, null, -1, 20));
     }
 
     @Test
     void shouldRejectZeroSizeOnListing() {
         assertThrows(InvalidRequestException.class,
-                () -> variableCostService.findAll(userId, null, 0, 0));
+                () -> variableCostService.findAll(userId, null, null, 0, 0));
     }
 
     @Test
     void shouldRejectSizeAboveMaxOnListing() {
         assertThrows(InvalidRequestException.class,
-                () -> variableCostService.findAll(userId, null, 0, 101));
+                () -> variableCostService.findAll(userId, null, null, 0, 101));
     }
 
     @Test

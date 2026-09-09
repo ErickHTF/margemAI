@@ -55,6 +55,7 @@ export default function CostsDashboard() {
 
       {activeTab === 'fixed' && (
         <CostManager
+          key="fixed"
           kind="fixed"
           service={fixedCostService}
           categories={FIXED_COST_CATEGORIES}
@@ -62,6 +63,7 @@ export default function CostsDashboard() {
       )}
       {activeTab === 'variable' && (
         <CostManager
+          key="variable"
           kind="variable"
           service={variableCostService}
           categories={VARIABLE_COST_CATEGORIES}
