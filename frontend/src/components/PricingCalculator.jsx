@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Calculator, Loader2, AlertCircle, Percent, Banknote } from 'lucide-react'
 import { calculatePricing, simulateDiscount } from '../services/pricingService'
 
 export default function PricingCalculator() {
@@ -129,57 +130,56 @@ export default function PricingCalculator() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
   }
 
+  const percentInputClass =
+    'block w-full pl-3 pr-9 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50/50 border-slate-200 focus:ring-indigo-100 focus:border-indigo-500'
+
+  const amountInputClass =
+    'block w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50/50 border-slate-200 focus:ring-indigo-100 focus:border-indigo-500'
+
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-5 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/30 text-emerald-100 border border-emerald-400/30 mb-2">
-                Metodologia SEBRAE
-              </span>
-              <h2 className="text-xl font-bold">Motor de Precificação por Markup</h2>
-              <p className="text-emerald-100 text-sm mt-1">
-                Calcule o preço de venda ideal com cobertura de despesas e margem garantida.
-              </p>
-            </div>
-            <div className="hidden sm:block text-right">
-              <span className="text-2xl font-black tracking-tight block">Margem.AI</span>
-              <span className="text-xs text-emerald-200">Assistente Financeiro MEI</span>
-            </div>
-          </div>
+      <div className="text-center mb-2">
+        <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Calculator className="w-7 h-7" />
         </div>
+        <h2 className="text-2xl font-bold text-slate-900 mb-1">Calculadora Markup</h2>
+        <p className="text-sm text-slate-500">
+          Calcule o preço de venda ideal cobrindo despesas e garantindo sua margem, com base na
+          metodologia SEBRAE.
+        </p>
+      </div>
 
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+        <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-5 space-y-5">
-            <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
               Parâmetros de Custo e Margem
             </h3>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              <label htmlFor="pricing-baseCost" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Custo de Aquisição / Produção Base (R$)
               </label>
-              <div className="relative rounded-lg shadow-sm">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-sm">
-                  R$
-                </span>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <Banknote className="w-4 h-4" />
+                </div>
                 <input
+                  id="pricing-baseCost"
                   type="number"
                   step="0.01"
                   min="0.01"
                   value={formData.baseCost}
                   onChange={(e) => handleInputChange('baseCost', e.target.value)}
-                  className="block w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition"
+                  className={amountInputClass}
                   placeholder="0,00"
                 />
               </div>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-700">
+                <label htmlFor="toggleFixed" className="text-sm font-medium text-slate-700 cursor-pointer">
                   Despesas Fixas Alocadas (%)
                 </label>
                 <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ export default function PricingCalculator() {
                     id="toggleFixed"
                     checked={formData.includeFixedCosts}
                     onChange={(e) => handleInputChange('includeFixedCosts', e.target.checked)}
-                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300 rounded"
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
                   />
                   <label htmlFor="toggleFixed" className="text-xs text-slate-500 cursor-pointer">
                     Incluir
@@ -196,7 +196,7 @@ export default function PricingCalculator() {
                 </div>
               </div>
               {formData.includeFixedCosts && (
-                <div className="relative rounded-lg shadow-sm">
+                <div className="relative">
                   <input
                     type="number"
                     step="0.1"
@@ -204,61 +204,64 @@ export default function PricingCalculator() {
                     max="99"
                     value={formData.fixedCostPercent}
                     onChange={(e) => handleInputChange('fixedCostPercent', e.target.value)}
-                    className="block w-full pr-8 pl-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className={`${percentInputClass} bg-white`}
                     placeholder="Ex: 10"
                   />
-                  <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500 text-sm">
-                    %
+                  <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <Percent className="w-4 h-4" />
                   </span>
                 </div>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              <label htmlFor="pricing-variableCostPercent" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Despesas Variáveis e Taxas de Venda / Cartão (%)
               </label>
-              <div className="relative rounded-lg shadow-sm">
+              <div className="relative">
                 <input
+                  id="pricing-variableCostPercent"
                   type="number"
                   step="0.1"
                   min="0"
                   max="99"
                   value={formData.variableCostPercent}
                   onChange={(e) => handleInputChange('variableCostPercent', e.target.value)}
-                  className="block w-full pr-8 pl-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition"
+                  className={percentInputClass}
                   placeholder="Ex: 15"
                 />
-                <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500 text-sm">
-                  %
+                <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                  <Percent className="w-4 h-4" />
                 </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              <label htmlFor="pricing-desiredMargin" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Margem de Lucro Desejada (%)
               </label>
-              <div className="relative rounded-lg shadow-sm">
+              <div className="relative">
                 <input
+                  id="pricing-desiredMargin"
                   type="number"
                   step="0.1"
                   min="0"
                   max="99"
                   value={formData.desiredMargin}
                   onChange={(e) => handleInputChange('desiredMargin', e.target.value)}
-                  className="block w-full pr-8 pl-3 py-2.5 bg-emerald-50/60 border border-emerald-300 rounded-lg text-emerald-950 font-semibold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition"
+                  className={percentInputClass}
                   placeholder="Ex: 25"
                 />
-                <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-emerald-700 font-bold text-sm">
-                  %
+                <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                  <Percent className="w-4 h-4" />
                 </span>
               </div>
             </div>
 
             {errorMessage && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-medium">
-                {errorMessage}
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
+                <p className="text-sm font-medium">{errorMessage}</p>
               </div>
             )}
 
@@ -266,51 +269,58 @@ export default function PricingCalculator() {
               type="button"
               onClick={handleCalculate}
               disabled={loading}
-              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-xl text-sm shadow-md hover:shadow transition disabled:opacity-50"
+              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
-              {loading ? 'Calculando...' : 'Recalcular Preço Ideal'}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Calculando...</span>
+                </>
+              ) : (
+                <>
+                  <Calculator className="w-4 h-4" />
+                  <span>Recalcular Preço Ideal</span>
+                </>
+              )}
             </button>
           </div>
 
           <div className="lg:col-span-7 space-y-6">
             {pricingResult ? (
               <>
-                <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-md relative overflow-hidden">
-                  <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2 border-b border-slate-800 pb-4">
+                <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-emerald-100">
                     <div>
-                      <span className="text-xs uppercase tracking-wider text-emerald-400 font-bold">
+                      <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
                         Preço Mínimo de Venda Recomendado
                       </span>
-                      <div className="text-3xl sm:text-4xl font-extrabold text-white mt-1">
+                      <p className="text-2xl sm:text-3xl font-extrabold text-emerald-800 mt-1">
                         {formatCurrency(pricingResult.minimumSellingPrice)}
-                      </div>
+                      </p>
                     </div>
-                    <div className="bg-slate-800 px-3.5 py-1.5 rounded-lg border border-slate-700 self-start sm:self-auto">
-                      <span className="text-xs text-slate-400 block">Fator Markup</span>
-                      <span className="text-base font-bold text-emerald-400">
-                        {pricingResult.markup}x
+                    <div className="bg-white px-4 py-2 rounded-xl border border-emerald-200 text-center self-start sm:self-auto">
+                      <span className="block text-[11px] uppercase tracking-wide text-slate-500 font-medium">
+                        Fator Markup
                       </span>
+                      <span className="text-xl font-bold text-emerald-700">{pricingResult.markup}x</span>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 text-xs">
                     <div>
-                      <span className="text-slate-400 block">Lucro Estimado</span>
-                      <span className="text-sm font-bold text-emerald-400">
+                      <span className="text-slate-500 block">Lucro Estimado</span>
+                      <span className="text-sm font-bold text-emerald-700">
                         {formatCurrency(pricingResult.unitProfit)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block">Margem de Contribuição</span>
-                      <span className="text-sm font-bold text-teal-300">
+                      <span className="text-slate-500 block">Margem de Contribuição</span>
+                      <span className="text-sm font-bold text-emerald-700">
                         {formatCurrency(pricingResult.contributionMargin)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block">Margem Bruta</span>
-                      <span className="text-sm font-bold text-slate-200">
-                        {pricingResult.grossMargin}%
-                      </span>
+                      <span className="text-slate-500 block">Margem Bruta</span>
+                      <span className="text-sm font-bold text-emerald-700">{pricingResult.grossMargin}%</span>
                     </div>
                   </div>
                 </div>
@@ -339,17 +349,15 @@ export default function PricingCalculator() {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-slate-50 to-emerald-50/40 p-5 rounded-2xl border border-slate-200 space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-800">
-                        Simulador de Desconto e Balcão
-                      </h4>
+                      <h4 className="text-sm font-bold text-slate-800">Simulador de Desconto e Balcão</h4>
                       <p className="text-xs text-slate-500">
                         Veja se conceder desconto ainda mantém sua operação no azul.
                       </p>
                     </div>
-                    <span className="text-sm font-extrabold text-emerald-700 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
+                    <span className="shrink-0 text-xs font-semibold text-indigo-700 bg-white px-2.5 py-1 rounded-full border border-indigo-200 shadow-sm">
                       {discountPercent}% OFF
                     </span>
                   </div>
@@ -361,7 +369,7 @@ export default function PricingCalculator() {
                     step="1"
                     value={discountPercent}
                     onChange={(e) => handleDiscountChange(e.target.value)}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                   />
 
                   {discountResult && (
@@ -375,13 +383,13 @@ export default function PricingCalculator() {
                         </div>
                         <div>
                           <span className="text-slate-500 block">Lucro Líquido</span>
-                          <span className={`text-sm font-bold ${discountResult.viable ? 'text-emerald-600' : 'text-red-600'}`}>
+                          <span className={`text-sm font-bold ${discountResult.viable ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {formatCurrency(discountResult.discountedProfit)}
                           </span>
                         </div>
                         <div>
                           <span className="text-slate-500 block">Margem Resultante</span>
-                          <span className={`text-sm font-bold ${discountResult.viable ? 'text-slate-800' : 'text-red-600'}`}>
+                          <span className={`text-sm font-bold ${discountResult.viable ? 'text-slate-800' : 'text-rose-600'}`}>
                             {discountResult.discountedMargin}%
                           </span>
                         </div>
@@ -389,7 +397,7 @@ export default function PricingCalculator() {
 
                       <div className={`p-3 rounded-lg text-xs leading-relaxed ${
                         !discountResult.viable
-                          ? 'bg-red-50 text-red-800 border border-red-200'
+                          ? 'bg-rose-50 text-rose-800 border border-rose-200'
                           : discountResult.discountedMargin < 10
                           ? 'bg-amber-50 text-amber-900 border border-amber-200'
                           : 'bg-emerald-50 text-emerald-900 border border-emerald-200'

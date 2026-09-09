@@ -8,7 +8,7 @@ import com.example.margemAI.model.VariableCostCategory;
 import com.example.margemAI.repository.SegmentRepository;
 import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.repository.VariableCostRepository;
-import com.example.margemAI.service.JwtService;
+import com.example.margemAI.security.service.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -192,6 +192,31 @@ public class VariableCostControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].name").value("Tecido"));
+    }
+
+    @Test
+    void shouldListVariableCostsFilteredByCategory() throws Exception {
+        createVariableCost(VariableCostCategory.MATERIA_PRIMA, "Tecido", "25.50", null);
+        createVariableCost(VariableCostCategory.EMBALAGEM, "Caixa", "3.00", null);
+        createVariableCost(VariableCostCategory.FRETE, "Frete", "15.00", null);
+
+        mockMvc.perform(get("/v1/costs/variable")
+                        .header("Authorization", bearerHeader())
+                        .param("category", "EMBALAGEM"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].category").value("EMBALAGEM"));
+    }
+
+    @Test
+    void shouldReturn400WhenCategoryParamIsInvalid() throws Exception {
+        mockMvc.perform(get("/v1/costs/variable")
+                        .header("Authorization", bearerHeader())
+                        .param("category", "NAO_EXISTE"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details[0]").value(
+                        "O valor 'NAO_EXISTE' não é suportado para 'category'."));
     }
 
     @Test

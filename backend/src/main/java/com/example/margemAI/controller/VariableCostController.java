@@ -4,6 +4,7 @@ import com.example.margemAI.dto.request.VariableCostRequest;
 import com.example.margemAI.dto.response.PaginatedResponse;
 import com.example.margemAI.dto.response.VariableCostResponse;
 import com.example.margemAI.model.User;
+import com.example.margemAI.model.VariableCostCategory;
 import com.example.margemAI.service.VariableCostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,11 +36,12 @@ public class VariableCostController {
     @GetMapping
     public ResponseEntity<PaginatedResponse<VariableCostResponse>> findAll(
             @RequestParam(required = false) UUID productId,
+            @RequestParam(required = false) VariableCostCategory category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
         PaginatedResponse<VariableCostResponse> costs = variableCostService.findAll(
-                authenticatedUserId(authentication), productId, page, size);
+                authenticatedUserId(authentication), productId, category, page, size);
         return ResponseEntity.ok(costs);
     }
 
