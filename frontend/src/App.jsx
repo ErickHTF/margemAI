@@ -18,12 +18,6 @@ export default function App() {
     return data
   }
 
-  const handleLoginSuccess = async (credentials) => {
-    const data = await login(credentials)
-    setRegisteredUser(null)
-    return data
-  }
-
   const handleRegisterSuccess = (authData) => {
     setRegisteredUser(authData)
     setShowRegister(false)
