@@ -17,10 +17,15 @@ export default function useAuth() {
     setUser(null)
   }, [])
 
+  const updateUser = useCallback((nextUser) => {
+    setUser((prev) => ({ ...prev, ...nextUser }))
+  }, [])
+
   return {
     user,
     login,
     logout,
+    updateUser,
     isAuthenticated: Boolean(getAccessToken())
   }
 }

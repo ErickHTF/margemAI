@@ -245,7 +245,10 @@ paths:
       parameters:
         - name: month
           in: query
-          description: Reference month (YYYY-MM format)
+          description: |
+            Reference month (YYYY-MM format). Recurring costs are always
+            returned for any reference month; non-recurring costs are returned
+            only when their dueDate falls within that month.
           schema:
             type: string
             pattern: '^\d{4}-\d{2}$'
@@ -262,7 +265,7 @@ paths:
             type: integer
             minimum: 0
             default: 0
-        - name: sizeßß
+        - name: size
           in: query
           description: Number of items per page
           schema:
@@ -352,6 +355,10 @@ paths:
       tags:
         - Fixed Costs
       summary: Update fixed cost
+      description: |
+        Replaces the fixed cost. `name`, `amount` and `category` are required.
+        Omitted optional fields (`dueDate`, `recurring`) are reset to their
+        default; use PUT to clear `dueDate`.
       operationId: updateFixedCost
       parameters:
         - $ref: '#/components/parameters/IdParam'
@@ -385,6 +392,9 @@ paths:
       tags:
         - Fixed Costs
       summary: Partially update fixed cost
+      description: |
+        Applies only the fields present in the body. `null` fields are ignored
+        (not cleared); use PUT to clear optional fields.
       operationId: patchFixedCost
       parameters:
         - $ref: '#/components/parameters/IdParam'
@@ -546,6 +556,9 @@ paths:
       tags:
         - Variable Costs
       summary: Update variable cost
+      description: |
+        Replaces the variable cost. `name`, `unitAmount` and `category` are
+        required. Use PUT to clear the optional `productId`.
       operationId: updateVariableCost
       parameters:
         - $ref: '#/components/parameters/IdParam'
@@ -579,6 +592,9 @@ paths:
       tags:
         - Variable Costs
       summary: Partially update variable cost
+      description: |
+        Applies only the fields present in the body. `null` fields are ignored
+        (not cleared); use PUT to clear optional fields.
       operationId: patchVariableCost
       parameters:
         - $ref: '#/components/parameters/IdParam'
@@ -611,7 +627,10 @@ paths:
     delete:
       tags:
         - Variable Costs
-      summary: Remove variable cost
+      summary: Deactivate variable cost
+      description: |
+        Soft-deletes the variable cost by setting it to inactive. The record
+        remains in the database.
       operationId: removeVariableCost
       parameters:
         - $ref: '#/components/parameters/IdParam'
@@ -1613,11 +1632,13 @@ components:
       description: Fixed cost category
       enum:
         - ALUGUEL
+        - DAS_MEI
         - ENERGIA
         - AGUA
         - INTERNET
         - TELEFONE
         - SALARIOS
+        - PRO_LABORE
         - TAXA_MAQUININHA
         - IMPOSTOS
         - SEGUROS

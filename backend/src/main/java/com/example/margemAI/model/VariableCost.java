@@ -2,6 +2,8 @@ package com.example.margemAI.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -22,39 +24,38 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "users")
+@Table(name = "variable_costs")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
-
-    public static final BigDecimal DEFAULT_MEI_ANNUAL_CAP = new BigDecimal("81000.00");
+public class VariableCost {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, length = 150)
+    @Column(nullable = false, length = 200)
     private String name;
 
-    @Column(nullable = false, unique = true, length = 150)
-    private String email;
+    @Column(name = "unit_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal unitAmount;
 
-    @Column(nullable = false)
-    private String password;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private VariableCostCategory category;
 
-    @Column(nullable = false, unique = true, length = 18)
-    private String cnpj;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "segment_id", nullable = false)
-    private Segment segment;
+    @Column(name = "product_id")
+    private UUID productId;
 
     @Builder.Default
-    @Column(name = "custom_annual_cap", precision = 12, scale = 2)
-    private BigDecimal customAnnualCap = DEFAULT_MEI_ANNUAL_CAP;
+    @Column(nullable = false)
+    private Boolean active = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -66,8 +67,8 @@ public class User {
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        if (this.customAnnualCap == null) {
-            this.customAnnualCap = DEFAULT_MEI_ANNUAL_CAP;
+        if (this.active == null) {
+            this.active = true;
         }
     }
 
