@@ -1,9 +1,5 @@
-package com.example.margemAI.service;
+package com.example.margemAI.security.service;
 
-import com.example.margemAI.dto.request.LoginRequest;
-import com.example.margemAI.dto.request.RefreshRequest;
-import com.example.margemAI.dto.request.RegisterRequest;
-import com.example.margemAI.dto.response.AuthResponse;
 import com.example.margemAI.dto.response.UserResponse;
 import com.example.margemAI.exception.DuplicateResourceException;
 import com.example.margemAI.exception.InvalidCredentialsException;
@@ -11,6 +7,11 @@ import com.example.margemAI.exception.InvalidTokenException;
 import com.example.margemAI.model.Segment;
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.UserRepository;
+import com.example.margemAI.security.dto.request.LoginRequest;
+import com.example.margemAI.security.dto.request.RefreshRequest;
+import com.example.margemAI.security.dto.request.RegisterRequest;
+import com.example.margemAI.security.dto.response.AuthResponse;
+import com.example.margemAI.service.SegmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,13 +21,22 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
     private final SegmentService segmentService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+
+    public AuthService(UserRepository userRepository,
+                       SegmentService segmentService,
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwtService) {
+        this.userRepository = userRepository;
+        this.segmentService = segmentService;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+    }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {

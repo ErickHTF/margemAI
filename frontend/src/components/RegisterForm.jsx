@@ -13,7 +13,7 @@ import {
   Loader2,
   Check
 } from 'lucide-react'
-import authService from '../services/authService'
+import { authService } from '../security'
 import segmentService from '../services/segmentService'
 import { MEI_SEGMENTS } from '../constants/segments'
 import {

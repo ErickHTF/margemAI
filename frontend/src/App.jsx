@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Sparkles, LogOut, CheckCircle2, LayoutDashboard, Wallet } from 'lucide-react'
+import { Sparkles, LogOut, CheckCircle2, LayoutDashboard, Wallet, Calculator } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
 import ProfilePanel from './components/ProfilePanel'
 import CostsDashboard from './components/CostsDashboard'
+import PricingCalculator from './components/PricingCalculator'
 
 export default function App() {
   const { user, login, logout, updateUser, isAuthenticated } = useAuth()
@@ -25,13 +26,14 @@ export default function App() {
 
   const sectionTabs = [
     { key: 'profile', label: 'Meu Perfil', Icon: LayoutDashboard },
-    { key: 'costs', label: 'Custos', Icon: Wallet }
+    { key: 'costs', label: 'Custos', Icon: Wallet },
+    { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator }
   ]
 
   const renderAuthenticated = () => (
     <div className="w-full flex flex-col items-center">
       <div className="w-full max-w-3xl mb-6">
-        <div className="bg-white/70 backdrop-blur rounded-2xl p-1.5 border border-slate-200 grid grid-cols-2 gap-1 shadow-sm">
+        <div className="bg-white/70 backdrop-blur rounded-2xl p-1.5 border border-slate-200 grid grid-cols-3 gap-1 shadow-sm">
           {sectionTabs.map(({ key, label, Icon }) => (
             <button
               key={key}
@@ -52,6 +54,7 @@ export default function App() {
 
       {activeSection === 'profile' && <ProfilePanel user={user} onUserUpdate={updateUser} />}
       {activeSection === 'costs' && <CostsDashboard />}
+      {activeSection === 'pricing' && <PricingCalculator />}
 
       <div className="mt-6 w-full max-w-md">
         <button

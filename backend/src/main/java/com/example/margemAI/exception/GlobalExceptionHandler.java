@@ -63,6 +63,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
+    @ExceptionHandler(InvalidFinancialCalculationException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidFinancialCalculation(InvalidFinancialCalculationException ex) {
+        ErrorResponse response = ErrorResponse.builder()
+                .code("INVALID_FINANCIAL_CALCULATION")
+                .message(ex.getMessage())
+                .details(List.of(ex.getMessage()))
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex) {
         List<String> errors = new ArrayList<>();

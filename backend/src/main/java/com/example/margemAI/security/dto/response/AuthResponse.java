@@ -1,5 +1,6 @@
-package com.example.margemAI.dto.response;
+package com.example.margemAI.security.dto.response;
 
+import com.example.margemAI.dto.response.UserResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

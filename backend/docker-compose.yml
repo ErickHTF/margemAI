@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: margemai
       POSTGRES_PASSWORD: margemai
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - margemai_pgdata:/var/lib/postgresql/data
     healthcheck:
