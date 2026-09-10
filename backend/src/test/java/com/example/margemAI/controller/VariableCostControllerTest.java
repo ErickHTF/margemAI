@@ -1,10 +1,13 @@
 package com.example.margemAI.controller;
 
 import com.example.margemAI.dto.request.VariableCostRequest;
+import com.example.margemAI.model.ItemType;
+import com.example.margemAI.model.Product;
 import com.example.margemAI.model.Segment;
 import com.example.margemAI.model.User;
 import com.example.margemAI.model.VariableCost;
 import com.example.margemAI.model.VariableCostCategory;
+import com.example.margemAI.repository.ProductRepository;
 import com.example.margemAI.repository.SegmentRepository;
 import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.repository.VariableCostRepository;
@@ -47,6 +50,9 @@ public class VariableCostControllerTest {
 
     @Autowired
     private VariableCostRepository variableCostRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -102,6 +108,21 @@ public class VariableCostControllerTest {
                 .build()).getId();
     }
 
+    private UUID createProduct(String name) {
+        return createProductFor(name, savedUser);
+    }
+
+    private UUID createProductFor(String name, User owner) {
+        return productRepository.save(Product.builder()
+                .name(name)
+                .type(ItemType.PRODUTO)
+                .baseCost(BigDecimal.ZERO)
+                .sellingPrice(new BigDecimal("10.00"))
+                .active(true)
+                .user(owner)
+                .build()).getId();
+    }
+
     private User createOtherUser(String name, String email, String cnpj) {
         Segment segment = segmentRepository.findByCodeIgnoreCase("SERVICOS")
                 .orElseGet(() -> segmentRepository.save(Segment.builder()
@@ -130,7 +151,7 @@ public class VariableCostControllerTest {
 
     @Test
     void shouldCreateVariableCostAndReturn201() throws Exception {
-        UUID productId = UUID.randomUUID();
+        UUID productId = createProduct("Bolo de Chocolate");
         VariableCostRequest request = VariableCostRequest.builder()
                 .name("Tecido")
                 .unitAmount(new BigDecimal("25.50"))
@@ -147,9 +168,30 @@ public class VariableCostControllerTest {
                 .andExpect(jsonPath("$.unitAmount").value(25.50))
                 .andExpect(jsonPath("$.category").value("MATERIA_PRIMA"))
                 .andExpect(jsonPath("$.productId").value(productId.toString()))
+                .andExpect(jsonPath("$.productName").value("Bolo de Chocolate"))
                 .andExpect(jsonPath("$.id").exists());
 
         assertEquals(1, variableCostRepository.count());
+    }
+
+    @Test
+    void shouldReturn400WhenCreatingWithAnotherUsersProduct() throws Exception {
+        User otherUser = createOtherUser("João Souza", "joao.prod@email.com", "ZZ1234567890126");
+        UUID otherProductId = createProductFor("Produto do João", otherUser);
+
+        VariableCostRequest request = VariableCostRequest.builder()
+                .name("Tecido")
+                .unitAmount(new BigDecimal("25.50"))
+                .category(VariableCostCategory.MATERIA_PRIMA)
+                .productId(otherProductId)
+                .build();
+
+        mockMvc.perform(post("/v1/costs/variable")
+                        .header("Authorization", bearerHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
     @Test

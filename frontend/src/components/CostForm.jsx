@@ -8,7 +8,8 @@ import {
   Receipt,
   CalendarDays,
   Repeat,
-  Tag
+  Tag,
+  Package
 } from 'lucide-react'
 import { maskCurrency, unmaskCurrency, currencyToDigits } from '../utils/formatters'
 
@@ -29,12 +30,18 @@ const KIND_LABELS = {
   }
 }
 
-export default function CostForm({ kind, service, categories, initialCost, onCancel, onSaved }) {
+export default function CostForm({ kind, service, categories, initialCost, onCancel, onSaved, products = [] }) {
   const labels = KIND_LABELS[kind]
   const amountKey = labels.amountField
+  const isVariable = kind === 'variable'
+  const missingProduct =
+    isVariable && initialCost?.productId && !products.some((p) => p.id === initialCost.productId)
+      ? { id: initialCost.productId, name: initialCost.productName }
+      : null
 
   const [name, setName] = useState(initialCost?.name || '')
   const [category, setCategory] = useState(initialCost?.category || '')
+  const [productId, setProductId] = useState(initialCost?.productId || '')
   const [amountDigits, setAmountDigits] = useState(currencyToDigits(initialCost?.[amountKey]))
   const [dueDate, setDueDate] = useState(initialCost?.dueDate || '')
   const [recurring, setRecurring] = useState(initialCost ? Boolean(initialCost.recurring) : true)
@@ -68,7 +75,7 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
   }
 
   const handleChange = (field, value) => {
-    const setters = { name: setName, category: setCategory, amount: setAmountDigits, dueDate: setDueDate }
+    const setters = { name: setName, category: setCategory, product: setProductId, amount: setAmountDigits, dueDate: setDueDate }
     setters[field]?.(value)
     if (touched[field]) {
       setErrors((prev) => ({ ...prev, [field]: validateField(field, value) }))
@@ -99,7 +106,9 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
       category,
       [amountKey]: unmaskCurrency(amountDigits)
     }
-    if (kind === 'fixed') {
+    if (isVariable) {
+      base.productId = productId || null
+    } else {
       base.dueDate = dueDate || null
       base.recurring = recurring
     }
@@ -226,6 +235,44 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
           </div>
           {fieldError('category')}
         </div>
+
+        {isVariable && (products.length > 0 || missingProduct) && (
+          <div>
+            <label htmlFor="cost-product" className="block text-sm font-medium text-slate-700 mb-1.5">
+              Produto associado (opcional)
+            </label>
+            <div className="relative">
+              {fieldIcon(Package)}
+              <select
+                id="cost-product"
+                value={productId}
+                onChange={(e) => handleChange('product', e.target.value)}
+                className={`${inputClass('product')} appearance-none`}
+              >
+                <option value="">Nenhum (custo geral)</option>
+                {missingProduct && (
+                  <option value={missingProduct.id}>
+                    {missingProduct.name || 'Produto vinculado'} (indisponível)
+                  </option>
+                )}
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name} ({product.type === 'PRODUTO' ? 'produto' : 'serviço'})
+                  </option>
+                ))}
+              </select>
+            </div>
+            {missingProduct ? (
+              <p className="text-xs text-amber-600 mt-1.5">
+                O produto vinculado foi excluído. Selecione "Nenhum" ou outro produto para salvar.
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400 mt-1.5">
+                Ao vincular, o valor soma no custo direto unitário do produto.
+              </p>
+            )}
+          </div>
+        )}
 
         <div>
           <label htmlFor="cost-amount" className="block text-sm font-medium text-slate-700 mb-1.5">
