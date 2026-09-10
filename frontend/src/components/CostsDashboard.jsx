@@ -1,12 +1,42 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CalendarRange, Package, Landmark } from 'lucide-react'
 import CostManager from './CostManager'
 import fixedCostService from '../services/fixedCostService'
 import variableCostService from '../services/variableCostService'
+import productService from '../services/productService'
 import { FIXED_COST_CATEGORIES, VARIABLE_COST_CATEGORIES } from '../constants/costCategories'
 
 export default function CostsDashboard() {
   const [activeTab, setActiveTab] = useState('fixed')
+  const [products, setProducts] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadProducts = async () => {
+      try {
+        const firstPage = await productService.getProducts({ page: 0, size: 100 })
+        const remainingPages = Array.from(
+          { length: Math.max((firstPage.totalPages || 1) - 1, 0) },
+          (_, index) => productService.getProducts({ page: index + 1, size: 100 })
+        )
+        const rest = await Promise.all(remainingPages)
+        if (!cancelled) {
+          setProducts([
+            ...(firstPage.content || []),
+            ...rest.flatMap((page) => page.content || [])
+          ])
+        }
+      } catch {
+        if (!cancelled) setProducts([])
+      }
+    }
+
+    loadProducts()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const tabs = [
     {
@@ -29,7 +59,8 @@ export default function CostsDashboard() {
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-1">Gestão de Custos</h2>
         <p className="text-sm text-slate-500">
-          Registre despesas fixas e variáveis para base da sua precificação.
+          Registre despesas fixas e custos variáveis, vinculando matéria-prima e embalagem a cada
+          produto.
         </p>
       </div>
 
@@ -67,6 +98,7 @@ export default function CostsDashboard() {
           kind="variable"
           service={variableCostService}
           categories={VARIABLE_COST_CATEGORIES}
+          products={products}
         />
       )}
     </div>

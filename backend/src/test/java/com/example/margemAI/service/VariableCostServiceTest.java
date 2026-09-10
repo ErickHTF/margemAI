@@ -4,9 +4,11 @@ import com.example.margemAI.dto.request.VariableCostRequest;
 import com.example.margemAI.dto.response.VariableCostResponse;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
+import com.example.margemAI.model.Product;
 import com.example.margemAI.model.VariableCost;
 import com.example.margemAI.model.VariableCostCategory;
 import com.example.margemAI.model.User;
+import com.example.margemAI.repository.ProductRepository;
 import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.repository.VariableCostRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +45,9 @@ public class VariableCostServiceTest {
 
     @Mock
     private VariableCostRepository variableCostRepository;
+
+    @Mock
+    private ProductRepository productRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -87,6 +92,8 @@ public class VariableCostServiceTest {
                 .build();
 
         when(userRepository.getReferenceById(userId)).thenReturn(User.builder().id(userId).build());
+        when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId))
+                .thenReturn(Optional.of(Product.builder().id(productId).name("Bolo de Chocolate").build()));
         when(variableCostRepository.save(any(VariableCost.class))).thenReturn(cost);
 
         VariableCostResponse response = variableCostService.create(userId, request);
@@ -363,5 +370,56 @@ public class VariableCostServiceTest {
         VariableCostResponse response = variableCostService.create(userId, request);
 
         assertNull(response.getProductId());
+    }
+
+    @Test
+    void shouldReturnProductNameWhenCostIsLinkedToExistingProduct() {
+        UUID productId = UUID.randomUUID();
+        fabricCost.setProductId(productId);
+
+        when(variableCostRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(fabricCost), PageRequest.of(0, 20), 1));
+        when(productRepository.findByActiveTrueAndIdInAndUserId(List.of(productId), userId))
+                .thenReturn(List.of(Product.builder().id(productId).name("Bolo de Chocolate").build()));
+
+        var result = variableCostService.findAll(userId, productId, null, 0, 20);
+
+        assertEquals(1, result.getContent().size());
+        assertEquals("Bolo de Chocolate", result.getContent().get(0).getProductName());
+    }
+
+    @Test
+    void shouldRejectCreateWhenProductDoesNotBelongToUser() {
+        UUID productId = UUID.randomUUID();
+        VariableCostRequest request = VariableCostRequest.builder()
+                .name("Embalagem")
+                .unitAmount(new BigDecimal("3.75"))
+                .category(VariableCostCategory.EMBALAGEM)
+                .productId(productId)
+                .build();
+
+        when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(InvalidRequestException.class, () -> variableCostService.create(userId, request));
+    }
+
+    @Test
+    void shouldRejectUpdateWhenProductDoesNotBelongToUser() {
+        UUID productId = UUID.randomUUID();
+        when(variableCostRepository.findByIdAndUserIdAndActiveTrue(fabricCost.getId(), userId))
+                .thenReturn(Optional.of(fabricCost));
+        when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId))
+                .thenReturn(Optional.empty());
+
+        VariableCostRequest request = VariableCostRequest.builder()
+                .name("Tecido")
+                .unitAmount(new BigDecimal("25.50"))
+                .category(VariableCostCategory.MATERIA_PRIMA)
+                .productId(productId)
+                .build();
+
+        assertThrows(InvalidRequestException.class,
+                () -> variableCostService.update(userId, fabricCost.getId(), request));
     }
 }

@@ -10,7 +10,8 @@ import {
   Wallet,
   CalendarDays,
   Repeat,
-  Search
+  Search,
+  Package
 } from 'lucide-react'
 import { formatCurrencyBRL } from '../utils/formatters'
 import { costCategoryLabel } from '../constants/costCategories'
@@ -35,13 +36,15 @@ const KIND_META = {
 
 const PAGE_SIZE = 50
 
-export default function CostManager({ kind, service, categories }) {
+export default function CostManager({ kind, service, categories, products = [] }) {
   const meta = KIND_META[kind]
   const amountKey = meta.amountKey
+  const isVariable = kind === 'variable'
 
   const [costs, setCosts] = useState([])
   const [totalElements, setTotalElements] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedProduct, setSelectedProduct] = useState('')
   const [referenceMonth, setReferenceMonth] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -57,6 +60,7 @@ export default function CostManager({ kind, service, categories }) {
       try {
         const params = { page: 0, size: PAGE_SIZE }
         if (selectedCategory) params.category = selectedCategory
+        if (selectedProduct) params.productId = selectedProduct
         if (meta.supportMonth && referenceMonth) params.month = referenceMonth
         const data = await service.list(params)
         if (cancelled) return
@@ -75,7 +79,7 @@ export default function CostManager({ kind, service, categories }) {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reloadKey, selectedCategory, referenceMonth])
+  }, [reloadKey, selectedCategory, selectedProduct, referenceMonth])
 
   const reload = () => {
     setLoading(true)
@@ -90,6 +94,11 @@ export default function CostManager({ kind, service, categories }) {
   const handleMonthChange = (value) => {
     setLoading(true)
     setReferenceMonth(value)
+  }
+
+  const handleProductChange = (value) => {
+    setLoading(true)
+    setSelectedProduct(value)
   }
 
   const handleNew = () => {
@@ -156,6 +165,7 @@ export default function CostManager({ kind, service, categories }) {
         kind={kind}
         service={service}
         categories={categories}
+        products={products}
         initialCost={editingCost}
         onCancel={() => {
           setShowForm(false)
@@ -226,6 +236,26 @@ export default function CostManager({ kind, service, categories }) {
               />
             </div>
           )}
+
+          {isVariable && (
+            <div className="relative sm:max-w-[220px]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <Package className="w-4 h-4" />
+              </div>
+              <select
+                value={selectedProduct}
+                onChange={(e) => handleProductChange(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 appearance-none"
+              >
+                <option value="">Todos os produtos</option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2">
@@ -243,6 +273,7 @@ export default function CostManager({ kind, service, categories }) {
             onClick={() => {
               handleCategoryChange('')
               handleMonthChange('')
+              if (isVariable) handleProductChange('')
             }}
             className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium transition-all cursor-pointer"
           >
@@ -298,6 +329,7 @@ export default function CostManager({ kind, service, categories }) {
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
                   {costCategoryLabel(categories, cost.category)}
+                  {isVariable && cost.productName ? ` • ${cost.productName}` : ''}
                   {cost.dueDate ? ` • vence ${formatDate(cost.dueDate)}` : ''}
                 </p>
               </div>

@@ -5,8 +5,10 @@ import com.example.margemAI.dto.response.PaginatedResponse;
 import com.example.margemAI.dto.response.VariableCostResponse;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
+import com.example.margemAI.model.Product;
 import com.example.margemAI.model.VariableCost;
 import com.example.margemAI.model.VariableCostCategory;
+import com.example.margemAI.repository.ProductRepository;
 import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.repository.VariableCostRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -20,8 +22,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,8 +38,11 @@ public class VariableCostService {
             "Nome, valor unitário e categoria são obrigatórios para a criação ou atualização completa de um custo variável.";
     private static final String INVALID_PAGINATION_MESSAGE =
             "Parâmetros de paginação inválidos. page deve ser >= 0 e size entre 1 e 100.";
+    private static final String INVALID_PRODUCT_MESSAGE =
+            "Produto ou serviço informado não existe ou não pertence ao usuário.";
 
     private final VariableCostRepository variableCostRepository;
+    private final ProductRepository productRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
@@ -55,26 +64,30 @@ public class VariableCostService {
         };
 
         Page<VariableCost> result = variableCostRepository.findAll(spec, pageable);
-        return PaginatedResponse.from(result, this::toResponse);
+        Map<UUID, String> productNames = productNamesByIds(userId, linkedProductIds(result.getContent()));
+        return PaginatedResponse.from(result, cost -> toResponse(cost, productNames));
     }
 
     @Transactional(readOnly = true)
     public VariableCostResponse findById(UUID userId, UUID id) {
-        return toResponse(findActive(userId, id));
+        VariableCost cost = findActive(userId, id);
+        return toResponse(cost, productNamesByIds(userId, linkedProductIds(List.of(cost))));
     }
 
     @Transactional
     public VariableCostResponse create(UUID userId, VariableCostRequest request) {
         validateFullRequest(request);
+        UUID productId = validateProductId(userId, request.getProductId());
         VariableCost cost = VariableCost.builder()
                 .name(normalizeName(request.getName()))
                 .unitAmount(request.getUnitAmount())
                 .category(request.getCategory())
-                .productId(request.getProductId())
+                .productId(productId)
                 .active(true)
                 .user(userRepository.getReferenceById(userId))
                 .build();
-        return toResponse(variableCostRepository.save(cost));
+        cost = variableCostRepository.save(cost);
+        return toResponse(cost, productNamesByIds(userId, linkedProductIds(List.of(cost))));
     }
 
     @Transactional
@@ -84,9 +97,9 @@ public class VariableCostService {
         cost.setName(normalizeName(request.getName()));
         cost.setUnitAmount(request.getUnitAmount());
         cost.setCategory(request.getCategory());
-        cost.setProductId(request.getProductId());
+        cost.setProductId(validateProductId(userId, request.getProductId()));
         cost = variableCostRepository.save(cost);
-        return toResponse(cost);
+        return toResponse(cost, productNamesByIds(userId, linkedProductIds(List.of(cost))));
     }
 
     @Transactional
@@ -102,10 +115,10 @@ public class VariableCostService {
             cost.setCategory(request.getCategory());
         }
         if (request.getProductId() != null) {
-            cost.setProductId(request.getProductId());
+            cost.setProductId(validateProductId(userId, request.getProductId()));
         }
         cost = variableCostRepository.save(cost);
-        return toResponse(cost);
+        return toResponse(cost, productNamesByIds(userId, linkedProductIds(List.of(cost))));
     }
 
     @Transactional
@@ -135,19 +148,47 @@ public class VariableCostService {
         return trimmed;
     }
 
+    private UUID validateProductId(UUID userId, UUID productId) {
+        if (productId == null) {
+            return null;
+        }
+        if (productRepository.findByIdAndUserIdAndActiveTrue(productId, userId).isEmpty()) {
+            throw new InvalidRequestException(INVALID_PRODUCT_MESSAGE);
+        }
+        return productId;
+    }
+
     private void validatePagination(int page, int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw new InvalidRequestException(INVALID_PAGINATION_MESSAGE);
         }
     }
 
-    private VariableCostResponse toResponse(VariableCost cost) {
+    private List<UUID> linkedProductIds(Collection<VariableCost> costs) {
+        return costs.stream()
+                .map(VariableCost::getProductId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private Map<UUID, String> productNamesByIds(UUID userId, Collection<UUID> productIds) {
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+        return productRepository.findByActiveTrueAndIdInAndUserId(productIds, userId).stream()
+                .collect(Collectors.toMap(Product::getId, Product::getName));
+    }
+
+    private VariableCostResponse toResponse(VariableCost cost, Map<UUID, String> productNames) {
+        String productName = cost.getProductId() != null ? productNames.get(cost.getProductId()) : null;
         return VariableCostResponse.builder()
                 .id(cost.getId())
                 .name(cost.getName())
                 .unitAmount(cost.getUnitAmount())
                 .category(cost.getCategory())
                 .productId(cost.getProductId())
+                .productName(productName)
                 .createdAt(cost.getCreatedAt())
                 .updatedAt(cost.getUpdatedAt())
                 .build();
