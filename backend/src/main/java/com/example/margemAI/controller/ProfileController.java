@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -20,7 +19,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping(path = {"/v1/profile", "/profile"})
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class ProfileController {
 
