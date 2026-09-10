@@ -20,7 +20,7 @@ import ProductForm from './ProductForm'
 
 const PAGE_SIZE = 50
 
-export default function ProductManager({ onSelectProductForPricing }) {
+export default function ProductManager() {
   const [products, setProducts] = useState([])
   const [totalElements, setTotalElements] = useState(0)
   const [selectedType, setSelectedType] = useState('')
