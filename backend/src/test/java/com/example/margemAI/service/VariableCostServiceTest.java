@@ -202,6 +202,7 @@ public class VariableCostServiceTest {
     void shouldFullyUpdateVariableCost() {
         when(variableCostRepository.findByIdAndUserIdAndActiveTrue(fabricCost.getId(), userId))
                 .thenReturn(Optional.of(fabricCost));
+        when(variableCostRepository.save(any(VariableCost.class))).thenAnswer(inv -> inv.getArgument(0));
 
         VariableCostRequest request = VariableCostRequest.builder()
                 .name("Tecido premium")
@@ -231,6 +232,7 @@ public class VariableCostServiceTest {
     void shouldPatchOnlyUnitAmount() {
         when(variableCostRepository.findByIdAndUserIdAndActiveTrue(fabricCost.getId(), userId))
                 .thenReturn(Optional.of(fabricCost));
+        when(variableCostRepository.save(any(VariableCost.class))).thenAnswer(inv -> inv.getArgument(0));
 
         VariableCostRequest request = VariableCostRequest.builder()
                 .unitAmount(new BigDecimal("28.90"))
@@ -248,6 +250,7 @@ public class VariableCostServiceTest {
         fabricCost.setProductId(UUID.randomUUID());
         when(variableCostRepository.findByIdAndUserIdAndActiveTrue(fabricCost.getId(), userId))
                 .thenReturn(Optional.of(fabricCost));
+        when(variableCostRepository.save(any(VariableCost.class))).thenAnswer(inv -> inv.getArgument(0));
 
         VariableCostRequest request = VariableCostRequest.builder()
                 .name("Tecido avulso")
@@ -277,6 +280,7 @@ public class VariableCostServiceTest {
         fabricCost.setProductId(UUID.randomUUID());
         when(variableCostRepository.findByIdAndUserIdAndActiveTrue(fabricCost.getId(), userId))
                 .thenReturn(Optional.of(fabricCost));
+        when(variableCostRepository.save(any(VariableCost.class))).thenAnswer(inv -> inv.getArgument(0));
 
         VariableCostRequest request = VariableCostRequest.builder()
                 .name("Tecido")

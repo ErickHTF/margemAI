@@ -187,6 +187,7 @@ public class ProductServiceTest {
                 .build();
 
         when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(Optional.of(product));
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
         when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(List.of());
 
         ProductResponse response = productService.update(userId, productId, request);
@@ -203,6 +204,7 @@ public class ProductServiceTest {
                 .build();
 
         when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(Optional.of(product));
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
         when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(List.of());
 
         ProductResponse response = productService.patch(userId, productId, request);
@@ -218,6 +220,15 @@ public class ProductServiceTest {
         productService.delete(userId, productId);
 
         assertFalse(product.getActive());
+    }
+
+    @Test
+    void shouldClearProductLinkWhenProductIsDeleted() {
+        when(productRepository.findByIdAndUserId(productId, userId)).thenReturn(Optional.of(product));
+
+        productService.delete(userId, productId);
+
+        verify(variableCostRepository).clearProductLink(userId, productId);
     }
 
     @Test

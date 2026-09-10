@@ -5,9 +5,12 @@ import com.example.margemAI.model.ItemType;
 import com.example.margemAI.model.Product;
 import com.example.margemAI.model.Segment;
 import com.example.margemAI.model.User;
+import com.example.margemAI.model.VariableCost;
+import com.example.margemAI.model.VariableCostCategory;
 import com.example.margemAI.repository.ProductRepository;
 import com.example.margemAI.repository.SegmentRepository;
 import com.example.margemAI.repository.UserRepository;
+import com.example.margemAI.repository.VariableCostRepository;
 import com.example.margemAI.security.service.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +28,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -46,6 +51,9 @@ public class ProductControllerTest {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private VariableCostRepository variableCostRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -92,6 +100,17 @@ public class ProductControllerTest {
                 .type(type)
                 .baseCost(new BigDecimal(baseCost))
                 .sellingPrice(new BigDecimal(sellingPrice))
+                .active(true)
+                .user(savedUser)
+                .build()).getId();
+    }
+
+    private UUID createVariableCost(UUID productId, String name, String unitAmount) {
+        return variableCostRepository.save(VariableCost.builder()
+                .name(name)
+                .unitAmount(new BigDecimal(unitAmount))
+                .category(VariableCostCategory.MATERIA_PRIMA)
+                .productId(productId)
                 .active(true)
                 .user(savedUser)
                 .build()).getId();
@@ -272,6 +291,34 @@ public class ProductControllerTest {
 
         Product stored = productRepository.findById(id).orElseThrow();
         assertFalse(stored.getActive());
+    }
+
+    @Test
+    void shouldClearProductLinkWhenProductIsSoftDeleted() throws Exception {
+        UUID productId = createProduct("Camiseta", ItemType.PRODUTO, "20.00", "50.00");
+        UUID costId = createVariableCost(productId, "Tecido", "15.00");
+
+        mockMvc.perform(delete("/v1/products/{id}", productId)
+                        .header("Authorization", bearerHeader()))
+                .andExpect(status().isNoContent());
+
+        VariableCost stored = variableCostRepository.findById(costId).orElseThrow();
+        assertNull(stored.getProductId());
+        assertTrue(stored.getActive());
+    }
+
+    @Test
+    void shouldKeepOtherProductsCostLinkWhenProductIsSoftDeleted() throws Exception {
+        UUID deletedProductId = createProduct("Camiseta", ItemType.PRODUTO, "20.00", "50.00");
+        UUID keptProductId = createProduct("Calça Jeans", ItemType.PRODUTO, "40.00", "99.90");
+        UUID keptCostId = createVariableCost(keptProductId, "Jeans", "30.00");
+
+        mockMvc.perform(delete("/v1/products/{id}", deletedProductId)
+                        .header("Authorization", bearerHeader()))
+                .andExpect(status().isNoContent());
+
+        VariableCost stored = variableCostRepository.findById(keptCostId).orElseThrow();
+        assertEquals(keptProductId, stored.getProductId());
     }
 
     @Test

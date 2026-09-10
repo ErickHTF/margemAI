@@ -85,6 +85,7 @@ public class VariableCostService {
         cost.setUnitAmount(request.getUnitAmount());
         cost.setCategory(request.getCategory());
         cost.setProductId(request.getProductId());
+        cost = variableCostRepository.save(cost);
         return toResponse(cost);
     }
 
@@ -103,6 +104,7 @@ public class VariableCostService {
         if (request.getProductId() != null) {
             cost.setProductId(request.getProductId());
         }
+        cost = variableCostRepository.save(cost);
         return toResponse(cost);
     }
 
@@ -122,7 +124,7 @@ public class VariableCostService {
         if (request.getName() == null || request.getUnitAmount() == null || request.getCategory() == null) {
             throw new InvalidRequestException(FULL_UPDATE_REQUIRED_MESSAGE);
         }
-        request.setName(normalizeName(request.getName()));
+        normalizeName(request.getName());
     }
 
     private String normalizeName(String name) {
