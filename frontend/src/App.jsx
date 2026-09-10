@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Sparkles, LogOut, CheckCircle2, LayoutDashboard, Wallet, Calculator, Loader2 } from 'lucide-react'
+import { Sparkles, LogOut, CheckCircle2, LayoutDashboard, Wallet, Package, Calculator, Loader2 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
 import ProfilePanel from './components/ProfilePanel'
 import CostsDashboard from './components/CostsDashboard'
+import ProductManager from './components/ProductManager'
 import PricingCalculator from './components/PricingCalculator'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
 
   const sectionTabs = [
     { key: 'profile', label: 'Meu Perfil', Icon: LayoutDashboard },
+    { key: 'products', label: 'Catálogo', Icon: Package },
     { key: 'costs', label: 'Custos', Icon: Wallet },
     { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator }
   ]
@@ -33,26 +35,27 @@ export default function App() {
   const renderAuthenticated = () => (
     <div className="w-full flex flex-col items-center">
       <div className="w-full max-w-3xl mb-6">
-        <div className="bg-white/70 backdrop-blur rounded-2xl p-1.5 border border-slate-200 grid grid-cols-3 gap-1 shadow-sm">
+        <div className="bg-white/70 backdrop-blur rounded-2xl p-1.5 border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-1 shadow-sm">
           {sectionTabs.map(({ key, label, Icon }) => (
             <button
               key={key}
               type="button"
               onClick={() => setActiveSection(key)}
-              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                 activeSection === key
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="truncate">{label}</span>
             </button>
           ))}
         </div>
       </div>
 
       {activeSection === 'profile' && <ProfilePanel user={user} onUserUpdate={updateUser} />}
+      {activeSection === 'products' && <ProductManager />}
       {activeSection === 'costs' && <CostsDashboard />}
       {activeSection === 'pricing' && <PricingCalculator />}
 
