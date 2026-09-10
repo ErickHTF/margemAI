@@ -101,6 +101,7 @@ public class ProductService {
         product.setType(request.getType());
         product.setBaseCost(request.getBaseCost() != null ? request.getBaseCost() : BigDecimal.ZERO);
         product.setSellingPrice(request.getSellingPrice());
+        product = productRepository.save(product);
         return toResponse(product, userId);
     }
 
@@ -125,6 +126,7 @@ public class ProductService {
             }
             product.setSellingPrice(request.getSellingPrice());
         }
+        product = productRepository.save(product);
         return toResponse(product, userId);
     }
 
@@ -133,6 +135,7 @@ public class ProductService {
         Product product = productRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MESSAGE));
         product.setActive(false);
+        variableCostRepository.clearProductLink(userId, id);
     }
 
     private Product findActive(UUID userId, UUID id) {
@@ -147,7 +150,7 @@ public class ProductService {
         if (request.getSellingPrice().compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidRequestException("O preço de venda deve ser maior que zero.");
         }
-        request.setName(normalizeName(request.getName()));
+        normalizeName(request.getName());
     }
 
     private String normalizeName(String name) {

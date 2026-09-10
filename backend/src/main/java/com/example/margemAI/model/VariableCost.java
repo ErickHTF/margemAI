@@ -46,6 +46,9 @@ public class VariableCost {
     @Column(nullable = false, length = 30)
     private VariableCostCategory category;
 
+    // Sem @ManyToOne/FK por decisão de projeto: o produto usa soft delete e o custo
+    // precisa sobreviver à exclusão. O vínculo é limpo quando o produto é desativado
+    // em ProductService.delete.
     @Column(name = "product_id")
     private UUID productId;
 
