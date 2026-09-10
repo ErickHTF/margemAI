@@ -1,8 +1,34 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { authService, getAccessToken, setTokens, clearTokens } from '../security'
+import profileService from '../services/profileService'
 
 export default function useAuth() {
   const [user, setUser] = useState(null)
+  const [initializing, setInitializing] = useState(Boolean(getAccessToken()))
+
+  useEffect(() => {
+    let cancelled = false
+
+    const restoreSession = async () => {
+      if (!getAccessToken()) {
+        setInitializing(false)
+        return
+      }
+      try {
+        const profile = await profileService.get()
+        if (!cancelled) setUser(profile)
+      } catch {
+        if (!cancelled) clearTokens()
+      } finally {
+        if (!cancelled) setInitializing(false)
+      }
+    }
+
+    restoreSession()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const login = async (credentials) => {
     const data = await authService.login(credentials)
@@ -25,6 +51,7 @@ export default function useAuth() {
     login,
     logout,
     updateUser,
-    isAuthenticated: Boolean(getAccessToken())
+    initializing,
+    isAuthenticated: Boolean(user)
   }
 }
