@@ -4,14 +4,12 @@ import com.example.margemAI.dto.response.UserResponse;
 import com.example.margemAI.model.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(path = {"/v1/me", "/me"})
-@CrossOrigin(origins = "*")
 public class UserController {
 
     @GetMapping
