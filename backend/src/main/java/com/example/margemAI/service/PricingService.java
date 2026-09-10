@@ -37,14 +37,14 @@ public class PricingService {
             );
         }
 
-        BigDecimal markupDivisor = ONE_HUNDRED.subtract(sumPercentages)
-                .divide(ONE_HUNDRED, 4, RoundingMode.HALF_UP);
+        BigDecimal markupDenominator = ONE_HUNDRED.subtract(sumPercentages);
 
         BigDecimal markupMultiplier = ONE_HUNDRED
-                .divide(ONE_HUNDRED.subtract(sumPercentages), 4, RoundingMode.HALF_UP);
+                .divide(markupDenominator, 4, RoundingMode.HALF_UP);
 
         BigDecimal minimumSellingPrice = baseCost
-                .divide(markupDivisor, 2, RoundingMode.HALF_UP);
+                .multiply(ONE_HUNDRED)
+                .divide(markupDenominator, 2, RoundingMode.HALF_UP);
 
         BigDecimal allocatedFixedCosts = minimumSellingPrice
                 .multiply(fixedPercent)

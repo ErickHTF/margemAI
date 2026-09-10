@@ -80,6 +80,22 @@ class PricingServiceTest {
     }
 
     @Test
+    void shouldNotDivideByZeroWhenSumOfPercentagesIsJustBelow100() {
+        PricingRequest request = PricingRequest.builder()
+                .baseCost(new BigDecimal("100.00"))
+                .fixedCostPercent(new BigDecimal("99.99"))
+                .variableCostPercent(new BigDecimal("0.001"))
+                .desiredMargin(new BigDecimal("0.005"))
+                .includeFixedCosts(true)
+                .build();
+
+        PricingResponse response = pricingService.calculatePricing(request);
+
+        assertNotNull(response);
+        assertTrue(response.getMinimumSellingPrice().compareTo(BigDecimal.ZERO) > 0);
+    }
+
+    @Test
     void shouldThrowExceptionWhenBaseCostIsNull() {
         PricingRequest request = PricingRequest.builder()
                 .desiredMargin(new BigDecimal("20.00"))

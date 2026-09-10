@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Sparkles, LogOut, CheckCircle2, LayoutDashboard, Wallet, Calculator } from 'lucide-react'
+import { Sparkles, LogOut, CheckCircle2, LayoutDashboard, Wallet, Calculator, Loader2 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
@@ -8,7 +8,7 @@ import CostsDashboard from './components/CostsDashboard'
 import PricingCalculator from './components/PricingCalculator'
 
 export default function App() {
-  const { user, login, logout, updateUser, isAuthenticated } = useAuth()
+  const { user, login, logout, updateUser, isAuthenticated, initializing } = useAuth()
   const [showRegister, setShowRegister] = useState(false)
   const [registeredUser, setRegisteredUser] = useState(null)
   const [activeSection, setActiveSection] = useState('profile')
@@ -70,6 +70,15 @@ export default function App() {
   )
 
   const renderContent = () => {
+    if (initializing) {
+      return (
+        <div className="w-full max-w-md flex flex-col items-center justify-center py-16 text-slate-500">
+          <Loader2 className="w-8 h-8 animate-spin mb-3 text-indigo-600" />
+          <p className="text-sm">Restaurando sua sessão...</p>
+        </div>
+      )
+    }
+
     if (isAuthenticated && user) {
       return renderAuthenticated()
     }

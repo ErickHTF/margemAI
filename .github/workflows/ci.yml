@@ -5,11 +5,14 @@ on:
     branches:
       - 'feature/**'
       - 'bugfix/**'
+      - 'fix/**'
       - 'hotfix/**'
+      - 'develop'
       - 'staging'
       - 'main'
   pull_request:
     branches:
+      - 'develop'
       - 'main'
       - 'staging'
 
