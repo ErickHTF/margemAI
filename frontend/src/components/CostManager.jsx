@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Plus,
   Pencil,
@@ -51,6 +51,13 @@ export default function CostManager({ kind, service, categories, products = [] }
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingCost, setEditingCost] = useState(null)
+  const formRef = useRef(null)
+
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [showForm, editingCost])
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -160,7 +167,7 @@ export default function CostManager({ kind, service, categories, products = [] }
   }
 
   const formSection = showForm ? (
-    <div className="w-full mb-6">
+    <div className="w-full mb-6" ref={formRef}>
       <CostForm
         kind={kind}
         service={service}

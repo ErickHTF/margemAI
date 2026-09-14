@@ -34,13 +34,13 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<PaginatedResponse<ProductResponse>> findAll(
             @RequestParam(required = false) ItemType type,
-            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String name,
             @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
         PaginatedResponse<ProductResponse> products = productService.findAll(
-                authenticatedUserId(authentication), type, search, active, page, size);
+                authenticatedUserId(authentication), type, name, active, page, size);
         return ResponseEntity.ok(products);
     }
 

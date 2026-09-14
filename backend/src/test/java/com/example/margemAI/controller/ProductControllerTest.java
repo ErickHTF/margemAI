@@ -213,7 +213,7 @@ public class ProductControllerTest {
 
         mockMvc.perform(get("/v1/products")
                         .header("Authorization", bearerHeader())
-                        .param("search", "Básica"))
+                        .param("name", "Básica"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].name").value("Camiseta Básica"));
