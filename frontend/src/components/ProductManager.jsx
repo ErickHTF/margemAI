@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Package,
   Wrench,
@@ -30,6 +30,13 @@ export default function ProductManager() {
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
+  const formRef = useRef(null)
+
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [showForm, editingProduct])
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -110,14 +117,16 @@ export default function ProductManager() {
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
       {showForm && (
-        <ProductForm
+        <div ref={formRef}>
+          <ProductForm
           initialProduct={editingProduct}
           onCancel={() => {
             setShowForm(false)
             setEditingProduct(null)
           }}
           onSaved={handleSaved}
-        />
+          />
+        </div>
       )}
 
       <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
