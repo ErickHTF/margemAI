@@ -46,7 +46,7 @@ export default function ProductManager() {
       try {
         const params = { page: 0, size: PAGE_SIZE }
         if (selectedType) params.type = selectedType
-        if (searchTerm.trim()) params.search = searchTerm.trim()
+        if (searchTerm.trim()) params.name = searchTerm.trim()
         const data = await productService.getProducts(params)
         if (cancelled) return
         setProducts(data.content || [])
