@@ -6,6 +6,7 @@ import com.example.margemAI.dto.response.ProductResponse;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.ItemType;
+import com.example.margemAI.model.Category;
 import com.example.margemAI.model.Product;
 import com.example.margemAI.model.User;
 import com.example.margemAI.model.VariableCost;
@@ -34,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -50,6 +52,9 @@ public class ProductServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private CategoryService categoryService;
 
     @InjectMocks
     private ProductService productService;
@@ -236,5 +241,52 @@ public class ProductServiceTest {
         when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> productService.findById(userId, productId));
+    }
+
+    @Test
+    void shouldInheritMarginFromCategoryWhenProductHasNoExplicitMargin() {
+        Category category = Category.builder()
+                .id(UUID.randomUUID())
+                .name("Bebidas")
+                .slug("bebidas")
+                .type(ItemType.PRODUTO)
+                .active(true)
+                .user(user)
+                .build();
+        product.setCategory(category);
+
+        when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(Optional.of(product));
+        when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(List.of());
+        when(categoryService.resolveParameters(category))
+                .thenReturn(new CategoryParameters(new BigDecimal("20.00"), new BigDecimal("6.00"), null));
+
+        ProductResponse response = productService.findById(userId, productId);
+
+        assertEquals(new BigDecimal("20.00"), response.getTargetProfitMargin());
+        assertTrue(response.getMarginInheritedFromCategory());
+        assertEquals(category.getId(), response.getCategoryId());
+        assertEquals("Bebidas", response.getCategoryName());
+    }
+
+    @Test
+    void shouldPreferExplicitMarginOverCategoryInheritance() {
+        Category category = Category.builder()
+                .id(UUID.randomUUID())
+                .name("Bebidas")
+                .slug("bebidas")
+                .type(ItemType.PRODUTO)
+                .active(true)
+                .user(user)
+                .build();
+        product.setCategory(category);
+        product.setTargetProfitMargin(new BigDecimal("12.50"));
+
+        when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(Optional.of(product));
+        when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(List.of());
+
+        ProductResponse response = productService.findById(userId, productId);
+
+        assertEquals(new BigDecimal("12.50"), response.getTargetProfitMargin());
+        assertFalse(response.getMarginInheritedFromCategory());
     }
 }

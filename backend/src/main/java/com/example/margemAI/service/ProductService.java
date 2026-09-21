@@ -6,6 +6,7 @@ import com.example.margemAI.dto.response.ProductResponse;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.ItemType;
+import com.example.margemAI.model.Category;
 import com.example.margemAI.model.Product;
 import com.example.margemAI.model.VariableCost;
 import com.example.margemAI.repository.ProductRepository;
@@ -40,6 +41,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final VariableCostRepository variableCostRepository;
     private final UserRepository userRepository;
+    private final CategoryService categoryService;
 
     @Transactional(readOnly = true)
     public PaginatedResponse<ProductResponse> findAll(UUID userId, ItemType type, String search, Boolean active, int page, int size) {
@@ -86,6 +88,8 @@ public class ProductService {
                 .type(request.getType())
                 .baseCost(request.getBaseCost() != null ? request.getBaseCost() : BigDecimal.ZERO)
                 .sellingPrice(request.getSellingPrice())
+                .targetProfitMargin(request.getTargetProfitMargin())
+                .category(resolveCategory(userId, request.getCategoryId()))
                 .active(true)
                 .user(userRepository.getReferenceById(userId))
                 .build();
@@ -101,6 +105,8 @@ public class ProductService {
         product.setType(request.getType());
         product.setBaseCost(request.getBaseCost() != null ? request.getBaseCost() : BigDecimal.ZERO);
         product.setSellingPrice(request.getSellingPrice());
+        product.setTargetProfitMargin(request.getTargetProfitMargin());
+        product.setCategory(resolveCategory(userId, request.getCategoryId()));
         product = productRepository.save(product);
         return toResponse(product, userId);
     }
@@ -125,6 +131,12 @@ public class ProductService {
                 throw new InvalidRequestException("O preço de venda deve ser maior que zero.");
             }
             product.setSellingPrice(request.getSellingPrice());
+        }
+        if (request.getTargetProfitMargin() != null) {
+            product.setTargetProfitMargin(request.getTargetProfitMargin());
+        }
+        if (request.getCategoryId() != null) {
+            product.setCategory(resolveCategory(userId, request.getCategoryId()));
         }
         product = productRepository.save(product);
         return toResponse(product, userId);
@@ -173,6 +185,13 @@ public class ProductService {
         }
     }
 
+    private Category resolveCategory(UUID userId, UUID categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+        return categoryService.findEntity(userId, categoryId);
+    }
+
     public ProductResponse toResponse(Product product, UUID userId) {
         List<VariableCost> variableCosts = variableCostRepository.findByProductIdAndUserIdAndActiveTrue(product.getId(), userId);
 
@@ -196,6 +215,14 @@ public class ProductService {
                     .setScale(2, RoundingMode.HALF_UP);
         }
 
+        BigDecimal effectiveMargin = product.getTargetProfitMargin();
+        boolean marginInherited = false;
+        Category category = product.getCategory();
+        if (effectiveMargin == null && category != null) {
+            effectiveMargin = categoryService.resolveParameters(category).targetProfitMargin();
+            marginInherited = effectiveMargin != null;
+        }
+
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -207,6 +234,10 @@ public class ProductService {
                 .sellingPrice(sellingPrice)
                 .contributionMargin(contributionMargin)
                 .marginPercentage(marginPercentage)
+                .categoryId(category != null ? category.getId() : null)
+                .categoryName(category != null ? category.getName() : null)
+                .targetProfitMargin(effectiveMargin)
+                .marginInheritedFromCategory(marginInherited)
                 .active(product.getActive())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())

@@ -20,28 +20,26 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductRequest {
+public class CategoryRequest {
 
-    @NotBlank(message = "O nome do produto/serviço é obrigatório.")
-    @Size(max = 200, message = "O nome deve ter no máximo 200 caracteres.")
+    @NotBlank(message = "O nome da categoria é obrigatório.")
+    @Size(max = 150, message = "O nome deve ter no máximo 150 caracteres.")
     private String name;
-
-    @Size(max = 500, message = "A descrição deve ter no máximo 500 caracteres.")
-    private String description;
 
     @NotNull(message = "O tipo (PRODUTO ou SERVICO) é obrigatório.")
     private ItemType type;
 
-    @DecimalMin(value = "0.00", message = "O custo base deve ser maior ou igual a zero.")
-    private BigDecimal baseCost;
-
-    @NotNull(message = "O preço de venda é obrigatório.")
-    @DecimalMin(value = "0.01", message = "O preço de venda deve ser maior que zero.")
-    private BigDecimal sellingPrice;
-
-    private UUID categoryId;
-
     @DecimalMin(value = "0.01", message = "A margem de lucro desejada deve ser no mínimo 0.01%.")
     @DecimalMax(value = "99.99", message = "A margem de lucro desejada deve ser menor que 100%.")
     private BigDecimal targetProfitMargin;
+
+    @DecimalMin(value = "0.00", message = "A alíquota tributária não pode ser negativa.")
+    @DecimalMax(value = "99.99", message = "A alíquota tributária deve ser menor que 100%.")
+    private BigDecimal taxRate;
+
+    @DecimalMin(value = "0.00", message = "O teto de desconto não pode ser negativo.")
+    @DecimalMax(value = "100.00", message = "O teto de desconto não pode ser superior a 100%.")
+    private BigDecimal maxDiscountAllowed;
+
+    private UUID parentId;
 }

@@ -5,18 +5,23 @@ import com.example.margemAI.dto.request.SimulateDiscountRequest;
 import com.example.margemAI.dto.response.PricingResponse;
 import com.example.margemAI.dto.response.SimulateDiscountResponse;
 import com.example.margemAI.exception.InvalidFinancialCalculationException;
+import com.example.margemAI.model.User;
 import com.example.margemAI.service.PricingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -38,8 +43,22 @@ public class PricingControllerTest {
     @MockBean
     private PricingService pricingService;
 
+    private UUID userId;
+
+    @BeforeEach
+    void setUp() {
+        userId = UUID.randomUUID();
+        User user = User.builder()
+                .id(userId)
+                .name("Test User")
+                .email("test@email.com")
+                .build();
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                user, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
     @Test
-    @WithMockUser
     void shouldCalculatePricingSuccessfullyAndReturn200() throws Exception {
         PricingRequest request = PricingRequest.builder()
                 .productId(UUID.randomUUID())
@@ -59,7 +78,7 @@ public class PricingControllerTest {
                 .contributionMargin(new BigDecimal("12.95"))
                 .build();
 
-        when(pricingService.calculatePricing(any(PricingRequest.class))).thenReturn(response);
+        when(pricingService.calculatePricing(any(PricingRequest.class), any(UUID.class))).thenReturn(response);
 
         mockMvc.perform(post("/v1/pricing/calculate")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -72,7 +91,6 @@ public class PricingControllerTest {
     }
 
     @Test
-    @WithMockUser
     void shouldReturn422WhenCalculationPercentagesAreInvalid() throws Exception {
         PricingRequest request = PricingRequest.builder()
                 .baseCost(new BigDecimal("50.00"))
@@ -81,7 +99,7 @@ public class PricingControllerTest {
                 .desiredMargin(new BigDecimal("30.00"))
                 .build();
 
-        when(pricingService.calculatePricing(any(PricingRequest.class)))
+        when(pricingService.calculatePricing(any(PricingRequest.class), any(UUID.class)))
                 .thenThrow(new InvalidFinancialCalculationException("Soma dos percentuais excede 100%"));
 
         mockMvc.perform(post("/v1/pricing/calculate")
@@ -92,7 +110,6 @@ public class PricingControllerTest {
     }
 
     @Test
-    @WithMockUser
     void shouldSimulateDiscountSuccessfullyAndReturn200() throws Exception {
         SimulateDiscountRequest request = SimulateDiscountRequest.builder()
                 .sellingPrice(new BigDecimal("100.00"))
@@ -122,6 +139,8 @@ public class PricingControllerTest {
 
     @Test
     void shouldReturn401WhenRequestIsUnauthenticated() throws Exception {
+        SecurityContextHolder.clearContext();
+
         PricingRequest request = PricingRequest.builder()
                 .baseCost(new BigDecimal("18.50"))
                 .desiredMargin(new BigDecimal("25.00"))
