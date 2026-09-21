@@ -15,4 +15,6 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     Optional<Product> findByIdAndUserIdAndActiveTrue(UUID id, UUID userId);
     Optional<Product> findByIdAndUserId(UUID id, UUID userId);
     List<Product> findByActiveTrueAndIdInAndUserId(Collection<UUID> ids, UUID userId);
+    boolean existsByCategoryIdAndUserIdAndActiveTrue(UUID categoryId, UUID userId);
+    List<Product> findByCategoryIdAndUserIdAndActiveTrue(UUID categoryId, UUID userId);
 }
