@@ -24,6 +24,7 @@ public class CategoryResponse {
     private BigDecimal targetProfitMargin;
     private BigDecimal taxRate;
     private BigDecimal maxDiscountAllowed;
+    private BigDecimal variableCostPercent;
     private Boolean active;
     private UUID parentId;
     private String parentName;

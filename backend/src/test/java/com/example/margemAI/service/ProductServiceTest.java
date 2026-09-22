@@ -258,7 +258,7 @@ public class ProductServiceTest {
         when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(Optional.of(product));
         when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(List.of());
         when(categoryService.resolveParameters(category))
-                .thenReturn(new CategoryParameters(new BigDecimal("20.00"), new BigDecimal("6.00"), null));
+                .thenReturn(new CategoryParameters(new BigDecimal("20.00"), new BigDecimal("6.00"), null, new BigDecimal("12.00")));
 
         ProductResponse response = productService.findById(userId, productId);
 
@@ -266,6 +266,8 @@ public class ProductServiceTest {
         assertTrue(response.getMarginInheritedFromCategory());
         assertEquals(category.getId(), response.getCategoryId());
         assertEquals("Bebidas", response.getCategoryName());
+        assertEquals(new BigDecimal("6.00"), response.getTaxRate());
+        assertEquals(new BigDecimal("12.00"), response.getVariableCostPercent());
     }
 
     @Test
@@ -283,10 +285,13 @@ public class ProductServiceTest {
 
         when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(Optional.of(product));
         when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(List.of());
+        when(categoryService.resolveParameters(category))
+                .thenReturn(new CategoryParameters(null, new BigDecimal("6.00"), null, null));
 
         ProductResponse response = productService.findById(userId, productId);
 
         assertEquals(new BigDecimal("12.50"), response.getTargetProfitMargin());
         assertFalse(response.getMarginInheritedFromCategory());
+        assertEquals(new BigDecimal("6.00"), response.getTaxRate());
     }
 }

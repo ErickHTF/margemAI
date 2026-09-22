@@ -36,7 +36,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CategoryService {
 
-    private static final String NOT_FOUND_MESSAGE = "Categoria não encontrada.";
+    private static final String NOT_FOUND_MESSAGE = "Padrão de precificação não encontrado.";
     private static final String INVALID_PAGINATION_MESSAGE =
             "Parâmetros de paginação inválidos. page deve ser >= 0 e size entre 1 e 100.";
 
@@ -90,6 +90,7 @@ public class CategoryService {
                 .targetProfitMargin(request.getTargetProfitMargin())
                 .taxRate(request.getTaxRate())
                 .maxDiscountAllowed(request.getMaxDiscountAllowed())
+                .variableCostPercent(request.getVariableCostPercent())
                 .parent(parent)
                 .active(true)
                 .user(userRepository.getReferenceById(userId))
@@ -111,6 +112,7 @@ public class CategoryService {
         category.setTargetProfitMargin(request.getTargetProfitMargin());
         category.setTaxRate(request.getTaxRate());
         category.setMaxDiscountAllowed(request.getMaxDiscountAllowed());
+        category.setVariableCostPercent(request.getVariableCostPercent());
         category.setParent(parent);
 
         publishChanged(userId);
@@ -133,11 +135,11 @@ public class CategoryService {
 
         if (productRepository.existsByCategoryIdAndUserIdAndActiveTrue(id, userId)) {
             throw new InvalidRequestException(
-                    "Não é possível remover a categoria enquanto houver produtos ou serviços ativos vinculados a ela.");
+                    "Não é possível remover o padrão enquanto houver produtos ou serviços ativos vinculados a ele.");
         }
         if (categoryRepository.existsByParentIdAndUserIdAndActiveTrue(id, userId)) {
             throw new InvalidRequestException(
-                    "Não é possível remover a categoria enquanto houver subcategorias ativas vinculadas a ela.");
+                    "Não é possível remover o padrão enquanto houver subpadrões ativos vinculados a ele.");
         }
 
         category.setActive(false);
@@ -160,6 +162,7 @@ public class CategoryService {
         BigDecimal margin = null;
         BigDecimal taxRate = null;
         BigDecimal maxDiscount = null;
+        BigDecimal variableCostPercent = null;
         Set<UUID> visited = new HashSet<>();
         Category current = category;
 
@@ -173,10 +176,13 @@ public class CategoryService {
             if (maxDiscount == null) {
                 maxDiscount = current.getMaxDiscountAllowed();
             }
+            if (variableCostPercent == null) {
+                variableCostPercent = current.getVariableCostPercent();
+            }
             current = current.getParent();
         }
 
-        CategoryParameters resolved = new CategoryParameters(margin, taxRate, maxDiscount);
+        CategoryParameters resolved = new CategoryParameters(margin, taxRate, maxDiscount, variableCostPercent);
         parameterCache.put(userId, category.getId(), resolved);
         return resolved;
     }
@@ -191,7 +197,7 @@ public class CategoryService {
             return null;
         }
         return categoryRepository.findByIdAndUserId(parentId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Categoria pai não encontrada."));
+                .orElseThrow(() -> new ResourceNotFoundException("Padrão superior não encontrado."));
     }
 
     private void validateParentAssignment(Category category, Category newParent) {
@@ -199,14 +205,14 @@ public class CategoryService {
             return;
         }
         if (category.getId().equals(newParent.getId())) {
-            throw new InvalidRequestException("Uma categoria não pode ser pai de si mesma.");
+            throw new InvalidRequestException("Um padrão não pode ser superior a si mesmo.");
         }
 
         Set<UUID> visited = new HashSet<>();
         Category current = newParent;
         while (current != null && visited.add(current.getId())) {
             if (category.getId().equals(current.getId())) {
-                throw new InvalidRequestException("A hierarquia de categorias não pode conter ciclos.");
+                throw new InvalidRequestException("A hierarquia de padrões não pode conter ciclos.");
             }
             current = current.getParent();
         }
@@ -230,13 +236,13 @@ public class CategoryService {
         String slug = normalized.toLowerCase()
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("(^-+)|(-+$)", "");
-        return slug.isEmpty() ? "categoria" : slug;
+        return slug.isEmpty() ? "padrao" : slug;
     }
 
     private String normalizeName(String name) {
         String trimmed = name.trim();
         if (trimmed.isEmpty()) {
-            throw new InvalidRequestException("O nome da categoria é obrigatório.");
+            throw new InvalidRequestException("O nome do padrão é obrigatório.");
         }
         return trimmed;
     }
@@ -261,6 +267,7 @@ public class CategoryService {
                 .targetProfitMargin(category.getTargetProfitMargin())
                 .taxRate(category.getTaxRate())
                 .maxDiscountAllowed(category.getMaxDiscountAllowed())
+                .variableCostPercent(category.getVariableCostPercent())
                 .active(category.getActive())
                 .parentId(parent != null ? parent.getId() : null)
                 .parentName(parent != null ? parent.getName() : null)

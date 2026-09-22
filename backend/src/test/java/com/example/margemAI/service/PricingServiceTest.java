@@ -152,7 +152,7 @@ class PricingServiceTest {
         when(productRepository.findByIdAndUserIdAndActiveTrue(any(UUID.class), any(UUID.class)))
                 .thenReturn(Optional.of(product));
         when(categoryService.resolveParameters(category))
-                .thenReturn(new CategoryParameters(new BigDecimal("25.00"), new BigDecimal("6.00"), null));
+                .thenReturn(new CategoryParameters(new BigDecimal("25.00"), new BigDecimal("6.00"), null, null));
 
         PricingRequest request = PricingRequest.builder()
                 .productId(productId)
@@ -267,6 +267,38 @@ class PricingServiceTest {
 
         assertEquals(new BigDecimal("76.92"), response.getMinimumSellingPrice());
         assertEquals(new BigDecimal("7.69"), response.getAllocatedFixedCosts());
+    }
+
+    @Test
+    void shouldInheritVariableCostPercentFromCategory() {
+        UUID productId = UUID.randomUUID();
+        Category category = Category.builder()
+                .id(UUID.randomUUID())
+                .name("Bebidas")
+                .slug("bebidas")
+                .build();
+        com.example.margemAI.model.Product product = com.example.margemAI.model.Product.builder()
+                .id(productId)
+                .name("Refrigerante")
+                .baseCost(new BigDecimal("50.00"))
+                .category(category)
+                .build();
+
+        when(productRepository.findByIdAndUserIdAndActiveTrue(any(UUID.class), any(UUID.class)))
+                .thenReturn(Optional.of(product));
+        when(categoryService.resolveParameters(category))
+                .thenReturn(new CategoryParameters(null, null, null, new BigDecimal("5.00")));
+
+        PricingRequest request = PricingRequest.builder()
+                .productId(productId)
+                .desiredMargin(new BigDecimal("25.00"))
+                .includeFixedCosts(false)
+                .build();
+
+        PricingResponse response = pricingService.calculatePricing(request, userId);
+
+        assertEquals(new BigDecimal("71.43"), response.getMinimumSellingPrice());
+        assertEquals(new BigDecimal("3.57"), response.getTotalVariableCosts());
     }
 
     @Test

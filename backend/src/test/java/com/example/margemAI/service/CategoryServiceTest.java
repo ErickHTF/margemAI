@@ -244,6 +244,7 @@ class CategoryServiceTest {
                 .type(ItemType.PRODUTO)
                 .targetProfitMargin(new BigDecimal("30.00"))
                 .taxRate(new BigDecimal("8.00"))
+                .variableCostPercent(new BigDecimal("7.00"))
                 .active(true)
                 .user(user)
                 .build();
@@ -256,6 +257,7 @@ class CategoryServiceTest {
 
         assertEquals(new BigDecimal("30.00"), parameters.targetProfitMargin());
         assertEquals(new BigDecimal("8.00"), parameters.taxRate());
+        assertEquals(new BigDecimal("7.00"), parameters.variableCostPercent());
         assertNull(parameters.maxDiscountAllowed());
     }
 

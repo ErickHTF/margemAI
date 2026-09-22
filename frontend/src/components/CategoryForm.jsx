@@ -20,6 +20,7 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
     targetProfitMargin: initialCategory?.targetProfitMargin != null ? String(initialCategory.targetProfitMargin) : '',
     taxRate: initialCategory?.taxRate != null ? String(initialCategory.taxRate) : '',
     maxDiscountAllowed: initialCategory?.maxDiscountAllowed != null ? String(initialCategory.maxDiscountAllowed) : '',
+    variableCostPercent: initialCategory?.variableCostPercent != null ? String(initialCategory.variableCostPercent) : '',
     parentId: initialCategory?.parentId || ''
   })
 
@@ -56,7 +57,7 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
   const validateField = (field, value) => {
     switch (field) {
       case 'name':
-        if (!value.trim()) return 'O nome da categoria é obrigatório.'
+        if (!value.trim()) return 'O nome do padrão é obrigatório.'
         if (value.length > 150) return 'O nome deve ter no máximo 150 caracteres.'
         return null
       case 'type':
@@ -68,6 +69,8 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
         return validatePercent(value, { min: 0, max: 99.99, label: 'a alíquota tributária' })
       case 'maxDiscountAllowed':
         return validatePercent(value, { min: 0, max: 100, label: 'o teto de desconto' })
+      case 'variableCostPercent':
+        return validatePercent(value, { min: 0, max: 99.99, label: 'as despesas variáveis' })
       default:
         return null
     }
@@ -94,7 +97,8 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
       type: validateField('type', formData.type),
       targetProfitMargin: validateField('targetProfitMargin', formData.targetProfitMargin),
       taxRate: validateField('taxRate', formData.taxRate),
-      maxDiscountAllowed: validateField('maxDiscountAllowed', formData.maxDiscountAllowed)
+      maxDiscountAllowed: validateField('maxDiscountAllowed', formData.maxDiscountAllowed),
+      variableCostPercent: validateField('variableCostPercent', formData.variableCostPercent)
     }
     setErrors(newErrors)
     setTouched({
@@ -102,7 +106,8 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
       type: true,
       targetProfitMargin: true,
       taxRate: true,
-      maxDiscountAllowed: true
+      maxDiscountAllowed: true,
+      variableCostPercent: true
     })
     return !Object.values(newErrors).some(Boolean)
   }
@@ -121,6 +126,7 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
         targetProfitMargin: formData.targetProfitMargin === '' ? null : Number(formData.targetProfitMargin),
         taxRate: formData.taxRate === '' ? null : Number(formData.taxRate),
         maxDiscountAllowed: formData.maxDiscountAllowed === '' ? null : Number(formData.maxDiscountAllowed),
+        variableCostPercent: formData.variableCostPercent === '' ? null : Number(formData.variableCostPercent),
         parentId: formData.parentId || null
       }
 
@@ -132,7 +138,7 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
 
       onSaved()
     } catch (err) {
-      const message = err.response?.data?.message || 'Falha ao salvar categoria.'
+      const message = err.response?.data?.message || 'Falha ao salvar o padrão.'
       const details = Array.isArray(err.response?.data?.details) ? err.response.data.details : []
       setServerError({ message, details })
     } finally {
@@ -151,10 +157,10 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-900">
-              {isEditing ? 'Editar Categoria' : 'Nova Categoria'}
+              {isEditing ? 'Editar padrão de precificação' : 'Novo padrão de precificação'}
             </h3>
             <p className="text-xs text-slate-500">
-              Defina premissas padrão que serão herdadas pelos itens vinculados.
+              Defina margem, impostos, taxas e desconto que valem para os produtos e serviços deste padrão.
             </p>
           </div>
         </div>
@@ -186,14 +192,14 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-left">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Nome da Categoria *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do padrão *</label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="Ex: Bebidas ou Serviços de Manutenção"
+              placeholder="Ex: Bebidas, Serviços de Manutenção"
               className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-slate-50/50 focus:outline-none focus:ring-2 ${
                 touched.name && errors.name
                   ? 'border-rose-400 focus:ring-rose-200'
@@ -219,14 +225,14 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Categoria Pai (opcional)</label>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">Padrão superior (opcional)</label>
           <select
             name="parentId"
             value={formData.parentId}
             onChange={handleChange}
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
           >
-            <option value="">Nenhuma (categoria raiz)</option>
+            <option value="">Nenhum (sem padrão superior)</option>
             {parentOptions.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}{category.active ? '' : ' (inativa)'}
@@ -234,11 +240,11 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
             ))}
           </select>
           <p className="text-[11px] text-slate-400 mt-1">
-            Parâmetros não definidos aqui serão herdados da categoria pai.
+            Valores não informados aqui são assumidos pelo padrão superior.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Margem de Lucro (%)</label>
             <div className="relative">
@@ -312,6 +318,32 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
               <p className="text-xs text-rose-600 mt-1">{errors.maxDiscountAllowed}</p>
             )}
           </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Despesas Variáveis e Cartão (%)</label>
+            <div className="relative">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="99.99"
+                name="variableCostPercent"
+                value={formData.variableCostPercent}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder="Ex: 5"
+                className={`${percentInputClass} ${
+                  touched.variableCostPercent && errors.variableCostPercent ? 'border-rose-400' : ''
+                }`}
+              />
+              <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 text-sm">
+                %
+              </span>
+            </div>
+            {touched.variableCostPercent && errors.variableCostPercent && (
+              <p className="text-xs text-rose-600 mt-1">{errors.variableCostPercent}</p>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
@@ -334,7 +366,7 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
                 <span>Salvando...</span>
               </>
             ) : (
-              <span>{isEditing ? 'Salvar Alterações' : 'Cadastrar Categoria'}</span>
+              <span>{isEditing ? 'Salvar Alterações' : 'Salvar padrão'}</span>
             )}
           </button>
         </div>
