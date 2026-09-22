@@ -34,7 +34,7 @@ public class FixedCostService {
 
     private static final String NOT_FOUND_MESSAGE = "Custo fixo não encontrado.";
     private static final String FULL_UPDATE_REQUIRED_MESSAGE =
-            "Nome, valor e categoria são obrigatórios para a criação ou atualização completa de um custo fixo.";
+            "Nome, valor e padrão de precificação são obrigatórios para a criação ou atualização completa de um custo fixo.";
     private static final String INVALID_MONTH_MESSAGE = "Mês inválido. Use o formato AAAA-MM.";
     private static final String INVALID_PAGINATION_MESSAGE =
             "Parâmetros de paginação inválidos. page deve ser >= 0 e size entre 1 e 100.";

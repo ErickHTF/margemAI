@@ -31,7 +31,7 @@ const NAV_GROUPS = [
     label: 'Cadastros',
     items: [
       { key: 'products', label: 'Catálogo', Icon: Package },
-      { key: 'categories', label: 'Categorias', Icon: Tags }
+      { key: 'categories', label: 'Padrões de Preço', Icon: Tags }
     ]
   },
   {

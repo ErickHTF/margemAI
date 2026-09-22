@@ -57,7 +57,7 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
         return null
 
       case 'category':
-        if (!value) return 'Selecione a categoria.'
+        if (!value) return 'Selecione o padrão de precificação.'
         return null
 
       case 'amount':
@@ -214,7 +214,7 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
 
         <div>
           <label htmlFor="cost-category" className="block text-sm font-medium text-slate-700 mb-1.5">
-            Categoria
+            Padrão de precificação
           </label>
           <div className="relative">
             {fieldIcon(Tag)}
@@ -225,7 +225,7 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
               onBlur={(e) => handleBlur('category', e.target.value)}
               className={`${inputClass('category')} appearance-none`}
             >
-              <option value="">Selecione a categoria...</option>
+              <option value="">Selecione o padrão de precificação...</option>
               {categories.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}

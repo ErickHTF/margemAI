@@ -35,7 +35,7 @@ public class VariableCostService {
 
     private static final String NOT_FOUND_MESSAGE = "Custo variável não encontrado.";
     private static final String FULL_UPDATE_REQUIRED_MESSAGE =
-            "Nome, valor unitário e categoria são obrigatórios para a criação ou atualização completa de um custo variável.";
+            "Nome, valor unitário e padrão de precificação são obrigatórios para a criação ou atualização completa de um custo variável.";
     private static final String INVALID_PAGINATION_MESSAGE =
             "Parâmetros de paginação inválidos. page deve ser >= 0 e size entre 1 e 100.";
     private static final String INVALID_PRODUCT_MESSAGE =
