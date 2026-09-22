@@ -29,7 +29,7 @@ public class CategoryRevalidationService {
 
         if (parameters.targetProfitMargin() == null) {
             throw new InvalidRequestException(
-                    "A categoria não possui margem de lucro definida (nem herdada) para reavaliação de preços.");
+                    "O padrão não possui margem de lucro definida (nem herdada) para reavaliação de preços.");
         }
 
         List<Product> products = productRepository.findByCategoryIdAndUserIdAndActiveTrue(categoryId, userId);
