@@ -53,7 +53,7 @@ public class PricingService {
         }
 
         BigDecimal fixedPercent = resolveFixedPercent(request, userId);
-        BigDecimal varPercent = request.getVariableCostPercent() != null ? request.getVariableCostPercent() : BigDecimal.ZERO;
+        BigDecimal varPercent = resolvePercent(request.getVariableCostPercent(), inheritedParameters, CategoryParameters::variableCostPercent);
         BigDecimal desiredMargin = resolvePercent(request.getDesiredMargin(), inheritedParameters, CategoryParameters::targetProfitMargin);
         BigDecimal taxPercent = resolvePercent(request.getTaxRate(), inheritedParameters, CategoryParameters::taxRate);
 

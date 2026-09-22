@@ -64,6 +64,9 @@ public class Category {
     @Column(name = "max_discount_allowed", precision = 5, scale = 2)
     private BigDecimal maxDiscountAllowed;
 
+    @Column(name = "variable_cost_percent", precision = 5, scale = 2)
+    private BigDecimal variableCostPercent;
+
     @Builder.Default
     @Column(nullable = false)
     private Boolean active = true;

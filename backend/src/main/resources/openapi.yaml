@@ -2138,6 +2138,18 @@ components:
         marginInheritedFromCategory:
           type: boolean
           readOnly: true
+        taxRate:
+          type: number
+          nullable: true
+          readOnly: true
+          description: Effective tax rate (explicit or inherited from the category)
+          example: 6.00
+        variableCostPercent:
+          type: number
+          nullable: true
+          readOnly: true
+          description: Effective variable sales cost percentage (explicit or inherited from the category)
+          example: 5.00
         active:
           type: boolean
           default: true
@@ -2253,6 +2265,12 @@ components:
           maximum: 100
           description: Maximum discount allowed for the category
           example: 10.00
+        variableCostPercent:
+          type: number
+          minimum: 0
+          maximum: 99.99
+          description: Default variable sales costs / card fees percentage inherited by products
+          example: 5.00
         active:
           type: boolean
           default: true
@@ -2301,6 +2319,11 @@ components:
           minimum: 0
           maximum: 100
           example: 10.00
+        variableCostPercent:
+          type: number
+          minimum: 0
+          maximum: 99.99
+          example: 5.00
         parentId:
           type: string
           format: uuid

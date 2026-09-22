@@ -31,6 +31,8 @@ public class ProductResponse {
     private String categoryName;
     private BigDecimal targetProfitMargin;
     private Boolean marginInheritedFromCategory;
+    private BigDecimal taxRate;
+    private BigDecimal variableCostPercent;
     private Boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

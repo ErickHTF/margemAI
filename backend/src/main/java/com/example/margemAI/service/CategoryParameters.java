@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 public record CategoryParameters(
         BigDecimal targetProfitMargin,
         BigDecimal taxRate,
-        BigDecimal maxDiscountAllowed
+        BigDecimal maxDiscountAllowed,
+        BigDecimal variableCostPercent
 ) {
 }

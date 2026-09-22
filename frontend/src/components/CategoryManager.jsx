@@ -3,7 +3,6 @@ import {
   Tags,
   Plus,
   Pencil,
-  Trash2,
   Search,
   RefreshCw,
   AlertCircle,
@@ -48,7 +47,7 @@ export default function CategoryManager() {
         setTotalElements(data.totalElements || 0)
         setError(null)
       } catch {
-        if (!cancelled) setError('Não foi possível carregar as categorias.')
+        if (!cancelled) setError('Não foi possível carregar os padrões de preço.')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -87,24 +86,7 @@ export default function CategoryManager() {
       await categoryService.patchCategoryStatus(category.id, !category.active)
       reload()
     } catch {
-      window.alert('Não foi possível alterar o status da categoria.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleDelete = async (category) => {
-    const confirmed = window.confirm(
-      `Excluir "${category.name}"? A categoria será desativada.`
-    )
-    if (!confirmed) return
-
-    setSaving(true)
-    try {
-      await categoryService.deleteCategory(category.id)
-      reload()
-    } catch (err) {
-      window.alert(err.response?.data?.message || 'Não foi possível excluir a categoria.')
+      window.alert('Não foi possível alterar o status do padrão.')
     } finally {
       setSaving(false)
     }
@@ -123,7 +105,7 @@ export default function CategoryManager() {
     }
   }
 
-  const formatPercent = (value) => (value == null ? 'Herdado' : `${value}%`)
+  const formatPercent = (value) => (value == null ? 'Não definido' : `${value}%`)
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
@@ -147,9 +129,9 @@ export default function CategoryManager() {
               <Tags className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Categorias</h2>
+              <h2 className="text-xl font-bold text-slate-900">Padrões de precificação</h2>
               <p className="text-xs text-slate-500">
-                Defina margem, alíquota e teto de desconto padrão e propague por herança.
+                Defina margem, impostos, taxas e desconto padrão para os produtos e serviços que você cadastrar.
               </p>
             </div>
           </div>
@@ -160,7 +142,7 @@ export default function CategoryManager() {
             className="inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium shadow-sm transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Nova Categoria
+            Novo padrão
           </button>
         </div>
 
@@ -174,7 +156,7 @@ export default function CategoryManager() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por nome da categoria..."
+                placeholder="Buscar por nome do padrão..."
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
               />
             </div>
@@ -215,7 +197,7 @@ export default function CategoryManager() {
         {loading ? (
           <div className="p-12 text-center">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-3" />
-            <p className="text-sm text-slate-500">Carregando categorias...</p>
+            <p className="text-sm text-slate-500">Carregando padrões de precificação...</p>
           </div>
         ) : error ? (
           <div className="p-10 text-center">
@@ -232,9 +214,9 @@ export default function CategoryManager() {
         ) : categories.length === 0 ? (
           <div className="p-12 text-center">
             <Tags className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-base font-semibold text-slate-700 mb-1">Nenhuma categoria encontrada</p>
+            <p className="text-base font-semibold text-slate-700 mb-1">Nenhum padrão cadastrado</p>
             <p className="text-xs text-slate-500 mb-4">
-              Crie categorias para padronizar margens e tributos dos seus itens.
+              Crie um padrão para aplicar a mesma margem, impostos e taxas a vários produtos e serviços.
             </p>
             <button
               type="button"
@@ -242,7 +224,7 @@ export default function CategoryManager() {
               className="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-indigo-600 text-white text-xs font-medium"
             >
               <Plus className="w-4 h-4" />
-              Cadastrar Primeira Categoria
+              Criar primeiro padrão
             </button>
           </div>
         ) : (
@@ -280,10 +262,14 @@ export default function CategoryManager() {
                       <span>
                         Teto desconto: <strong className="text-slate-800 font-semibold">{formatPercent(category.maxDiscountAllowed)}</strong>
                       </span>
+                      <span>•</span>
+                      <span>
+                        Variáveis: <strong className="text-slate-800 font-semibold">{formatPercent(category.variableCostPercent)}</strong>
+                      </span>
                       {category.parentName && (
                         <>
                           <span>•</span>
-                          <span>Herdada de: {category.parentName}</span>
+                          <span>Baseado em: {category.parentName}</span>
                         </>
                       )}
                     </div>
@@ -317,15 +303,6 @@ export default function CategoryManager() {
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(category)}
-                    disabled={saving}
-                    title="Excluir"
-                    className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             ))}
@@ -334,10 +311,10 @@ export default function CategoryManager() {
 
         <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <span>
-            Total: <strong>{totalElements}</strong> categorias cadastradas
+            Total: <strong>{totalElements}</strong> padrões cadastrados
           </span>
           <span className="text-[11px] text-slate-400">
-            Parâmetros não informados são herdados da categoria pai
+            Valores não informados são assumidos pelo padrão superior
           </span>
         </div>
       </div>

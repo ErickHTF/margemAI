@@ -22,7 +22,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class CategoryRequest {
 
-    @NotBlank(message = "O nome da categoria é obrigatório.")
+    @NotBlank(message = "O nome do padrão é obrigatório.")
     @Size(max = 150, message = "O nome deve ter no máximo 150 caracteres.")
     private String name;
 
@@ -40,6 +40,10 @@ public class CategoryRequest {
     @DecimalMin(value = "0.00", message = "O teto de desconto não pode ser negativo.")
     @DecimalMax(value = "100.00", message = "O teto de desconto não pode ser superior a 100%.")
     private BigDecimal maxDiscountAllowed;
+
+    @DecimalMin(value = "0.00", message = "As despesas variáveis não podem ser negativas.")
+    @DecimalMax(value = "99.99", message = "As despesas variáveis devem ser menores que 100%.")
+    private BigDecimal variableCostPercent;
 
     private UUID parentId;
 }
