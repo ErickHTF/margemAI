@@ -9,11 +9,19 @@ import {
   Package,
   Wrench,
   Settings2,
-  RefreshCw
+  RefreshCw,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { calculatePricing, simulateDiscount } from '../services/pricingService'
 import { productService } from '../services/productService'
 import { operationalService } from '../services/operationalService'
+import {
+  buildSebraeExplanation,
+  SEBRAE_GOLDEN_RULE,
+  SEBRAE_PERCENT_BASIS
+} from '../utils/sebraeMethod'
 
 export default function PricingCalculator() {
   const [formData, setFormData] = useState({
@@ -46,6 +54,7 @@ export default function PricingCalculator() {
 
   const [discountPercent, setDiscountPercent] = useState('10')
   const [discountResult, setDiscountResult] = useState(null)
+  const [showExplanation, setShowExplanation] = useState(false)
 
   const applyRateioSummary = (data) => {
     setRateioSummary(data)
@@ -80,6 +89,17 @@ export default function PricingCalculator() {
     : formData.includeFixedCosts
       ? Number(formData.fixedCostPercent || 0)
       : 0
+
+  const selectedProduct = products.find((product) => product.id === selectedProductId)
+  const profileLocked = Boolean(selectedProductId && selectedProduct?.categoryId)
+
+  const explanation = buildSebraeExplanation({
+    baseCost: formData.baseCost,
+    fixedPercent: effectiveFixedPercent,
+    variablePercent: formData.variableCostPercent,
+    desiredMargin: formData.desiredMargin,
+    taxPercent: selectedProduct?.taxRate ?? 0
+  })
 
   const handleSaveRateioConfig = async () => {
     setSavingRateio(true)
@@ -123,15 +143,27 @@ export default function PricingCalculator() {
 
   const handleProductSelect = (productId) => {
     setSelectedProductId(productId)
-    if (!productId) return
+    if (!productId) {
+      setUseAutomaticFixedCosts(false)
+      return
+    }
 
-    const product = products.find(p => p.id === productId)
-    if (product) {
-      const baseCostValue = product.effectiveBaseCost || product.baseCost || '0'
-      setFormData(prev => ({
-        ...prev,
-        baseCost: String(baseCostValue)
-      }))
+    const product = products.find((item) => item.id === productId)
+    if (!product) return
+
+    setFormData((prev) => ({
+      ...prev,
+      baseCost: String(product.effectiveBaseCost ?? product.baseCost ?? '0'),
+      variableCostPercent:
+        product.variableCostPercent != null ? String(product.variableCostPercent) : prev.variableCostPercent,
+      desiredMargin:
+        product.targetProfitMargin != null ? String(product.targetProfitMargin) : prev.desiredMargin
+    }))
+
+    if (product.categoryId) {
+      setUseAutomaticFixedCosts(true)
+    } else {
+      setUseAutomaticFixedCosts(false)
     }
   }
 
@@ -365,6 +397,7 @@ export default function PricingCalculator() {
                   id="toggleAutomaticFixed"
                   checked={useAutomaticFixedCosts}
                   onChange={(e) => setUseAutomaticFixedCosts(e.target.checked)}
+                  disabled={profileLocked}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
                 />
               </label>
@@ -515,6 +548,16 @@ export default function PricingCalculator() {
               )}
             </div>
 
+            {profileLocked && (
+              <div className="flex items-start gap-2 rounded-xl bg-indigo-50 border border-indigo-200 p-3 text-xs text-indigo-800">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>
+                  Este item possui um padrão de precificação vinculado. Os parâmetros foram preenchidos
+                  automaticamente e ficam bloqueados nesta tela — edite o padrão para alterá-los.
+                </span>
+              </div>
+            )}
+
             <div>
               <label htmlFor="pricing-variableCostPercent" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Despesas Variáveis e Taxas de Venda / Cartão (%)
@@ -528,13 +571,17 @@ export default function PricingCalculator() {
                   max="99"
                   value={formData.variableCostPercent}
                   onChange={(e) => handleInputChange('variableCostPercent', e.target.value)}
-                  className={percentInputClass}
+                  disabled={profileLocked}
+                  className={`${percentInputClass}${profileLocked ? ' bg-slate-100 text-slate-600 cursor-not-allowed' : ''}`}
                   placeholder="Ex: 15"
                 />
                 <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
                   <Percent className="w-4 h-4" />
                 </span>
               </div>
+              {profileLocked && (
+                <p className="mt-1 text-[11px] text-slate-400">Herdado do padrão do item.</p>
+              )}
             </div>
 
             <div>
@@ -550,13 +597,17 @@ export default function PricingCalculator() {
                   max="99"
                   value={formData.desiredMargin}
                   onChange={(e) => handleInputChange('desiredMargin', e.target.value)}
-                  className={percentInputClass}
+                  disabled={profileLocked}
+                  className={`${percentInputClass}${profileLocked ? ' bg-slate-100 text-slate-600 cursor-not-allowed' : ''}`}
                   placeholder="Ex: 25"
                 />
                 <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
                   <Percent className="w-4 h-4" />
                 </span>
               </div>
+              {profileLocked && (
+                <p className="mt-1 text-[11px] text-slate-400">Herdado do padrão do item.</p>
+              )}
             </div>
 
             {errorMessage && (
@@ -715,6 +766,103 @@ export default function PricingCalculator() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="border-t border-slate-100 bg-slate-50/50">
+          <button
+            type="button"
+            onClick={() => setShowExplanation((value) => !value)}
+            className="w-full flex items-center justify-between gap-3 px-6 sm:px-8 py-4 text-left cursor-pointer"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <HelpCircle className="w-4 h-4 text-indigo-600" />
+              Como o preço de venda é calculado (método SEBRAE)
+            </span>
+            {showExplanation ? (
+              <ChevronUp className="w-4 h-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            )}
+          </button>
+
+          {showExplanation && (
+            <div className="px-6 sm:px-8 pb-6 sm:pb-8 space-y-4">
+              <div className="rounded-xl border border-indigo-100 bg-white p-4 space-y-2">
+                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Fórmula simplificada
+                </p>
+                <code className="block text-xs sm:text-sm text-indigo-700 bg-indigo-50 rounded-lg px-3 py-2 overflow-x-auto whitespace-nowrap">
+                  {explanation.formula}
+                </code>
+                <code className="block text-[11px] text-slate-500 overflow-x-auto whitespace-nowrap">
+                  {explanation.markupFormula}
+                </code>
+              </div>
+
+              <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+                <span>{SEBRAE_PERCENT_BASIS}</span>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Exemplo com seus valores
+                </p>
+                {explanation.goldenRuleRespected ? (
+                  <>
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      Se seu custo é <strong>{formatCurrency(explanation.baseCost)}</strong>, com custos fixos de{' '}
+                      <strong>{explanation.fixedPercent}%</strong>, variáveis de{' '}
+                      <strong>{explanation.variablePercent}%</strong>
+                      {explanation.taxPercent > 0 && (
+                        <>
+                          , tributos de <strong>{explanation.taxPercent}%</strong>
+                        </>
+                      )}{' '}
+                      e lucro desejado de <strong>{explanation.desiredMargin}%</strong>, o preço de venda será{' '}
+                      <strong className="text-emerald-700">{formatCurrency(explanation.sellingPrice)}</strong>{' '}
+                      (markup de <strong>{explanation.markup}×</strong>).
+                    </p>
+                    <div className="space-y-1.5 text-xs">
+                      {explanation.breakdown
+                        .filter((item) => item.key !== 'tax' || item.percent > 0)
+                        .map((item) => (
+                          <div
+                            key={item.key}
+                            className="flex items-center justify-between gap-3 py-1 border-b border-slate-100 last:border-0"
+                          >
+                            <span className="text-slate-600">
+                              {item.label}
+                              {item.percent != null && <span className="text-slate-400"> ({item.percent}%)</span>}
+                            </span>
+                            <span className="font-semibold text-slate-800">{formatCurrency(item.value)}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-start gap-2 text-xs text-rose-700">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>
+                      Com os valores atuais a soma dos percentuais é {explanation.sumPercentages}%. Ajuste os
+                      percentuais para que a soma fique abaixo de 100%.
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div
+                className={`flex items-start gap-2 rounded-xl border p-3 text-xs ${
+                  explanation.goldenRuleRespected
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-rose-50 border-rose-200 text-rose-800'
+                }`}
+              >
+                <span className="font-semibold shrink-0">Regra de ouro:</span>
+                <span>{SEBRAE_GOLDEN_RULE}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
