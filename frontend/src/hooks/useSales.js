@@ -9,41 +9,56 @@ export function useSales(initialFilters = {}) {
     totalSalesCount: 0,
     sales: { content: [], totalElements: 0, totalPages: 0 }
   })
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [filters, setFilters] = useState(initialFilters)
+  const [reloadKey, setReloadKey] = useState(0)
 
-  const fetchSales = useCallback(async (currentFilters = filters) => {
+  const reload = useCallback(() => {
     setLoading(true)
-    setError(null)
-    try {
-      const data = await saleService.getSales(currentFilters)
-      setSalesData(data)
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Erro ao carregar histórico de vendas.'
-      setError(msg)
-    } finally {
-      setLoading(false)
-    }
-  }, [filters])
+    setReloadKey((k) => k + 1)
+  }, [])
 
   useEffect(() => {
-    fetchSales(filters)
-  }, [fetchSales, filters])
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const data = await saleService.getSales(filters)
+        if (!cancelled) {
+          setSalesData(data)
+          setError(null)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const msg = err.response?.data?.message || 'Erro ao carregar histórico de vendas.'
+          setError(msg)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [filters, reloadKey])
 
   const recordSale = async (salePayload) => {
     setSubmitting(true)
     setError(null)
     try {
       const created = await saleService.createSale(salePayload)
-      // Recarregar os dados para atualizar os totais e a listagem de forma íntegra
-      await fetchSales(filters)
+      reload()
       return created
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.details?.[0] || 'Erro ao registrar venda.'
       setError(msg)
-      throw new Error(msg)
+      throw new Error(msg, { cause: err })
     } finally {
       setSubmitting(false)
     }
@@ -52,11 +67,11 @@ export function useSales(initialFilters = {}) {
   const removeSale = async (saleId) => {
     try {
       await saleService.deleteSale(saleId)
-      await fetchSales(filters)
+      reload()
     } catch (err) {
       const msg = err.response?.data?.message || 'Erro ao excluir venda.'
       setError(msg)
-      throw new Error(msg)
+      throw new Error(msg, { cause: err })
     }
   }
 
@@ -67,7 +82,7 @@ export function useSales(initialFilters = {}) {
     error,
     filters,
     setFilters,
-    fetchSales,
+    reload,
     recordSale,
     removeSale
   }

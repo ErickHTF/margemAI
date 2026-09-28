@@ -29,7 +29,6 @@ export default function SalesManager() {
     salesData,
     loading,
     error,
-    filters,
     setFilters,
     recordSale,
     removeSale

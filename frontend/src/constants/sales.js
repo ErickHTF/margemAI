@@ -50,7 +50,7 @@ export const calculateEstimatedFee = (quantity, unitPrice, paymentMethod, instal
     return { gross: 0, feePercent: 0, feeAmount: 0, netAmount: 0 }
   }
 
-  let feePercent = 0
+  let feePercent
   if (customFee !== null && customFee !== '' && !isNaN(customFee)) {
     feePercent = parseFloat(customFee)
   } else if (paymentMethod === 'CREDITO_PARCELADO') {
