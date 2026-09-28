@@ -218,7 +218,7 @@ class SaleServiceTest {
         when(saleRepository.findAll(any(Specification.class))).thenReturn(sales);
 
         // Act
-        SaleSummaryResponse summary = saleService.findAll(userId, null, null, null, 0, 20);
+        SaleSummaryResponse summary = saleService.findAll(userId, null, null, null, null, 0, 20);
 
         // Assert
         assertNotNull(summary);
@@ -227,6 +227,50 @@ class SaleServiceTest {
         assertEquals(new BigDecimal("1.50"), summary.getTotalFeeAmount());
         assertEquals(new BigDecimal("198.50"), summary.getTotalNetRevenue());
         assertEquals(2, summary.getSales().getContent().size());
+    }
+
+    @Test
+    @DisplayName("Deve atualizar venda existente com recálculo automático de taxas")
+    void shouldUpdateSaleSuccessfully() {
+        // Arrange
+        UUID saleId = UUID.randomUUID();
+        Sale existingSale = Sale.builder()
+                .id(saleId)
+                .user(testUser)
+                .product(testProduct)
+                .description("Consultoria MEI")
+                .quantity(BigDecimal.ONE)
+                .unitPrice(new BigDecimal("150.00"))
+                .grossAmount(new BigDecimal("150.00"))
+                .paymentMethod(PaymentMethod.DINHEIRO)
+                .feePercentage(BigDecimal.ZERO)
+                .feeAmount(BigDecimal.ZERO)
+                .netAmount(new BigDecimal("150.00"))
+                .soldAt(LocalDateTime.now())
+                .build();
+
+        SaleRequest updateRequest = SaleRequest.builder()
+                .productId(productId)
+                .quantity(new BigDecimal("2.00"))
+                .unitPrice(new BigDecimal("200.00"))
+                .paymentMethod(PaymentMethod.DEBITO)
+                .build();
+
+        when(saleRepository.findByIdAndUserId(saleId, userId)).thenReturn(Optional.of(existingSale));
+        when(productRepository.findByIdAndUserId(productId, userId)).thenReturn(Optional.of(testProduct));
+        when(saleRepository.save(any(Sale.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        SaleResponse response = saleService.update(userId, saleId, updateRequest);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(new BigDecimal("400.00"), response.getGrossAmount());
+        assertEquals(PaymentMethod.DEBITO, response.getPaymentMethod());
+        assertEquals(new BigDecimal("1.50"), response.getFeePercentage());
+        assertEquals(new BigDecimal("6.00"), response.getFeeAmount());
+        assertEquals(new BigDecimal("394.00"), response.getNetAmount());
+        verify(saleRepository).save(existingSale);
     }
 
     @Test

@@ -924,11 +924,11 @@ paths:
             default: 20
       responses:
         '200':
-          description: Paginated list of sales
+          description: Sales summary and paginated list
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedSales'
+                $ref: '#/components/schemas/SaleSummaryResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1956,14 +1956,26 @@ components:
         productName:
           type: string
           readOnly: true
+        description:
+          type: string
+          example: "Consultoria MEI"
         quantity:
-          type: integer
-          minimum: 1
+          type: number
+          minimum: 0.01
           example: 2
+        unitPrice:
+          type: number
+          minimum: 0.01
+          example: 45.00
         unitAmount:
           type: number
           minimum: 0
           example: 45.00
+        grossAmount:
+          type: number
+          x-currency: BRL
+          readOnly: true
+          example: 90.00
         totalAmount:
           type: number
           x-currency: BRL
@@ -1971,10 +1983,31 @@ components:
           example: 90.00
         paymentMethod:
           $ref: '#/components/schemas/PaymentMethod'
+        paymentMethodDescription:
+          type: string
+          readOnly: true
+          example: "Crédito à Vista"
+        installments:
+          type: integer
+          minimum: 1
+          example: 1
+        feePercentage:
+          type: number
+          example: 3.20
+        feeAmount:
+          type: number
+          example: 2.88
+        netAmount:
+          type: number
+          example: 87.12
+        soldAt:
+          type: string
+          format: date-time
+          example: "2026-06-15T14:30:00"
         saleDate:
           type: string
-          format: date
-          example: "2026-06-15"
+          format: date-time
+          example: "2026-06-15T14:30:00"
         notes:
           type: string
           maxLength: 500
@@ -1999,29 +2032,42 @@ components:
 
     SaleRequest:
       type: object
-      additionalProperties: false
       required:
-        - productId
         - quantity
-        - unitAmount
         - paymentMethod
-        - saleDate
       properties:
         productId:
           type: string
           format: uuid
+        description:
+          type: string
+          maxLength: 200
         quantity:
-          type: integer
-          minimum: 1
+          type: number
+          minimum: 0.01
           default: 1
+        unitPrice:
+          type: number
+          minimum: 0.01
         unitAmount:
           type: number
           minimum: 0.01
         paymentMethod:
           $ref: '#/components/schemas/PaymentMethod'
+        installments:
+          type: integer
+          minimum: 1
+          default: 1
+        customFeePercentage:
+          type: number
+          minimum: 0.00
+          maximum: 100.00
+        soldAt:
+          type: string
+          format: date-time
         saleDate:
           type: string
-          format: date
+          format: date-time
         notes:
           type: string
           maxLength: 500
@@ -2033,6 +2079,38 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Sale'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 45
+        totalPages:
+          type: integer
+          example: 3
+        last:
+          type: boolean
+
+    SaleSummaryResponse:
+      type: object
+      properties:
+        totalGrossRevenue:
+          type: number
+          example: 1500.00
+        totalFeeAmount:
+          type: number
+          example: 42.50
+        totalNetRevenue:
+          type: number
+          example: 1457.50
+        totalSalesCount:
+          type: integer
+          example: 15
+        sales:
+          $ref: '#/components/schemas/PaginatedSales'
         page:
           type: integer
           example: 0

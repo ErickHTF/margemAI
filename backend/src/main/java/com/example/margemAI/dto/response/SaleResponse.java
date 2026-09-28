@@ -33,4 +33,16 @@ public class SaleResponse {
     private LocalDateTime soldAt;
     private String notes;
     private LocalDateTime createdAt;
+
+    public BigDecimal getUnitAmount() {
+        return unitPrice;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return grossAmount;
+    }
+
+    public LocalDateTime getSaleDate() {
+        return soldAt;
+    }
 }

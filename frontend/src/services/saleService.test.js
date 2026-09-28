@@ -6,6 +6,7 @@ vi.mock('./api', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
     delete: vi.fn()
   }
 }))
@@ -53,6 +54,20 @@ describe('saleService', () => {
     const result = await saleService.createSale(payload)
 
     expect(api.post).toHaveBeenCalledWith('/sales', payload)
+    expect(result).toEqual(mockResponse)
+  })
+
+  it('should update sale', async () => {
+    const payload = {
+      quantity: 3,
+      paymentMethod: 'PIX'
+    }
+    const mockResponse = { id: 'sale-123', ...payload, grossAmount: 150.0 }
+    api.put.mockResolvedValueOnce({ data: mockResponse })
+
+    const result = await saleService.updateSale('sale-123', payload)
+
+    expect(api.put).toHaveBeenCalledWith('/sales/sale-123', payload)
     expect(result).toEqual(mockResponse)
   })
 

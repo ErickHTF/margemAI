@@ -1,6 +1,7 @@
 package com.example.margemAI.dto.request;
 
 import com.example.margemAI.model.PaymentMethod;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -33,6 +34,7 @@ public class SaleRequest {
     private BigDecimal quantity;
 
     @DecimalMin(value = "0.01", message = "O preço unitário deve ser maior que zero.")
+    @JsonAlias({"unitAmount", "unit_price", "unitPrice"})
     private BigDecimal unitPrice;
 
     @NotNull(message = "O método de pagamento é obrigatório.")
@@ -46,6 +48,7 @@ public class SaleRequest {
     @DecimalMax(value = "100.00", message = "A taxa percentual não pode exceder 100%.")
     private BigDecimal customFeePercentage;
 
+    @JsonAlias({"saleDate", "sold_at", "soldAt"})
     private LocalDateTime soldAt;
 
     @Size(max = 500, message = "As observações devem ter no máximo 500 caracteres.")

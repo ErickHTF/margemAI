@@ -106,12 +106,72 @@ public class SaleService {
         return toResponse(saved);
     }
 
+    @Transactional
+    public SaleResponse update(UUID userId, UUID id, SaleRequest request) {
+        Sale sale = saleRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException(SALE_NOT_FOUND_MESSAGE));
+
+        Product product = null;
+        String description = request.getDescription();
+        BigDecimal unitPrice = request.getUnitPrice();
+
+        if (request.getProductId() != null) {
+            product = productRepository.findByIdAndUserId(request.getProductId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException(PRODUCT_NOT_FOUND_MESSAGE));
+
+            if (description == null || description.trim().isEmpty()) {
+                description = product.getName();
+            }
+            if (unitPrice == null) {
+                unitPrice = product.getSellingPrice();
+            }
+        }
+
+        if (description == null || description.trim().isEmpty()) {
+            throw new InvalidRequestException("A descrição do item vendido é obrigatória quando nenhum produto for selecionado.");
+        }
+
+        if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidRequestException("O preço unitário deve ser maior que zero.");
+        }
+
+        PaymentFeeCalculator.FeeCalculationResult feeResult = paymentFeeCalculator.calculate(
+                request.getQuantity(),
+                unitPrice,
+                request.getPaymentMethod(),
+                request.getInstallments(),
+                request.getCustomFeePercentage()
+        );
+
+        LocalDateTime soldAt = request.getSoldAt() != null ? request.getSoldAt() : sale.getSoldAt();
+        int installments = (request.getInstallments() != null && request.getInstallments() >= 1)
+                ? request.getInstallments()
+                : 1;
+
+        sale.setProduct(product);
+        sale.setDescription(description.trim());
+        sale.setQuantity(request.getQuantity());
+        sale.setUnitPrice(unitPrice);
+        sale.setGrossAmount(feeResult.grossAmount());
+        sale.setPaymentMethod(request.getPaymentMethod());
+        sale.setInstallments(installments);
+        sale.setFeePercentage(feeResult.feePercentage());
+        sale.setFeeAmount(feeResult.feeAmount());
+        sale.setNetAmount(feeResult.netAmount());
+        sale.setSoldAt(soldAt);
+        sale.setNotes(request.getNotes());
+
+        Sale saved = saleRepository.save(sale);
+        return toResponse(saved);
+    }
+
     @Transactional(readOnly = true)
     public SaleSummaryResponse findAll(
             UUID userId,
             LocalDateTime startDate,
             LocalDateTime endDate,
             PaymentMethod paymentMethod,
+            UUID productId,
             int page,
             int size
     ) {
@@ -130,6 +190,9 @@ public class SaleService {
             }
             if (paymentMethod != null) {
                 predicates.add(cb.equal(root.get("paymentMethod"), paymentMethod));
+            }
+            if (productId != null) {
+                predicates.add(cb.equal(root.get("product").get("id"), productId));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -272,6 +273,147 @@ public class SaleControllerTest {
                 .andExpect(status().isNoContent());
 
         assertFalse(saleRepository.existsById(sale.getId()));
+    }
+
+    @Test
+    @DisplayName("PUT /sales/{id} - Deve atualizar venda existente com sucesso")
+    void shouldUpdateSaleSuccessfully() throws Exception {
+        Sale sale = saleRepository.save(Sale.builder()
+                .user(savedUser)
+                .product(userProduct)
+                .description("Açaí 500ml")
+                .quantity(new BigDecimal("1.00"))
+                .unitPrice(new BigDecimal("18.00"))
+                .grossAmount(new BigDecimal("18.00"))
+                .paymentMethod(PaymentMethod.DINHEIRO)
+                .feePercentage(BigDecimal.ZERO)
+                .feeAmount(BigDecimal.ZERO)
+                .netAmount(new BigDecimal("18.00"))
+                .soldAt(LocalDateTime.now())
+                .build());
+
+        SaleRequest updateRequest = SaleRequest.builder()
+                .productId(userProduct.getId())
+                .quantity(new BigDecimal("3.00"))
+                .unitPrice(new BigDecimal("20.00"))
+                .paymentMethod(PaymentMethod.CREDITO_A_VISTA)
+                .build();
+
+        mockMvc.perform(put("/sales/" + sale.getId())
+                        .header("Authorization", bearerHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(sale.getId().toString()))
+                .andExpect(jsonPath("$.quantity").value(3.00))
+                .andExpect(jsonPath("$.unitPrice").value(20.00))
+                .andExpect(jsonPath("$.grossAmount").value(60.00))
+                .andExpect(jsonPath("$.paymentMethod").value("CREDITO_A_VISTA"))
+                .andExpect(jsonPath("$.feePercentage").value(3.20))
+                .andExpect(jsonPath("$.feeAmount").value(1.92))
+                .andExpect(jsonPath("$.netAmount").value(58.08));
+    }
+
+    @Test
+    @DisplayName("PUT /sales/{id} - Deve retornar 404 ao tentar atualizar venda de outro usuário")
+    void shouldReturn404WhenUpdatingOtherUserSale() throws Exception {
+        Sale otherSale = saleRepository.save(Sale.builder()
+                .user(otherUser)
+                .description("Venda Outro")
+                .quantity(BigDecimal.ONE)
+                .unitPrice(new BigDecimal("10.00"))
+                .grossAmount(new BigDecimal("10.00"))
+                .paymentMethod(PaymentMethod.DINHEIRO)
+                .feePercentage(BigDecimal.ZERO)
+                .feeAmount(BigDecimal.ZERO)
+                .netAmount(new BigDecimal("10.00"))
+                .soldAt(LocalDateTime.now())
+                .build());
+
+        SaleRequest updateRequest = SaleRequest.builder()
+                .description("Tentativa Hacker")
+                .quantity(BigDecimal.ONE)
+                .unitPrice(new BigDecimal("20.00"))
+                .paymentMethod(PaymentMethod.DINHEIRO)
+                .build();
+
+        mockMvc.perform(put("/sales/" + otherSale.getId())
+                        .header("Authorization", bearerHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /sales?productId={id} - Deve filtrar vendas pelo produto especificado")
+    void shouldFilterSalesByProductId() throws Exception {
+        Product anotherProduct = productRepository.save(Product.builder()
+                .name("Suco Natural")
+                .type(ItemType.PRODUTO)
+                .baseCost(new BigDecimal("3.00"))
+                .sellingPrice(new BigDecimal("10.00"))
+                .active(true)
+                .user(savedUser)
+                .build());
+
+        saleRepository.save(Sale.builder()
+                .user(savedUser)
+                .product(userProduct)
+                .description("Açaí 500ml")
+                .quantity(BigDecimal.ONE)
+                .unitPrice(new BigDecimal("18.00"))
+                .grossAmount(new BigDecimal("18.00"))
+                .paymentMethod(PaymentMethod.DINHEIRO)
+                .feePercentage(BigDecimal.ZERO)
+                .feeAmount(BigDecimal.ZERO)
+                .netAmount(new BigDecimal("18.00"))
+                .soldAt(LocalDateTime.now())
+                .build());
+
+        saleRepository.save(Sale.builder()
+                .user(savedUser)
+                .product(anotherProduct)
+                .description("Suco Natural")
+                .quantity(BigDecimal.ONE)
+                .unitPrice(new BigDecimal("10.00"))
+                .grossAmount(new BigDecimal("10.00"))
+                .paymentMethod(PaymentMethod.DINHEIRO)
+                .feePercentage(BigDecimal.ZERO)
+                .feeAmount(BigDecimal.ZERO)
+                .netAmount(new BigDecimal("10.00"))
+                .soldAt(LocalDateTime.now())
+                .build());
+
+        mockMvc.perform(get("/sales")
+                        .param("productId", anotherProduct.getId().toString())
+                        .header("Authorization", bearerHeader()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalSalesCount").value(1))
+                .andExpect(jsonPath("$.totalGrossRevenue").value(10.00))
+                .andExpect(jsonPath("$.sales.content[0].productName").value("Suco Natural"));
+    }
+
+    @Test
+    @DisplayName("POST /sales - Deve aceitar payload OpenAPI usando unitAmount e saleDate")
+    void shouldAcceptOpenApiAliasedPayload() throws Exception {
+        String jsonPayload = """
+                {
+                    "productId": "%s",
+                    "quantity": 2,
+                    "unitAmount": 18.00,
+                    "paymentMethod": "PIX",
+                    "saleDate": "2026-06-15T14:30:00"
+                }
+                """.formatted(userProduct.getId());
+
+        mockMvc.perform(post("/sales")
+                        .header("Authorization", bearerHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.grossAmount").value(36.00))
+                .andExpect(jsonPath("$.unitPrice").value(18.00))
+                .andExpect(jsonPath("$.paymentMethod").value("PIX"));
     }
 
     @Test

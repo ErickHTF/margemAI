@@ -16,6 +16,11 @@ export const saleService = {
     return response.data
   },
 
+  async updateSale(id, data) {
+    const response = await api.put(`/sales/${id}`, data)
+    return response.data
+  },
+
   async deleteSale(id) {
     await api.delete(`/sales/${id}`)
   }
