@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Package,
   Wrench,
@@ -8,6 +8,7 @@ import {
   X
 } from 'lucide-react'
 import { productService } from '../services/productService'
+import { categoryService } from '../services/categoryService'
 
 export default function ProductForm({ initialProduct, onCancel, onSaved }) {
   const isEditing = Boolean(initialProduct?.id)
@@ -17,13 +18,34 @@ export default function ProductForm({ initialProduct, onCancel, onSaved }) {
     description: initialProduct?.description || '',
     type: initialProduct?.type || 'PRODUTO',
     baseCost: initialProduct?.baseCost ? String(initialProduct.baseCost) : '0.00',
-    sellingPrice: initialProduct?.sellingPrice ? String(initialProduct.sellingPrice) : ''
+    sellingPrice: initialProduct?.sellingPrice ? String(initialProduct.sellingPrice) : '',
+    categoryId: initialProduct?.categoryId || '',
+    targetProfitMargin: initialProduct?.targetProfitMargin != null ? String(initialProduct.targetProfitMargin) : ''
   })
 
+  const [categories, setCategories] = useState([])
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const loadCategories = async () => {
+      try {
+        const data = await categoryService.getCategories({ active: true, page: 0, size: 100 })
+        if (!cancelled) setCategories(data.content || [])
+      } catch {
+        if (!cancelled) setCategories([])
+      }
+    }
+    loadCategories()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const selectedCategory = categories.find((category) => category.id === formData.categoryId)
 
   const validateField = (field, value) => {
     switch (field) {
@@ -42,6 +64,13 @@ export default function ProductForm({ initialProduct, onCancel, onSaved }) {
       case 'sellingPrice': {
         const num = Number(value)
         if (!value || isNaN(num) || num <= 0) return 'Informe um preço de venda maior que zero.'
+        return null
+      }
+      case 'targetProfitMargin': {
+        if (value === '' || value == null) return null
+        const num = Number(value)
+        if (isNaN(num)) return 'Informe uma margem de lucro válida.'
+        if (num < 0.01 || num > 99.99) return 'A margem deve estar entre 0.01% e 99.99%.'
         return null
       }
       default:
@@ -76,14 +105,16 @@ export default function ProductForm({ initialProduct, onCancel, onSaved }) {
       name: validateField('name', formData.name),
       type: validateField('type', formData.type),
       baseCost: validateField('baseCost', formData.baseCost),
-      sellingPrice: validateField('sellingPrice', formData.sellingPrice)
+      sellingPrice: validateField('sellingPrice', formData.sellingPrice),
+      targetProfitMargin: validateField('targetProfitMargin', formData.targetProfitMargin)
     }
     setErrors(newErrors)
     setTouched({
       name: true,
       type: true,
       baseCost: true,
-      sellingPrice: true
+      sellingPrice: true,
+      targetProfitMargin: true
     })
     return !Object.values(newErrors).some(Boolean)
   }
@@ -101,7 +132,9 @@ export default function ProductForm({ initialProduct, onCancel, onSaved }) {
         description: formData.description.trim() || null,
         type: formData.type,
         baseCost: Number(formData.baseCost) || 0,
-        sellingPrice: Number(formData.sellingPrice)
+        sellingPrice: Number(formData.sellingPrice),
+        categoryId: formData.categoryId || null,
+        targetProfitMargin: formData.targetProfitMargin === '' ? null : Number(formData.targetProfitMargin)
       }
 
       if (isEditing) {
@@ -214,6 +247,64 @@ export default function ProductForm({ initialProduct, onCancel, onSaved }) {
             placeholder="Ex: Tamanhos P ao GG, 100% algodão penteado"
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
           />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Padrão de precificação (opcional)
+            </label>
+            <select
+              name="categoryId"
+              value={formData.categoryId}
+              onChange={handleChange}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
+            >
+              <option value="">Sem padrão</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Herde automaticamente margem, alíquota e teto de desconto do padrão.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Margem de Lucro Desejada (%)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="99.99"
+                name="targetProfitMargin"
+                value={formData.targetProfitMargin}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder={selectedCategory ? `Herdada: ${selectedCategory.targetProfitMargin ?? '—'}%` : 'Ex: 25'}
+                className={`w-full pl-3 pr-8 py-2.5 rounded-xl border text-sm bg-slate-50/50 focus:outline-none focus:ring-2 ${
+                  touched.targetProfitMargin && errors.targetProfitMargin
+                    ? 'border-rose-400 focus:ring-rose-200'
+                    : 'border-slate-200 focus:ring-indigo-100 focus:border-indigo-500'
+                }`}
+              />
+              <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 text-sm">
+                %
+              </span>
+            </div>
+            {touched.targetProfitMargin && errors.targetProfitMargin ? (
+              <p className="text-xs text-rose-600 mt-1">{errors.targetProfitMargin}</p>
+            ) : (
+              <p className="text-[11px] text-slate-400 mt-1">
+                Em branco usa a margem assumida pelo padrão.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

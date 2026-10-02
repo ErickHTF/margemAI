@@ -16,24 +16,18 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductResponse {
+public class CategoryResponse {
     private UUID id;
     private String name;
-    private String description;
+    private String slug;
     private ItemType type;
-    private BigDecimal baseCost;
-    private BigDecimal variableCostsTotal;
-    private BigDecimal effectiveBaseCost;
-    private BigDecimal sellingPrice;
-    private BigDecimal contributionMargin;
-    private BigDecimal marginPercentage;
-    private UUID categoryId;
-    private String categoryName;
     private BigDecimal targetProfitMargin;
-    private Boolean marginInheritedFromCategory;
     private BigDecimal taxRate;
+    private BigDecimal maxDiscountAllowed;
     private BigDecimal variableCostPercent;
     private Boolean active;
+    private UUID parentId;
+    private String parentName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

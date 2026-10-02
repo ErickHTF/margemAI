@@ -2,7 +2,6 @@ package com.example.margemAI.dto.request;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,16 +26,21 @@ public class PricingRequest {
     @DecimalMax(value = "99.99", message = "O percentual de custos fixos deve ser menor que 100%")
     private BigDecimal fixedCostPercent = BigDecimal.ZERO;
 
-    @Builder.Default
     @DecimalMin(value = "0.00", message = "O percentual de custos variáveis não pode ser negativo")
     @DecimalMax(value = "99.99", message = "O percentual de custos variáveis deve ser menor que 100%")
-    private BigDecimal variableCostPercent = BigDecimal.ZERO;
+    private BigDecimal variableCostPercent;
 
-    @NotNull(message = "A margem de lucro desejada é obrigatória")
     @DecimalMin(value = "0.00", message = "A margem de lucro desejada não pode ser negativa")
     @DecimalMax(value = "99.99", message = "A margem de lucro desejada deve ser menor que 100%")
     private BigDecimal desiredMargin;
 
+    @DecimalMin(value = "0.00", message = "A alíquota tributária não pode ser negativa")
+    @DecimalMax(value = "99.99", message = "A alíquota tributária deve ser menor que 100%")
+    private BigDecimal taxRate;
+
     @Builder.Default
     private Boolean includeFixedCosts = true;
+
+    @Builder.Default
+    private Boolean useAutomaticFixedCosts = false;
 }

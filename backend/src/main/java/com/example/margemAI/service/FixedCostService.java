@@ -3,6 +3,7 @@ package com.example.margemAI.service;
 import com.example.margemAI.dto.request.FixedCostRequest;
 import com.example.margemAI.dto.response.FixedCostResponse;
 import com.example.margemAI.dto.response.PaginatedResponse;
+import com.example.margemAI.event.FixedCostsRecalculatedEvent;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.FixedCost;
@@ -11,6 +12,7 @@ import com.example.margemAI.repository.FixedCostRepository;
 import com.example.margemAI.repository.UserRepository;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,13 +34,14 @@ public class FixedCostService {
 
     private static final String NOT_FOUND_MESSAGE = "Custo fixo não encontrado.";
     private static final String FULL_UPDATE_REQUIRED_MESSAGE =
-            "Nome, valor e categoria são obrigatórios para a criação ou atualização completa de um custo fixo.";
+            "Nome, valor e padrão de precificação são obrigatórios para a criação ou atualização completa de um custo fixo.";
     private static final String INVALID_MONTH_MESSAGE = "Mês inválido. Use o formato AAAA-MM.";
     private static final String INVALID_PAGINATION_MESSAGE =
             "Parâmetros de paginação inválidos. page deve ser >= 0 e size entre 1 e 100.";
 
     private final FixedCostRepository fixedCostRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public PaginatedResponse<FixedCostResponse> findAll(UUID userId, String month, FixedCostCategory category, int page, int size) {
@@ -89,7 +92,9 @@ public class FixedCostService {
                 .active(true)
                 .user(userRepository.getReferenceById(userId))
                 .build();
-        return toResponse(fixedCostRepository.save(cost));
+        FixedCost saved = fixedCostRepository.save(cost);
+        publishRecalculated(userId);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -101,6 +106,7 @@ public class FixedCostService {
         cost.setCategory(request.getCategory());
         cost.setDueDate(request.getDueDate());
         cost.setRecurring(request.getRecurring() == null || request.getRecurring());
+        publishRecalculated(userId);
         return toResponse(cost);
     }
 
@@ -122,6 +128,7 @@ public class FixedCostService {
         if (request.getRecurring() != null) {
             cost.setRecurring(request.getRecurring());
         }
+        publishRecalculated(userId);
         return toResponse(cost);
     }
 
@@ -130,6 +137,11 @@ public class FixedCostService {
         FixedCost cost = fixedCostRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MESSAGE));
         cost.setActive(false);
+        publishRecalculated(userId);
+    }
+
+    private void publishRecalculated(UUID userId) {
+        eventPublisher.publishEvent(new FixedCostsRecalculatedEvent(userId));
     }
 
     private FixedCost findActive(UUID userId, UUID id) {

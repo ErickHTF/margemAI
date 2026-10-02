@@ -272,6 +272,11 @@ export default function ProductManager() {
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
                         {item.type === 'SERVICO' ? 'Serviço' : 'Produto'}
                       </span>
+                      {item.categoryName && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600">
+                          {item.categoryName}
+                        </span>
+                      )}
                     </div>
                     {item.description && (
                       <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{item.description}</p>

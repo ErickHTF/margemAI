@@ -5,34 +5,65 @@ import com.example.margemAI.dto.request.SimulateDiscountRequest;
 import com.example.margemAI.dto.response.PricingResponse;
 import com.example.margemAI.dto.response.SimulateDiscountResponse;
 import com.example.margemAI.exception.InvalidFinancialCalculationException;
+import com.example.margemAI.exception.ResourceNotFoundException;
+import com.example.margemAI.model.Product;
+import com.example.margemAI.model.VariableCost;
+import com.example.margemAI.repository.ProductRepository;
+import com.example.margemAI.repository.VariableCostRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.Function;
 
 @Service
+@RequiredArgsConstructor
 public class PricingService {
 
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
+    private final ProductRepository productRepository;
+    private final VariableCostRepository variableCostRepository;
+    private final CategoryService categoryService;
+    private final FixedCostProfileService fixedCostProfileService;
 
-    public PricingResponse calculatePricing(PricingRequest request) {
-        if (request.getBaseCost() == null) {
-            throw new InvalidFinancialCalculationException("O custo base do produto ou serviço é obrigatório.");
+    @Transactional(readOnly = true)
+    public PricingResponse calculatePricing(PricingRequest request, UUID userId) {
+        BigDecimal baseCost;
+        String productName = null;
+        UUID productId = request.getProductId();
+        CategoryParameters inheritedParameters = null;
+
+        if (productId != null) {
+            Product product = productRepository.findByIdAndUserIdAndActiveTrue(productId, userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Produto ou serviço não encontrado."));
+            baseCost = resolveEffectiveBaseCost(product, userId);
+            productName = product.getName();
+            if (product.getCategory() != null) {
+                inheritedParameters = categoryService.resolveParameters(product.getCategory());
+            }
+        } else {
+            if (request.getBaseCost() == null) {
+                throw new InvalidFinancialCalculationException("O custo base do produto ou serviço é obrigatório.");
+            }
+            baseCost = request.getBaseCost();
         }
 
-        BigDecimal baseCost = request.getBaseCost();
-        BigDecimal fixedPercent = (request.getIncludeFixedCosts() != null && request.getIncludeFixedCosts())
-                ? (request.getFixedCostPercent() != null ? request.getFixedCostPercent() : BigDecimal.ZERO)
-                : BigDecimal.ZERO;
-        BigDecimal varPercent = request.getVariableCostPercent() != null ? request.getVariableCostPercent() : BigDecimal.ZERO;
-        BigDecimal desiredMargin = request.getDesiredMargin() != null ? request.getDesiredMargin() : BigDecimal.ZERO;
+        BigDecimal fixedPercent = resolveFixedPercent(request, userId);
+        BigDecimal varPercent = resolvePercent(request.getVariableCostPercent(), inheritedParameters, CategoryParameters::variableCostPercent);
+        BigDecimal desiredMargin = resolvePercent(request.getDesiredMargin(), inheritedParameters, CategoryParameters::targetProfitMargin);
+        BigDecimal taxPercent = resolvePercent(request.getTaxRate(), inheritedParameters, CategoryParameters::taxRate);
 
-        BigDecimal sumPercentages = fixedPercent.add(varPercent).add(desiredMargin);
+        BigDecimal sumPercentages = fixedPercent.add(varPercent).add(desiredMargin).add(taxPercent);
 
         if (sumPercentages.compareTo(ONE_HUNDRED) >= 0) {
             throw new InvalidFinancialCalculationException(
                     "A soma dos percentuais de custos fixos (" + fixedPercent + "%), custos variáveis (" + varPercent
-                            + "%) e margem desejada (" + desiredMargin + "%) totaliza " + sumPercentages
+                            + "%), margem desejada (" + desiredMargin + "%) e tributos (" + taxPercent + "%) totaliza "
+                            + sumPercentages
                             + "%, que é igual ou superior a 100%. Pela metodologia SEBRAE, a soma deve ser estritamente inferior a 100%."
             );
         }
@@ -54,7 +85,9 @@ public class PricingService {
                 .multiply(varPercent)
                 .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
 
-        BigDecimal estimatedTaxes = BigDecimal.ZERO;
+        BigDecimal estimatedTaxes = minimumSellingPrice
+                .multiply(taxPercent)
+                .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
 
         BigDecimal totalUnitCost = baseCost
                 .add(allocatedFixedCosts)
@@ -71,8 +104,8 @@ public class PricingService {
                 .subtract(baseCost.add(totalVariableCosts));
 
         return PricingResponse.builder()
-                .productId(request.getProductId())
-                .productName(null)
+                .productId(productId)
+                .productName(productName)
                 .baseCost(baseCost.setScale(2, RoundingMode.HALF_UP))
                 .totalVariableCosts(totalVariableCosts)
                 .allocatedFixedCosts(allocatedFixedCosts)
@@ -85,6 +118,42 @@ public class PricingService {
                 .grossMargin(grossMargin)
                 .contributionMargin(contributionMargin)
                 .build();
+    }
+
+    private BigDecimal resolveEffectiveBaseCost(Product product, UUID userId) {
+        BigDecimal manualBase = product.getBaseCost() != null ? product.getBaseCost() : BigDecimal.ZERO;
+        List<VariableCost> variableCosts = variableCostRepository
+                .findByProductIdAndUserIdAndActiveTrue(product.getId(), userId);
+        BigDecimal variableCostsTotal = variableCosts.stream()
+                .map(VariableCost::getUnitAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return variableCostsTotal.compareTo(BigDecimal.ZERO) > 0 ? variableCostsTotal : manualBase;
+    }
+
+    private BigDecimal resolveFixedPercent(PricingRequest request, UUID userId) {
+        if (request.getIncludeFixedCosts() == null || !request.getIncludeFixedCosts()) {
+            return BigDecimal.ZERO;
+        }
+        if (Boolean.TRUE.equals(request.getUseAutomaticFixedCosts())) {
+            return fixedCostProfileService.getEffectiveFixedCostPercent(userId);
+        }
+        return request.getFixedCostPercent() != null ? request.getFixedCostPercent() : BigDecimal.ZERO;
+    }
+
+    private BigDecimal resolvePercent(
+            BigDecimal explicitValue,
+            CategoryParameters inheritedParameters,
+            Function<CategoryParameters, BigDecimal> extractor) {
+        if (explicitValue != null) {
+            return explicitValue;
+        }
+        if (inheritedParameters != null) {
+            BigDecimal inherited = extractor.apply(inheritedParameters);
+            if (inherited != null) {
+                return inherited;
+            }
+        }
+        return BigDecimal.ZERO;
     }
 
     public SimulateDiscountResponse simulateDiscount(SimulateDiscountRequest request) {

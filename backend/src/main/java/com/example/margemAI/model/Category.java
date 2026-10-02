@@ -8,11 +8,13 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,45 +26,54 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "products")
+@Table(
+        name = "categories",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_categories_user_slug",
+                columnNames = {"user_id", "slug"}
+        ),
+        indexes = @Index(name = "idx_categories_user_active", columnList = "user_id, active")
+)
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Product {
+public class Category {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, length = 200)
+    @Column(nullable = false, length = 150)
     private String name;
 
-    @Column(length = 500)
-    private String description;
+    @Column(nullable = false, length = 160)
+    private String slug;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ItemType type;
 
-    @Builder.Default
-    @Column(name = "base_cost", precision = 12, scale = 2)
-    private BigDecimal baseCost = BigDecimal.ZERO;
-
-    @Column(name = "selling_price", nullable = false, precision = 12, scale = 2)
-    private BigDecimal sellingPrice;
-
     @Column(name = "target_profit_margin", precision = 5, scale = 2)
     private BigDecimal targetProfitMargin;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
+    @Column(name = "tax_rate", precision = 5, scale = 2)
+    private BigDecimal taxRate;
+
+    @Column(name = "max_discount_allowed", precision = 5, scale = 2)
+    private BigDecimal maxDiscountAllowed;
+
+    @Column(name = "variable_cost_percent", precision = 5, scale = 2)
+    private BigDecimal variableCostPercent;
 
     @Builder.Default
     @Column(nullable = false)
     private Boolean active = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private Category parent;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -80,9 +91,6 @@ public class Product {
         this.updatedAt = LocalDateTime.now();
         if (this.active == null) {
             this.active = true;
-        }
-        if (this.baseCost == null) {
-            this.baseCost = BigDecimal.ZERO;
         }
     }
 
