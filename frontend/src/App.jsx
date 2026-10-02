@@ -9,7 +9,8 @@ import {
   Calculator,
   Tags,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  ShoppingBag
 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
@@ -19,6 +20,7 @@ import CostsDashboard from './components/CostsDashboard'
 import ProductManager from './components/ProductManager'
 import CategoryManager from './components/CategoryManager'
 import PricingCalculator from './components/PricingCalculator'
+import SalesManager from './components/SalesManager'
 
 const NAV_GROUPS = [
   {
@@ -38,6 +40,7 @@ const NAV_GROUPS = [
     key: 'finance',
     label: 'Financeiro',
     items: [
+      { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'costs', label: 'Custos', Icon: Wallet },
       { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator }
     ]
@@ -103,6 +106,8 @@ export default function App() {
         return <ProductManager />
       case 'categories':
         return <CategoryManager />
+      case 'sales':
+        return <SalesManager />
       case 'costs':
         return <CostsDashboard />
       case 'pricing':
