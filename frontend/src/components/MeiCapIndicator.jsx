@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types'
 import { AlertTriangle, AlertCircle, CheckCircle2, Info } from 'lucide-react'
 
 const SEVERITY_CONFIG = {
@@ -103,15 +102,3 @@ export default function MeiCapIndicator({ data }) {
   )
 }
 
-MeiCapIndicator.propTypes = {
-  data: PropTypes.shape({
-    annualLimit: PropTypes.number,
-    proRata: PropTypes.bool,
-    activeMonths: PropTypes.number,
-    accumulatedRevenue: PropTypes.number,
-    usagePercent: PropTypes.number,
-    remainingAmount: PropTypes.number,
-    severity: PropTypes.string,
-    recommendationMessage: PropTypes.string
-  })
-}
