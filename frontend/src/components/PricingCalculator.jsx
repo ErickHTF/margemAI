@@ -22,6 +22,8 @@ import {
   SEBRAE_GOLDEN_RULE,
   SEBRAE_PERCENT_BASIS
 } from '../utils/sebraeMethod'
+import EducationalPill from './EducationalPill'
+import { getPillById } from '../data/sebraePills'
 
 export default function PricingCalculator() {
   const [formData, setFormData] = useState({
@@ -860,6 +862,10 @@ export default function PricingCalculator() {
               >
                 <span className="font-semibold shrink-0">Regra de ouro:</span>
                 <span>{SEBRAE_GOLDEN_RULE}</span>
+              </div>
+
+              <div className="pt-2">
+                <EducationalPill pill={getPillById('markup-divisor')} />
               </div>
             </div>
           )}
