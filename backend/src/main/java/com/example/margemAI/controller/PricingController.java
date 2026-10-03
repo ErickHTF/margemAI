@@ -1,7 +1,9 @@
 package com.example.margemAI.controller;
 
+import com.example.margemAI.dto.request.BreakEvenRequest;
 import com.example.margemAI.dto.request.PricingRequest;
 import com.example.margemAI.dto.request.SimulateDiscountRequest;
+import com.example.margemAI.dto.response.BreakEvenResponse;
 import com.example.margemAI.dto.response.PricingResponse;
 import com.example.margemAI.dto.response.SimulateDiscountResponse;
 import com.example.margemAI.model.User;
@@ -36,6 +38,15 @@ public class PricingController {
     @PostMapping("/simulate-discount")
     public ResponseEntity<SimulateDiscountResponse> simulateDiscount(@Valid @RequestBody SimulateDiscountRequest request) {
         SimulateDiscountResponse response = pricingService.simulateDiscount(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/break-even")
+    public ResponseEntity<BreakEvenResponse> calculateBreakEven(
+            @Valid @RequestBody BreakEvenRequest request,
+            Authentication authentication) {
+        UUID userId = authenticatedUserId(authentication);
+        BreakEvenResponse response = pricingService.calculateBreakEven(request, userId);
         return ResponseEntity.ok(response);
     }
 

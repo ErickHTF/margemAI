@@ -1,7 +1,9 @@
 package com.example.margemAI.controller;
 
+import com.example.margemAI.dto.request.BreakEvenRequest;
 import com.example.margemAI.dto.request.PricingRequest;
 import com.example.margemAI.dto.request.SimulateDiscountRequest;
+import com.example.margemAI.dto.response.BreakEvenResponse;
 import com.example.margemAI.dto.response.PricingResponse;
 import com.example.margemAI.dto.response.SimulateDiscountResponse;
 import com.example.margemAI.exception.InvalidFinancialCalculationException;
@@ -150,5 +152,38 @@ public class PricingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldCalculateBreakEvenSuccessfully() throws Exception {
+        BreakEvenRequest request = BreakEvenRequest.builder()
+                .sellingPrice(new BigDecimal("50.00"))
+                .unitVariableCost(new BigDecimal("20.00"))
+                .totalFixedCosts(new BigDecimal("3000.00"))
+                .build();
+
+        BreakEvenResponse response = BreakEvenResponse.builder()
+                .sellingPrice(new BigDecimal("50.00"))
+                .unitVariableCost(new BigDecimal("20.00"))
+                .totalFixedCosts(new BigDecimal("3000.00"))
+                .unitContributionMargin(new BigDecimal("30.00"))
+                .contributionMarginRatio(new BigDecimal("60.00"))
+                .breakEvenQuantity(100L)
+                .breakEvenRevenue(new BigDecimal("5000.00"))
+                .viable(true)
+                .recommendation("Diretriz SEBRAE")
+                .build();
+
+        when(pricingService.calculateBreakEven(any(BreakEvenRequest.class), any(UUID.class))).thenReturn(response);
+
+        mockMvc.perform(post("/v1/pricing/break-even")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sellingPrice").value(50.00))
+                .andExpect(jsonPath("$.unitContributionMargin").value(30.00))
+                .andExpect(jsonPath("$.breakEvenQuantity").value(100))
+                .andExpect(jsonPath("$.breakEvenRevenue").value(5000.00))
+                .andExpect(jsonPath("$.viable").value(true));
     }
 }
