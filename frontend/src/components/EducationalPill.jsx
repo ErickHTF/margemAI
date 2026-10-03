@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import PropTypes from 'prop-types'
 import { Lightbulb, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 
 export default function EducationalPill({ pill, defaultExpanded = false }) {
@@ -55,15 +54,3 @@ export default function EducationalPill({ pill, defaultExpanded = false }) {
   )
 }
 
-EducationalPill.propTypes = {
-  pill: PropTypes.shape({
-    id: PropTypes.string,
-    category: PropTypes.string,
-    categoryLabel: PropTypes.string,
-    title: PropTypes.string.isRequired,
-    summary: PropTypes.string.isRequired,
-    content: PropTypes.string.isRequired,
-    tip: PropTypes.string
-  }),
-  defaultExpanded: PropTypes.bool
-}
