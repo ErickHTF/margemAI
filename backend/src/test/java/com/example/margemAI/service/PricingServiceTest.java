@@ -1,7 +1,9 @@
 package com.example.margemAI.service;
 
+import com.example.margemAI.dto.request.BreakEvenRequest;
 import com.example.margemAI.dto.request.PricingRequest;
 import com.example.margemAI.dto.request.SimulateDiscountRequest;
+import com.example.margemAI.dto.response.BreakEvenResponse;
 import com.example.margemAI.dto.response.PricingResponse;
 import com.example.margemAI.dto.response.SimulateDiscountResponse;
 import com.example.margemAI.exception.InvalidFinancialCalculationException;
@@ -356,5 +358,72 @@ class PricingServiceTest {
         assertNotNull(response);
         assertTrue(response.getViable());
         assertTrue(response.getRecommendation().contains("Atenção SEBRAE"));
+    }
+
+    @Test
+    void shouldCalculateBreakEvenAccurately() {
+        UUID userId = UUID.randomUUID();
+        BreakEvenRequest request = BreakEvenRequest.builder()
+                .sellingPrice(new BigDecimal("50.00"))
+                .unitVariableCost(new BigDecimal("20.00"))
+                .totalFixedCosts(new BigDecimal("3000.00"))
+                .build();
+
+        BreakEvenResponse response = pricingService.calculateBreakEven(request, userId);
+
+        assertNotNull(response);
+        assertTrue(response.isViable());
+        assertEquals(new BigDecimal("30.00"), response.getUnitContributionMargin());
+        assertEquals(new BigDecimal("60.00"), response.getContributionMarginRatio());
+        assertEquals(100L, response.getBreakEvenQuantity());
+        assertEquals(new BigDecimal("5000.00"), response.getBreakEvenRevenue());
+        assertTrue(response.getRecommendation().contains("Diretriz SEBRAE"));
+    }
+
+    @Test
+    void shouldHandleZeroFixedCostsBreakEven() {
+        UUID userId = UUID.randomUUID();
+        BreakEvenRequest request = BreakEvenRequest.builder()
+                .sellingPrice(new BigDecimal("100.00"))
+                .unitVariableCost(new BigDecimal("40.00"))
+                .totalFixedCosts(BigDecimal.ZERO)
+                .build();
+
+        BreakEvenResponse response = pricingService.calculateBreakEven(request, userId);
+
+        assertNotNull(response);
+        assertTrue(response.isViable());
+        assertEquals(0L, response.getBreakEvenQuantity());
+        assertEquals(new BigDecimal("0.00"), response.getBreakEvenRevenue());
+        assertTrue(response.getRecommendation().contains("Ponto de equilíbrio zero"));
+    }
+
+    @Test
+    void shouldIdentifyNonViableBreakEvenWhenPriceBelowVariableCost() {
+        UUID userId = UUID.randomUUID();
+        BreakEvenRequest request = BreakEvenRequest.builder()
+                .sellingPrice(new BigDecimal("30.00"))
+                .unitVariableCost(new BigDecimal("35.00"))
+                .totalFixedCosts(new BigDecimal("1500.00"))
+                .build();
+
+        BreakEvenResponse response = pricingService.calculateBreakEven(request, userId);
+
+        assertNotNull(response);
+        assertFalse(response.isViable());
+        assertEquals(new BigDecimal("-5.00"), response.getUnitContributionMargin());
+        assertTrue(response.getRecommendation().contains("Alerta Crítico SEBRAE"));
+    }
+
+    @Test
+    void shouldThrowWhenSellingPriceIsZeroOrNegativeInBreakEven() {
+        UUID userId = UUID.randomUUID();
+        BreakEvenRequest request = BreakEvenRequest.builder()
+                .sellingPrice(BigDecimal.ZERO)
+                .unitVariableCost(new BigDecimal("10.00"))
+                .build();
+
+        assertThrows(InvalidFinancialCalculationException.class,
+                () -> pricingService.calculateBreakEven(request, userId));
     }
 }

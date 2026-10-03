@@ -1,7 +1,9 @@
 package com.example.margemAI.service;
 
+import com.example.margemAI.dto.request.BreakEvenRequest;
 import com.example.margemAI.dto.request.PricingRequest;
 import com.example.margemAI.dto.request.SimulateDiscountRequest;
+import com.example.margemAI.dto.response.BreakEvenResponse;
 import com.example.margemAI.dto.response.PricingResponse;
 import com.example.margemAI.dto.response.SimulateDiscountResponse;
 import com.example.margemAI.exception.InvalidFinancialCalculationException;
@@ -211,6 +213,84 @@ public class PricingService {
                 .discountedProfit(discountedProfit)
                 .originalMargin(originalMargin)
                 .discountedMargin(discountedMargin)
+                .viable(viable)
+                .recommendation(recommendation)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public BreakEvenResponse calculateBreakEven(BreakEvenRequest request, UUID userId) {
+        BigDecimal sellingPrice = request.getSellingPrice();
+        BigDecimal unitVariableCost = request.getUnitVariableCost();
+
+        if (request.getProductId() != null) {
+            Product product = productRepository.findByIdAndUserIdAndActiveTrue(request.getProductId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Produto ou serviço não encontrado."));
+            if (sellingPrice == null) {
+                sellingPrice = product.getSellingPrice() != null ? product.getSellingPrice() : product.getBaseCost();
+            }
+            if (unitVariableCost == null) {
+                unitVariableCost = resolveEffectiveBaseCost(product, userId);
+            }
+        }
+
+        if (sellingPrice == null || sellingPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidFinancialCalculationException("O preço de venda unitário deve ser informado e superior a zero.");
+        }
+
+        if (unitVariableCost == null) {
+            unitVariableCost = BigDecimal.ZERO;
+        }
+
+        BigDecimal totalFixedCosts = request.getTotalFixedCosts();
+        if (totalFixedCosts == null) {
+            totalFixedCosts = fixedCostProfileService.recalculate(userId).getTotalFixedCostsSnapshot();
+            if (totalFixedCosts == null) {
+                totalFixedCosts = BigDecimal.ZERO;
+            }
+        }
+
+        BigDecimal unitContributionMargin = sellingPrice.subtract(unitVariableCost);
+        boolean viable = unitContributionMargin.compareTo(BigDecimal.ZERO) > 0;
+
+        BigDecimal contributionMarginRatio;
+        Long breakEvenQuantity = 0L;
+        BigDecimal breakEvenRevenue = BigDecimal.ZERO;
+        String recommendation;
+
+        if (!viable) {
+            recommendation = "Alerta Crítico SEBRAE: O preço de venda (R$ " + sellingPrice + ") é menor ou igual ao custo variável unitário (R$ " + unitVariableCost + "). Cada unidade vendida gera prejuízo operacional direto. É impossível atingir o ponto de equilíbrio sem reajustar o preço ou reduzir custos.";
+            contributionMarginRatio = sellingPrice.compareTo(BigDecimal.ZERO) > 0
+                    ? unitContributionMargin.multiply(ONE_HUNDRED).divide(sellingPrice, 2, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+        } else {
+            contributionMarginRatio = unitContributionMargin.multiply(ONE_HUNDRED)
+                    .divide(sellingPrice, 2, RoundingMode.HALF_UP);
+
+            if (totalFixedCosts.compareTo(BigDecimal.ZERO) <= 0) {
+                breakEvenQuantity = 0L;
+                breakEvenRevenue = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+                recommendation = "Ponto de equilíbrio zero: Nenhum custo fixo registrado. Qualquer venda já cobre a estrutura do negócio e gera lucro.";
+            } else {
+                BigDecimal rawQty = totalFixedCosts.divide(unitContributionMargin, 4, RoundingMode.CEILING);
+                breakEvenQuantity = rawQty.setScale(0, RoundingMode.CEILING).longValue();
+
+                BigDecimal marginRatioDecimal = unitContributionMargin.divide(sellingPrice, 6, RoundingMode.HALF_UP);
+                breakEvenRevenue = totalFixedCosts.divide(marginRatioDecimal, 2, RoundingMode.HALF_UP);
+
+                recommendation = "Diretriz SEBRAE: Você precisa faturar no mínimo R$ " + breakEvenRevenue
+                        + " (aproximadamente " + breakEvenQuantity + " unidades) no mês para cobrir todos os seus custos e despesas fixas. A partir desse volume, o negócio passa a lucrar de verdade.";
+            }
+        }
+
+        return BreakEvenResponse.builder()
+                .sellingPrice(sellingPrice.setScale(2, RoundingMode.HALF_UP))
+                .unitVariableCost(unitVariableCost.setScale(2, RoundingMode.HALF_UP))
+                .totalFixedCosts(totalFixedCosts.setScale(2, RoundingMode.HALF_UP))
+                .unitContributionMargin(unitContributionMargin.setScale(2, RoundingMode.HALF_UP))
+                .contributionMarginRatio(contributionMarginRatio)
+                .breakEvenQuantity(breakEvenQuantity)
+                .breakEvenRevenue(breakEvenRevenue)
                 .viable(viable)
                 .recommendation(recommendation)
                 .build();
