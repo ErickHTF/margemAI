@@ -27,4 +27,27 @@ class ActuatorHealthTest {
                 .andExpect(jsonPath("$.components.diskSpace.status").value("UP"))
                 .andExpect(jsonPath("$.components.db.status").value("UP"));
     }
+
+    @Test
+    @DisplayName("Deve retornar status 200 e status UP no probe de liveness /actuator/health/liveness")
+    void shouldReturnLivenessProbeUp() throws Exception {
+        mockMvc.perform(get("/actuator/health/liveness"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar status 200 e status UP no probe de readiness /actuator/health/readiness")
+    void shouldReturnReadinessProbeUp() throws Exception {
+        mockMvc.perform(get("/actuator/health/readiness"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar status 200 no endpoint /actuator/info sem autenticação")
+    void shouldReturnInfoWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/actuator/info"))
+                .andExpect(status().isOk());
+    }
 }
