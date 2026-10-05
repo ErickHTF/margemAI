@@ -1,4 +1,32 @@
+# ==============================================================================
+# MargemAI - Docker Compose Stack
+# ==============================================================================
+# Orquestra os serviços do MargemAI em contêineres Docker isolados:
+#  - db: PostgreSQL 16 Alpine (persistência com healthcheck nativo)
+#  - backend: Spring Boot 3.4.2 em JRE 21 Alpine (não roda como root)
+#             Depende da issue #26 (Spring Boot Actuator para health check)
+#  - frontend: React + Vite servido via Nginx Alpine com reverse proxy (/v1 e /actuator)
+# ==============================================================================
+
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: margemai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: margemai
+      POSTGRES_USER: margemai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-margemai_secure_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U margemai -d margemai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -9,18 +37,22 @@ services:
       - "8080:8080"
     environment:
       - SERVER_PORT=8080
-      - SPRING_DATASOURCE_URL=jdbc:h2:mem:margemdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-      - SPRING_DATASOURCE_USERNAME=sa
-      - SPRING_DATASOURCE_PASSWORD=
-      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/margemai
+      - SPRING_DATASOURCE_USERNAME=margemai
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-margemai_secure_pass}
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - MANAGEMENT_HEALTH_SHOW_DETAILS=always
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 25s
+      start_period: 30s
 
   frontend:
     build:
@@ -31,4 +63,8 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:
