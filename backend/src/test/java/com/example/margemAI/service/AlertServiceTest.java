@@ -26,6 +26,9 @@ class AlertServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private com.example.margemAI.repository.SaleRepository saleRepository;
+
     @InjectMocks
     private AlertService alertService;
 
@@ -130,5 +133,45 @@ class AlertServiceTest {
         assertEquals(new BigDecimal("40500.00"), response.getAnnualLimit());
         assertEquals(new BigDecimal("86.42"), response.getUsagePercent());
         assertEquals("WARNING", response.getSeverity());
+        assertTrue(response.isSimulationMode());
+    }
+
+    @Test
+    @DisplayName("Deve somar faturamento bruto real a partir de vendas persistidas quando customRevenue for nulo")
+    void shouldCalculateProductionRevenueFromSaleRepositoryWhenNoCustomRevenueGiven() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(oldUser));
+        when(saleRepository.sumGrossAmountByUserIdAndPeriod(
+                org.mockito.ArgumentMatchers.eq(userId),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class)
+        )).thenReturn(new BigDecimal("60000.00"));
+
+        MeiCapResponse response = alertService.getMeiCapStatus(userId, null);
+
+        assertNotNull(response);
+        assertFalse(response.isSimulationMode());
+        assertEquals(new BigDecimal("60000.00"), response.getAccumulatedRevenue());
+        assertEquals(new BigDecimal("74.07"), response.getUsagePercent());
+        assertEquals("INFO", response.getSeverity());
+    }
+
+    @Test
+    @DisplayName("Deve retornar faturamento zero em modo de produção quando usuário não possuir vendas")
+    void shouldReturnZeroRevenueWhenUserHasNoSalesInPeriod() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(oldUser));
+        when(saleRepository.sumGrossAmountByUserIdAndPeriod(
+                org.mockito.ArgumentMatchers.eq(userId),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class)
+        )).thenReturn(null);
+
+        MeiCapResponse response = alertService.getMeiCapStatus(userId, null);
+
+        assertNotNull(response);
+        assertFalse(response.isSimulationMode());
+        assertEquals(new BigDecimal("0.00"), response.getAccumulatedRevenue());
+        assertEquals(new BigDecimal("0.00"), response.getUsagePercent());
+        assertEquals("NORMAL", response.getSeverity());
+        assertEquals(new BigDecimal("81000.00"), response.getRemainingAmount());
     }
 }

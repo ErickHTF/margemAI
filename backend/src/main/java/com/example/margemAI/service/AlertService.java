@@ -23,6 +23,7 @@ public class AlertService {
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
 
     private final UserRepository userRepository;
+    private final com.example.margemAI.repository.SaleRepository saleRepository;
 
     @Transactional(readOnly = true)
     public MeiCapResponse getMeiCapStatus(UUID userId, BigDecimal customRevenue) {
@@ -44,7 +45,21 @@ public class AlertService {
             annualLimit = user.getCustomAnnualCap() != null ? user.getCustomAnnualCap() : STANDARD_ANNUAL_CAP;
         }
 
-        BigDecimal accumulatedRevenue = customRevenue != null ? customRevenue : BigDecimal.ZERO;
+        BigDecimal accumulatedRevenue;
+        boolean simulationMode = customRevenue != null;
+
+        if (simulationMode) {
+            accumulatedRevenue = customRevenue;
+        } else {
+            // Conforme LC 123/2006, o teto do MEI considera a Receita Bruta acumulada no ano-calendário
+            LocalDateTime startOfYear = LocalDateTime.of(currentYear, 1, 1, 0, 0, 0);
+            LocalDateTime endOfYear = LocalDateTime.of(currentYear, 12, 31, 23, 59, 59);
+            accumulatedRevenue = saleRepository.sumGrossAmountByUserIdAndPeriod(userId, startOfYear, endOfYear);
+            if (accumulatedRevenue == null) {
+                accumulatedRevenue = BigDecimal.ZERO;
+            }
+        }
+
         if (accumulatedRevenue.compareTo(BigDecimal.ZERO) < 0) {
             accumulatedRevenue = BigDecimal.ZERO;
         }
@@ -85,6 +100,7 @@ public class AlertService {
                 .remainingAmount(remainingAmount.setScale(2, RoundingMode.HALF_UP))
                 .severity(severity)
                 .recommendationMessage(recommendationMessage)
+                .simulationMode(simulationMode)
                 .build();
     }
 }

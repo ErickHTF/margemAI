@@ -22,4 +22,5 @@ public class MeiCapResponse {
     private BigDecimal remainingAmount;
     private String severity;
     private String recommendationMessage;
+    private boolean simulationMode;
 }
