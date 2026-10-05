@@ -23,7 +23,7 @@ import {
   SEBRAE_PERCENT_BASIS
 } from '../utils/sebraeMethod'
 import EducationalPill from './EducationalPill'
-import { getPillById } from '../data/sebraePills'
+import { SEBRAE_PILLS, getPillById, selectContextualPill } from '../data/sebraePills'
 
 export default function PricingCalculator() {
   const [formData, setFormData] = useState({
@@ -57,6 +57,8 @@ export default function PricingCalculator() {
   const [discountPercent, setDiscountPercent] = useState('10')
   const [discountResult, setDiscountResult] = useState(null)
   const [showExplanation, setShowExplanation] = useState(false)
+  const [activeContextAction, setActiveContextAction] = useState(null)
+  const [selectedPillId, setSelectedPillId] = useState(null)
 
   const applyRateioSummary = (data) => {
     setRateioSummary(data)
@@ -102,6 +104,15 @@ export default function PricingCalculator() {
     desiredMargin: formData.desiredMargin,
     taxPercent: selectedProduct?.taxRate ?? 0
   })
+
+  const contextualPill = selectedPillId
+    ? getPillById(selectedPillId)
+    : selectContextualPill({
+        action: activeContextAction,
+        discountActive: activeContextAction === 'discount' || Number(discountPercent) > 0,
+        fixedCostPercent: effectiveFixedPercent,
+        variableCostPercent: formData.variableCostPercent
+      })
 
   const handleSaveRateioConfig = async () => {
     setSavingRateio(true)
@@ -171,6 +182,14 @@ export default function PricingCalculator() {
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    setSelectedPillId(null)
+    if (field === 'fixedCostPercent') {
+      setActiveContextAction(Number(value) >= 25 ? 'fixed_costs' : 'pricing')
+    } else if (field === 'variableCostPercent') {
+      setActiveContextAction(Number(value) >= 15 ? 'payment' : 'pricing')
+    } else {
+      setActiveContextAction('pricing')
+    }
   }
 
   const handleCalculate = async () => {
@@ -274,6 +293,8 @@ export default function PricingCalculator() {
 
   const handleDiscountChange = (newDiscount) => {
     setDiscountPercent(newDiscount)
+    setActiveContextAction('discount')
+    setSelectedPillId(null)
     if (pricingResult?.minimumSellingPrice) {
       runDiscountSimulation(
         pricingResult.minimumSellingPrice,
@@ -761,6 +782,14 @@ export default function PricingCalculator() {
                     </div>
                   )}
                 </div>
+
+                <div className="pt-1">
+                  <EducationalPill
+                    pill={contextualPill}
+                    allPills={SEBRAE_PILLS}
+                    onSelectPill={(id) => setSelectedPillId(id)}
+                  />
+                </div>
               </>
             ) : (
               <div className="h-full flex items-center justify-center p-8 text-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
@@ -862,10 +891,6 @@ export default function PricingCalculator() {
               >
                 <span className="font-semibold shrink-0">Regra de ouro:</span>
                 <span>{SEBRAE_GOLDEN_RULE}</span>
-              </div>
-
-              <div className="pt-2">
-                <EducationalPill pill={getPillById('markup-divisor')} />
               </div>
             </div>
           )}

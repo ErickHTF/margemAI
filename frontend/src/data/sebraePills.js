@@ -9,6 +9,15 @@ export const SEBRAE_PILLS = [
     tip: 'Lembre-se: A soma dos percentuais de custos fixos, variáveis, impostos e lucro desejado deve ser sempre estritamente inferior a 100%.'
   },
   {
+    id: 'discount-danger',
+    category: 'discount',
+    categoryLabel: 'Simulação de Desconto',
+    title: 'Desconto sem cálculo pode zerar seu lucro líquido',
+    summary: 'Conceder 10% de desconto sobre o preço final impacta desproporcionalmente sua margem de lucro.',
+    content: 'Se sua margem de lucro líquida é de 20%, um desconto de 10% no balcão consome exatamente 50% de todo o seu lucro! Ao conceder descontos, calcule previamente sua margem de contribuição mínima para não pagar para trabalhar.',
+    tip: 'Prefira oferecer bônus, serviços agregados ou brindes de baixo custo unitário em vez de reduzir o preço nominal do produto.'
+  },
+  {
     id: 'pro-labore',
     category: 'costs',
     categoryLabel: 'Custos Fixos',
@@ -41,5 +50,55 @@ export const getPillById = (id) => SEBRAE_PILLS.find((pill) => pill.id === id)
 
 export const getPillsByCategory = (category) =>
   SEBRAE_PILLS.filter((pill) => pill.category === category)
+
+/**
+ * Seleciona a pílula educativa do SEBRAE mais adequada para o contexto atual do usuário.
+ *
+ * @param {Object} context
+ * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing'
+ * @param {boolean} [context.discountActive] - Se está simulando desconto
+ * @param {string} [context.paymentMethod] - Forma de pagamento (ex: 'CREDIT_CARD', 'INSTALLMENTS', 'CARD')
+ * @param {boolean} [context.isTermSale] - Se é venda a prazo
+ * @param {number|string} [context.fixedCostPercent] - Percentual de custos fixos
+ * @param {number|string} [context.variableCostPercent] - Percentual de custos variáveis
+ * @returns {Object} Pílula educativa recomendada
+ */
+export function selectContextualPill({
+  action,
+  discountActive = false,
+  paymentMethod = null,
+  isTermSale = false,
+  fixedCostPercent = 0,
+  variableCostPercent = 0
+} = {}) {
+  // 1. Simulação ou concessão de desconto
+  if (action === 'discount' || discountActive) {
+    return getPillById('discount-danger')
+  }
+
+  // 2. Meios de pagamento e taxas de maquininha/cartão
+  if (
+    action === 'payment' ||
+    paymentMethod === 'CREDIT_CARD' ||
+    paymentMethod === 'INSTALLMENTS' ||
+    paymentMethod === 'CARD' ||
+    Number(variableCostPercent) >= 15
+  ) {
+    return getPillById('card-fees')
+  }
+
+  // 3. Vendas a prazo ou impacto no capital de giro
+  if (action === 'working_capital' || isTermSale) {
+    return getPillById('working-capital')
+  }
+
+  // 4. Custos fixos elevados / pró-labore
+  if (action === 'fixed_costs' || Number(fixedCostPercent) >= 25) {
+    return getPillById('pro-labore')
+  }
+
+  // 5. Formação de preço padrão (Markup Divisor SEBRAE)
+  return getPillById('markup-divisor')
+}
 
 export default SEBRAE_PILLS

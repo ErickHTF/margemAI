@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { Lightbulb, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 
-export default function EducationalPill({ pill, defaultExpanded = false }) {
+export default function EducationalPill({
+  pill,
+  defaultExpanded = false,
+  allPills = [],
+  onSelectPill = null
+}) {
   const [expanded, setExpanded] = useState(defaultExpanded)
 
   if (!pill) return null
@@ -11,6 +16,29 @@ export default function EducationalPill({ pill, defaultExpanded = false }) {
       data-testid="educational-pill"
       className="bg-indigo-50/60 border border-indigo-100/80 rounded-2xl p-4 sm:p-5 text-slate-800 transition-all shadow-sm"
     >
+      {allPills.length > 1 && onSelectPill && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-3.5 pb-3 border-b border-indigo-100/70 text-[11px]">
+          <span className="text-slate-400 font-medium mr-1">Tópicos SEBRAE:</span>
+          {allPills.map((item) => {
+            const isActive = item.id === pill.id
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelectPill(item.id)}
+                className={`px-2.5 py-1 rounded-full font-medium transition cursor-pointer ${
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-white/80 text-slate-600 hover:bg-white hover:text-indigo-600 border border-indigo-100'
+                }`}
+              >
+                {item.categoryLabel || item.title}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
@@ -30,6 +58,8 @@ export default function EducationalPill({ pill, defaultExpanded = false }) {
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+          aria-controls={`pill-content-${pill.id}`}
           className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-white/80 transition cursor-pointer shrink-0"
           title={expanded ? 'Recolher detalhes' : 'Ver explicação completa'}
         >
@@ -38,7 +68,10 @@ export default function EducationalPill({ pill, defaultExpanded = false }) {
       </div>
 
       {expanded && (
-        <div className="mt-3 pt-3 border-t border-indigo-100 text-xs space-y-2 animate-in fade-in-50 duration-200">
+        <div
+          id={`pill-content-${pill.id}`}
+          className="mt-3 pt-3 border-t border-indigo-100 text-xs space-y-2 animate-in fade-in-50 duration-200"
+        >
           <p className="text-slate-700 leading-relaxed">{pill.content}</p>
           {pill.tip && (
             <div className="flex items-start gap-2 p-2.5 rounded-xl bg-white/90 border border-indigo-100 text-indigo-900 font-medium">
@@ -53,4 +86,3 @@ export default function EducationalPill({ pill, defaultExpanded = false }) {
     </div>
   )
 }
-
