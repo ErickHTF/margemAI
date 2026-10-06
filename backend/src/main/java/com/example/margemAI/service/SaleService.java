@@ -74,6 +74,7 @@ public class SaleService {
         }
 
         PaymentFeeCalculator.FeeCalculationResult feeResult = paymentFeeCalculator.calculate(
+                userId,
                 request.getQuantity(),
                 unitPrice,
                 request.getPaymentMethod(),
@@ -136,6 +137,7 @@ public class SaleService {
         }
 
         PaymentFeeCalculator.FeeCalculationResult feeResult = paymentFeeCalculator.calculate(
+                userId,
                 request.getQuantity(),
                 unitPrice,
                 request.getPaymentMethod(),
