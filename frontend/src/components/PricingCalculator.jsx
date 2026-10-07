@@ -23,7 +23,7 @@ import {
   SEBRAE_GOLDEN_RULE,
   SEBRAE_PERCENT_BASIS
 } from '../utils/sebraeMethod'
-import EducationalPill from './EducationalPill'
+import TipButton from './TipButton'
 import { SEBRAE_PILLS, getPillById, selectContextualPill } from '../data/sebraePills'
 
 export default function PricingCalculator() {
@@ -323,6 +323,13 @@ export default function PricingCalculator() {
       <PageHeader
         Icon={Calculator}
         title="Calculadora Markup"
+        tip={
+          <TipButton
+            pill={contextualPill}
+            allPills={SEBRAE_PILLS}
+            onSelectPill={(id) => setSelectedPillId(id)}
+          />
+        }
         description="Calcule o preço de venda ideal cobrindo despesas e garantindo sua margem, com base na metodologia SEBRAE."
       />
 
@@ -777,14 +784,6 @@ export default function PricingCalculator() {
                       </div>
                     </div>
                   )}
-                </div>
-
-                <div className="pt-1">
-                  <EducationalPill
-                    pill={contextualPill}
-                    allPills={SEBRAE_PILLS}
-                    onSelectPill={(id) => setSelectedPillId(id)}
-                  />
                 </div>
               </>
             ) : (
