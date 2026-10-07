@@ -19,7 +19,7 @@ import SalesForm from './SalesForm'
 import { formatCurrencyBRL } from '../utils/formatters'
 import { PAYMENT_METHODS } from '../constants/sales'
 
-export default function SalesManager() {
+export default function SalesManager({ onNavigate }) {
   const [selectedMethod, setSelectedMethod] = useState('')
   const [showQuickForm, setShowQuickForm] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
@@ -155,7 +155,7 @@ export default function SalesManager() {
       {/* Formulário de Registro Rápido */}
       {showQuickForm && (
         <div className="transition-all duration-300">
-          <SalesForm onSaleCreated={recordSale} />
+          <SalesForm onSaleCreated={recordSale} onNavigate={onNavigate} />
         </div>
       )}
 
