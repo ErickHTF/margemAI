@@ -36,8 +36,7 @@ const NAV_GROUPS = [
     key: 'registry',
     label: 'Cadastros',
     items: [
-      { key: 'products', label: 'Catálogo', Icon: Package },
-      { key: 'categories', label: 'Padrões de Preço', Icon: Tags }
+      { key: 'products', label: 'Catálogo', Icon: Package }
     ]
   },
   {
@@ -46,9 +45,16 @@ const NAV_GROUPS = [
     items: [
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
-      { key: 'payment-methods', label: 'Taxas de Pagamento', Icon: CreditCard },
       { key: 'costs', label: 'Custos', Icon: Wallet },
       { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator }
+    ]
+  },
+  {
+    key: 'settings',
+    label: 'Configurações',
+    items: [
+      { key: 'categories', label: 'Padrões de Preço', Icon: Tags },
+      { key: 'payment-methods', label: 'Taxas de Pagamento', Icon: CreditCard }
     ]
   }
 ]
