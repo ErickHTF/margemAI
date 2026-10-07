@@ -24,6 +24,9 @@ import {
   SEBRAE_PERCENT_BASIS
 } from '../utils/sebraeMethod'
 import TipButton from './TipButton'
+import usePaymentFees from '../hooks/usePaymentFees'
+import { formatFeePercent } from '../utils/paymentFees'
+import { PAYMENT_METHODS } from '../constants/sales'
 import { SEBRAE_PILLS, getPillById, selectContextualPill } from '../data/sebraePills'
 
 export default function PricingCalculator() {
@@ -61,6 +64,12 @@ export default function PricingCalculator() {
   const [activeContextAction, setActiveContextAction] = useState(null)
   const [selectedPillId, setSelectedPillId] = useState(null)
 
+  // Taxa de pagamento configurada (Configurações › Taxas de Pagamento), opcional e somada às despesas variáveis
+  const { getFee, error: feesError } = usePaymentFees()
+  const [useConfiguredFee, setUseConfiguredFee] = useState(false)
+  const [feeMethod, setFeeMethod] = useState('CREDITO_A_VISTA')
+  const [feeInstallments, setFeeInstallments] = useState(2)
+
   const applyRateioSummary = (data) => {
     setRateioSummary(data)
     setRateioForm((prev) => ({
@@ -95,13 +104,18 @@ export default function PricingCalculator() {
       ? Number(formData.fixedCostPercent || 0)
       : 0
 
+  const configuredFee = getFee(feeMethod, feeInstallments)
+  const paymentFeePercent = useConfiguredFee ? configuredFee.mdrFeePercent : 0
+  const effectiveVariablePercent =
+    Math.round((Number(formData.variableCostPercent || 0) + paymentFeePercent) * 100) / 100
+
   const selectedProduct = products.find((product) => product.id === selectedProductId)
   const profileLocked = Boolean(selectedProductId && selectedProduct?.categoryId)
 
   const explanation = buildSebraeExplanation({
     baseCost: formData.baseCost,
     fixedPercent: effectiveFixedPercent,
-    variablePercent: formData.variableCostPercent,
+    variablePercent: effectiveVariablePercent,
     desiredMargin: formData.desiredMargin,
     taxPercent: selectedProduct?.taxRate ?? 0
   })
@@ -112,7 +126,7 @@ export default function PricingCalculator() {
         action: activeContextAction,
         discountActive: activeContextAction === 'discount' || Number(discountPercent) > 0,
         fixedCostPercent: effectiveFixedPercent,
-        variableCostPercent: formData.variableCostPercent
+        variableCostPercent: effectiveVariablePercent
       })
 
   const handleSaveRateioConfig = async () => {
@@ -198,7 +212,7 @@ export default function PricingCalculator() {
     const baseCostNum = parseFloat(formData.baseCost)
     const includeFixed = useAutomaticFixedCosts ? true : formData.includeFixedCosts
     const fixedNum = effectiveFixedPercent
-    const varNum = parseFloat(formData.variableCostPercent || '0')
+    const varNum = effectiveVariablePercent
     const marginNum = parseFloat(formData.desiredMargin || '0')
 
     if (!selectedProductId && (isNaN(baseCostNum) || baseCostNum <= 0)) {
@@ -302,7 +316,7 @@ export default function PricingCalculator() {
         newDiscount,
         formData.baseCost,
         effectiveFixedPercent,
-        formData.variableCostPercent
+        effectiveVariablePercent
       )
     }
   }
@@ -586,7 +600,7 @@ export default function PricingCalculator() {
 
             <div>
               <label htmlFor="pricing-variableCostPercent" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Despesas Variáveis e Taxas de Venda / Cartão (%)
+                {useConfiguredFee ? 'Outras Despesas Variáveis (%)' : 'Despesas Variáveis e Taxas de Venda / Cartão (%)'}
               </label>
               <div className="relative">
                 <input
@@ -608,6 +622,69 @@ export default function PricingCalculator() {
               {profileLocked && (
                 <p className="mt-1 text-[11px] text-slate-400">Herdado do padrão do item.</p>
               )}
+
+              <div className="mt-3 p-3 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2.5">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useConfiguredFee}
+                    onChange={(e) => {
+                      setUseConfiguredFee(e.target.checked)
+                      setActiveContextAction('payment')
+                      setSelectedPillId(null)
+                    }}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  Incluir taxa de pagamento configurada
+                </label>
+
+                {useConfiguredFee && (
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      <select
+                        aria-label="Forma de pagamento"
+                        value={feeMethod}
+                        onChange={(e) => setFeeMethod(e.target.value)}
+                        className="flex-1 min-w-[10rem] px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        {PAYMENT_METHODS.map((m) => (
+                          <option key={m.key} value={m.key}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                      {feeMethod === 'CREDITO_PARCELADO' && (
+                        <select
+                          aria-label="Número de parcelas"
+                          value={feeInstallments}
+                          onChange={(e) => setFeeInstallments(parseInt(e.target.value, 10))}
+                          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                            <option key={n} value={n}>
+                              {n}x
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-600">
+                      Taxa aplicada: <strong className="text-slate-900">{formatFeePercent(configuredFee.mdrFeePercent)}</strong>
+                      {' · '}total de despesas variáveis:{' '}
+                      <strong className="text-slate-900">{formatFeePercent(effectiveVariablePercent)}</strong>
+                    </p>
+                    {configuredFee.fixedFeeAmount > 0 && (
+                      <p className="text-[11px] text-slate-500">
+                        A tarifa fixa de {formatCurrency(configuredFee.fixedFeeAmount)} por venda não entra no markup, que é percentual.
+                      </p>
+                    )}
+                    <p className="text-[11px] text-amber-700">
+                      Não inclua a taxa do cartão no campo acima para não contá-la duas vezes.
+                    </p>
+                    {feesError && <p className="text-[11px] text-amber-700">{feesError}</p>}
+                  </>
+                )}
+              </div>
             </div>
 
             <div>
