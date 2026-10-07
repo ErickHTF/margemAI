@@ -119,7 +119,7 @@ export default function App() {
       case 'categories':
         return <CategoryManager />
       case 'sales':
-        return <SalesManager />
+        return <SalesManager onNavigate={setActiveSection} />
       case 'cashflow':
         return <MonthlyFlowDashboard />
       case 'payment-methods':

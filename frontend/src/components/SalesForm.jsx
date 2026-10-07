@@ -10,13 +10,14 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  Info
 } from 'lucide-react'
 import productService from '../services/productService'
 import { PAYMENT_METHODS, calculateEstimatedFee } from '../constants/sales'
 import { formatCurrencyBRL } from '../utils/formatters'
 
-export default function SalesForm({ onSaleCreated }) {
+export default function SalesForm({ onSaleCreated, onNavigate }) {
   const [products, setProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState('')
@@ -344,21 +345,42 @@ export default function SalesForm({ onSaleCreated }) {
             onClick={() => setShowCustomFee(!showCustomFee)}
             className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
           >
-            {showCustomFee ? '− Usar taxa padrão do sistema' : '+ Informar taxa personalizada da maquininha'}
+            {showCustomFee ? '− Voltar para a taxa padrão' : '+ Usar outra taxa só nesta venda'}
           </button>
           {showCustomFee && (
-            <div className="mt-2 flex items-center gap-3">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                placeholder="Ex: 2.99"
-                value={customFee}
-                onChange={(e) => setCustomFee(e.target.value)}
-                className="w-32 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <span className="text-xs text-slate-500">% retido pela adquirente</span>
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  placeholder="Ex: 2.99"
+                  value={customFee}
+                  onChange={(e) => setCustomFee(e.target.value)}
+                  className="w-32 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <span className="text-xs text-slate-500">% retido pela adquirente</span>
+              </div>
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-px" />
+                <p className="leading-relaxed">
+                  Esta taxa vale <strong>apenas para esta venda</strong>. Após o lançamento, as próximas vendas
+                  voltam a usar a taxa padrão. Para alterar a taxa de forma permanente, acesse{' '}
+                  {onNavigate ? (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('payment-methods')}
+                      className="font-semibold text-indigo-700 underline underline-offset-2 hover:text-indigo-900 cursor-pointer"
+                    >
+                      Configurações › Taxas de Pagamento
+                    </button>
+                  ) : (
+                    <strong>Configurações › Taxas de Pagamento</strong>
+                  )}
+                  .
+                </p>
+              </div>
             </div>
           )}
         </div>
