@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { paymentMethodService } from '../services/paymentMethodService'
 import EducationalPill from './EducationalPill'
+import PageHeader from './PageHeader'
 import { getPillById } from '../data/sebraePills'
 
 const TAB_OPTIONS = [
@@ -314,19 +315,11 @@ export default function PaymentMethodSettings({ onDirtyChange }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900">Taxas de Pagamento & Liquidação</h1>
-            <span className="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
-              Gateway Matrix
-            </span>
-          </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Personalize as taxas da sua maquininha e os prazos de recebimento para calcular o lucro líquido real em cada venda.
-          </p>
-        </div>
-
+      <PageHeader
+        Icon={CreditCard}
+        title="Taxas de Pagamento & Liquidação"
+        description="Personalize as taxas da sua maquininha e os prazos de recebimento para calcular o lucro líquido real em cada venda."
+      >
         <div className="flex items-center gap-2.5 shrink-0">
           {hasUnsavedChanges && (
             <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
@@ -362,7 +355,7 @@ export default function PaymentMethodSettings({ onDirtyChange }) {
             )}
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Pílula SEBRAE de Contexto */}
       {cardFeesPill && (

@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
+import PageHeader from './PageHeader'
 import { calculatePricing, simulateDiscount } from '../services/pricingService'
 import { productService } from '../services/productService'
 import { operationalService } from '../services/operationalService'
@@ -319,16 +320,11 @@ export default function PricingCalculator() {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
-      <div className="text-center mb-2">
-        <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Calculator className="w-7 h-7" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-1">Calculadora Markup</h2>
-        <p className="text-sm text-slate-500">
-          Calcule o preço de venda ideal cobrindo despesas e garantindo sua margem, com base na
-          metodologia SEBRAE.
-        </p>
-      </div>
+      <PageHeader
+        Icon={Calculator}
+        title="Calculadora Markup"
+        description="Calcule o preço de venda ideal cobrindo despesas e garantindo sua margem, com base na metodologia SEBRAE."
+      />
 
       <div className="w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
         <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">

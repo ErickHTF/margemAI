@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Info
 } from 'lucide-react'
+import PageHeader from './PageHeader'
 import useMonthlyFlow from '../hooks/useMonthlyFlow'
 import { formatCurrencyBRL } from '../utils/formatters'
 import {
@@ -43,16 +44,11 @@ export default function MonthlyFlowDashboard() {
   return (
     <div className="space-y-6">
       {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
-            <BarChart3 className="w-7 h-7 text-indigo-600" />
-            Fluxo de Caixa Mensal
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Compare receitas e despesas mês a mês e identifique a sazonalidade do seu negócio.
-          </p>
-        </div>
+      <PageHeader
+        Icon={BarChart3}
+        title="Fluxo de Caixa Mensal"
+        description="Compare receitas e despesas mês a mês e identifique a sazonalidade do seu negócio."
+      >
         <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl self-start sm:self-auto">
           {PERIOD_OPTIONS.map((option) => (
             <button
@@ -69,7 +65,7 @@ export default function MonthlyFlowDashboard() {
             </button>
           ))}
         </div>
-      </div>
+      </PageHeader>
 
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm py-16 flex flex-col items-center justify-center text-slate-500">
