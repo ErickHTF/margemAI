@@ -163,7 +163,7 @@ export default function App() {
 
   const renderAuthenticated = () => (
     <div className="min-h-screen flex bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50/30 antialiased">
-      <aside className="hidden lg:flex lg:flex-col lg:w-72 shrink-0 border-r border-slate-200 bg-white/80 backdrop-blur">
+      <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:sticky lg:top-0 lg:h-screen shrink-0 border-r border-slate-200 bg-white/80 backdrop-blur">
         <div className="px-6 py-6 border-b border-slate-100">
           <Brand />
           <p className="text-xs text-slate-500 font-medium mt-2">Gestão Inteligente para MEI</p>

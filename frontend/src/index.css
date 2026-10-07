@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+html {
+  /* Reserva o espaço da barra de rolagem para o layout não "pular" entre telas curtas e longas */
+  scrollbar-gutter: stable;
+}
+
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.5;
