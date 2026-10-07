@@ -158,9 +158,6 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
             <ShoppingBag className="w-5 h-5 text-indigo-600" />
             Lançamento Rápido de Venda
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Registre uma entrada no caixa com desconto automático das taxas de maquininha.
-          </p>
         </div>
         <button
           type="button"
