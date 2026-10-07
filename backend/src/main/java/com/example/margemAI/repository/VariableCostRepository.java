@@ -17,6 +17,7 @@ public interface VariableCostRepository extends JpaRepository<VariableCost, UUID
     Optional<VariableCost> findByIdAndUserIdAndActiveTrue(UUID id, UUID userId);
     Optional<VariableCost> findByIdAndUserId(UUID id, UUID userId);
     List<VariableCost> findByProductIdAndUserIdAndActiveTrue(UUID productId, UUID userId);
+    List<VariableCost> findByUserIdAndActiveTrueAndProductIdIsNotNull(UUID userId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

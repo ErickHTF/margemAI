@@ -1608,6 +1608,49 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /dashboard/monthly-flow:
+    get:
+      tags:
+        - Dashboard
+      summary: Get monthly cash flow history
+      description: |
+        Returns the month-by-month evolution of revenue and expenses (fixed costs,
+        variable costs and payment fees) for the last 6 to 12 months, allowing the
+        MEI to identify seasonality.
+      operationId: getMonthlyFlow
+      parameters:
+        - name: months
+          in: query
+          description: Number of months in the window (6 to 12)
+          schema:
+            type: integer
+            minimum: 6
+            maximum: 12
+            default: 6
+        - name: endMonth
+          in: query
+          description: Last month of the window (YYYY-MM format). Defaults to current month.
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+      responses:
+        '200':
+          description: Monthly cash flow history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyFlowResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /alerts:
     get:
       tags:
@@ -3119,6 +3162,91 @@ components:
           type: number
           x-currency: BRL
           example: 75000.00
+
+    MonthlyFlowResponse:
+      type: object
+      properties:
+        startMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: "2026-01"
+        endMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: "2026-06"
+        months:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonthlyFlowEntry'
+        totalRevenue:
+          type: number
+          x-currency: BRL
+          example: 18600.00
+        totalExpenses:
+          type: number
+          x-currency: BRL
+          example: 12450.00
+        balance:
+          type: number
+          x-currency: BRL
+          example: 6150.00
+        averageRevenue:
+          type: number
+          x-currency: BRL
+          example: 3100.00
+        averageExpenses:
+          type: number
+          x-currency: BRL
+          example: 2075.00
+        bestMonth:
+          type: string
+          nullable: true
+          description: Month with the highest balance (null when there is no activity)
+          example: "2026-03"
+        worstMonth:
+          type: string
+          nullable: true
+          description: Month with the lowest balance (null when there is no activity)
+          example: "2026-05"
+
+    MonthlyFlowEntry:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: "2026-03"
+        revenue:
+          type: number
+          x-currency: BRL
+          description: Gross revenue from sales in the month
+          example: 3200.00
+        salesCount:
+          type: integer
+          example: 42
+        fixedCosts:
+          type: number
+          x-currency: BRL
+          description: Fixed costs in effect in the month (recurring from registration month, one-off on due month)
+          example: 1500.00
+        variableCosts:
+          type: number
+          x-currency: BRL
+          description: Unit variable costs of the products sold multiplied by quantity
+          example: 480.00
+        paymentFees:
+          type: number
+          x-currency: BRL
+          description: Payment method fees charged on sales
+          example: 64.00
+        totalExpenses:
+          type: number
+          x-currency: BRL
+          example: 2044.00
+        balance:
+          type: number
+          x-currency: BRL
+          example: 1156.00
 
     AlertType:
       type: string

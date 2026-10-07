@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +26,13 @@ public interface SaleRepository extends JpaRepository<Sale, UUID>, JpaSpecificat
             @Param("userId") UUID userId,
             @Param("startDate") java.time.LocalDateTime startDate,
             @Param("endDate") java.time.LocalDateTime endDate
+    );
+
+    @Query("SELECT s FROM Sale s WHERE s.user.id = :userId AND s.soldAt >= :start AND s.soldAt < :end")
+    List<Sale> findByUserIdAndSoldAtInPeriod(
+            @Param("userId") UUID userId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
     );
 
     @Query("SELECT COALESCE(SUM(s.feeAmount), 0) FROM Sale s WHERE s.user.id = :userId")
