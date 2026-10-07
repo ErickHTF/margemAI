@@ -45,6 +45,8 @@ tags:
     description: Dynamic categories with inheritable operational parameters
   - name: Operational Settings
     description: Fixed cost consolidation and allocation rate configuration
+  - name: Financial Settings
+    description: Payment method rates and settlement terms matrix
   - name: Sales
     description: Registration and query of completed sales
   - name: Pricing
@@ -1339,6 +1341,56 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /settings/financial/payment-methods:
+    get:
+      tags:
+        - Financial Settings
+      summary: List payment method configurations
+      description: Returns the user's customized payment method fee matrix or system defaults.
+      operationId: getPaymentMethodConfigs
+      responses:
+        '200':
+          description: Payment method configs matrix
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethodConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Financial Settings
+      summary: Batch update payment method configurations
+      description: Updates the payment method fee matrix for the authenticated user.
+      operationId: updatePaymentMethodConfigs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/PaymentMethodConfigRequest'
+      responses:
+        '200':
+          description: Updated payment method configs matrix
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethodConfigResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -3118,3 +3170,69 @@ components:
           type: string
           format: date-time
           readOnly: true
+
+    PaymentMethodConfigRequest:
+      type: object
+      required:
+        - paymentMethod
+        - mdrFeePercent
+      properties:
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        installments:
+          type: integer
+          minimum: 1
+          maximum: 12
+          default: 1
+        mdrFeePercent:
+          type: number
+          format: float
+          minimum: 0.00
+          maximum: 99.99
+          example: 3.20
+        fixedFeeAmount:
+          type: number
+          format: float
+          minimum: 0.00
+          example: 0.35
+        settlementDays:
+          type: integer
+          minimum: 0
+          maximum: 365
+          example: 30
+        isActive:
+          type: boolean
+          default: true
+
+    PaymentMethodConfigResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        description:
+          type: string
+          example: "Crédito Parcelado (3x)"
+        installments:
+          type: integer
+          example: 3
+        mdrFeePercent:
+          type: number
+          format: float
+          example: 6.50
+        fixedFeeAmount:
+          type: number
+          format: float
+          example: 0.00
+        settlementDays:
+          type: integer
+          example: 30
+        isActive:
+          type: boolean
+          example: true
+        isCustomized:
+          type: boolean
+          example: true
