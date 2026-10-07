@@ -108,7 +108,7 @@ export default function CategoryManager() {
   const formatPercent = (value) => (value == null ? 'Não definido' : `${value}%`)
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {showForm && (
         <div ref={formRef}>
           <CategoryForm

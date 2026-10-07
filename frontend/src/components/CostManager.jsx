@@ -374,7 +374,7 @@ export default function CostManager({ kind, service, categories, products = [] }
   )
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full">
       {formSection}
       {listSection}
     </div>
