@@ -14,3 +14,24 @@ body {
   background-color: #f8fafc;
   color: #0f172a;
 }
+
+/* Balanço curto do ícone de dica ao entrar na tela */
+@keyframes tip-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(-14deg); }
+  30% { transform: rotate(12deg); }
+  45% { transform: rotate(-8deg); }
+  60% { transform: rotate(5deg); }
+  75% { transform: rotate(-2deg); }
+}
+
+.animate-tip-wiggle {
+  animation: tip-wiggle 0.8s ease-in-out 0.4s 1;
+  transform-origin: 50% 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-tip-wiggle {
+    animation: none;
+  }
+}

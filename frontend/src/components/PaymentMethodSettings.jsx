@@ -15,7 +15,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { paymentMethodService } from '../services/paymentMethodService'
-import EducationalPill from './EducationalPill'
+import TipButton from './TipButton'
 import PageHeader from './PageHeader'
 import { getPillById } from '../data/sebraePills'
 
@@ -318,6 +318,7 @@ export default function PaymentMethodSettings({ onDirtyChange }) {
       <PageHeader
         Icon={CreditCard}
         title="Taxas de Pagamento & Liquidação"
+        tip={<TipButton pill={cardFeesPill} />}
         description="Personalize as taxas da sua maquininha e os prazos de recebimento para calcular o lucro líquido real em cada venda."
       >
         <div className="flex items-center gap-2.5 shrink-0">
@@ -356,13 +357,6 @@ export default function PaymentMethodSettings({ onDirtyChange }) {
           </button>
         </div>
       </PageHeader>
-
-      {/* Pílula SEBRAE de Contexto */}
-      {cardFeesPill && (
-        <div className="max-w-4xl">
-          <EducationalPill pill={cardFeesPill} defaultExpanded={false} />
-        </div>
-      )}
 
       {/* Feedback Toast / Alert */}
       {feedback && (
