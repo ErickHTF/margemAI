@@ -115,7 +115,7 @@ export default function ProductManager() {
   const totalServices = products.filter((p) => p.type === 'SERVICO').length
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {showForm && (
         <div ref={formRef}>
           <ProductForm

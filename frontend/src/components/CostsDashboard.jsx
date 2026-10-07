@@ -53,17 +53,15 @@ export default function CostsDashboard() {
   ]
 
   return (
-    <div className="w-full">
-      <div className="mb-6">
-        <PageHeader
-          Icon={Wallet}
-          title="Gestão de Custos"
-          description="Registre despesas fixas e custos variáveis, vinculando matéria-prima e embalagem a cada produto."
-        />
-      </div>
+    <div className="w-full space-y-6">
+      <PageHeader
+        Icon={Wallet}
+        title="Gestão de Custos"
+        description="Registre despesas fixas e custos variáveis, vinculando matéria-prima e embalagem a cada produto."
+      />
 
-      <div className="w-full max-w-3xl mx-auto mb-6">
-        <div className="bg-white/70 backdrop-blur rounded-2xl p-1.5 border border-slate-200 grid grid-cols-2 gap-1 shadow-sm">
+      <div>
+        <div className="bg-white/70 backdrop-blur rounded-2xl p-1.5 border border-slate-200 grid grid-cols-2 gap-1 shadow-sm w-full sm:w-auto sm:inline-grid">
           {tabs.map(({ key, label, Icon }) => (
             <button
               key={key}
