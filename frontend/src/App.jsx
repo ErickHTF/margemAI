@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import {
   Sparkles,
   LogOut,
@@ -25,6 +25,7 @@ import PricingCalculator from './components/PricingCalculator'
 import SalesManager from './components/SalesManager'
 import PaymentMethodSettings from './components/PaymentMethodSettings'
 import MonthlyFlowDashboard from './components/MonthlyFlowDashboard'
+import ConfirmDialog from './components/ConfirmDialog'
 
 const NAV_GROUPS = [
   {
@@ -98,6 +99,8 @@ export default function App() {
   const [showRegister, setShowRegister] = useState(false)
   const [registeredUser, setRegisteredUser] = useState(null)
   const [activeSection, setActiveSection] = useState('profile')
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [pendingLeaveAction, setPendingLeaveAction] = useState(null)
 
   const { group: activeGroup, item: activeItem } = findActive(activeSection)
 
@@ -106,6 +109,31 @@ export default function App() {
     setRegisteredUser(null)
     return data
   }
+
+  // Ações que tiram o usuário da tela atual passam por aqui para não perder alterações não salvas
+  const guardLeave = (action) => {
+    if (hasUnsavedChanges) {
+      setPendingLeaveAction(() => action)
+      return
+    }
+    action()
+  }
+
+  const navigateTo = (sectionKey) => {
+    if (sectionKey === activeSection) return
+    guardLeave(() => setActiveSection(sectionKey))
+  }
+
+  const handleLogout = () => guardLeave(logout)
+
+  const confirmLeave = () => {
+    const action = pendingLeaveAction
+    setPendingLeaveAction(null)
+    setHasUnsavedChanges(false)
+    action?.()
+  }
+
+  const cancelLeave = useCallback(() => setPendingLeaveAction(null), [])
 
   const handleRegisterSuccess = (authData) => {
     setRegisteredUser(authData)
@@ -119,11 +147,11 @@ export default function App() {
       case 'categories':
         return <CategoryManager />
       case 'sales':
-        return <SalesManager onNavigate={setActiveSection} />
+        return <SalesManager onNavigate={navigateTo} />
       case 'cashflow':
         return <MonthlyFlowDashboard />
       case 'payment-methods':
-        return <PaymentMethodSettings />
+        return <PaymentMethodSettings onDirtyChange={setHasUnsavedChanges} />
       case 'costs':
         return <CostsDashboard />
       case 'pricing':
@@ -151,7 +179,7 @@ export default function App() {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setActiveSection(key)}
+                  onClick={() => navigateTo(key)}
                   className={`w-full ${navItemClass(activeSection === key)}`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
@@ -174,7 +202,7 @@ export default function App() {
           </div>
           <button
             type="button"
-            onClick={logout}
+            onClick={handleLogout}
             className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
@@ -189,7 +217,7 @@ export default function App() {
             <Brand />
             <button
               type="button"
-              onClick={logout}
+              onClick={handleLogout}
               title="Sair"
               className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
             >
@@ -208,7 +236,7 @@ export default function App() {
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setActiveSection(key)}
+                      onClick={() => navigateTo(key)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                         activeSection === key
                           ? 'bg-indigo-600 text-white shadow-sm'
@@ -242,6 +270,16 @@ export default function App() {
           Microempreendedores Individuais.
         </footer>
       </div>
+
+      <ConfirmDialog
+        open={pendingLeaveAction !== null}
+        title="Sair sem salvar?"
+        message="Você tem alterações que ainda não foram salvas. Se sair agora, elas serão perdidas."
+        confirmLabel="Sair sem salvar"
+        cancelLabel="Continuar editando"
+        onConfirm={confirmLeave}
+        onCancel={cancelLeave}
+      />
     </div>
   )
 
