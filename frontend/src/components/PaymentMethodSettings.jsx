@@ -47,8 +47,9 @@ const recommendedValues = (item) => ({
 const isCustomizedConfig = (item) =>
   item.defaultMdrFeePercent == null ? Boolean(item.isCustomized) : !sameFees(item, recommendedValues(item))
 
-export default function PaymentMethodSettings() {
+export default function PaymentMethodSettings({ onDirtyChange }) {
   const [configs, setConfigs] = useState([])
+  const [savedConfigs, setSavedConfigs] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState(null)
@@ -62,7 +63,10 @@ export default function PaymentMethodSettings() {
     const fetchConfigs = async () => {
       try {
         const data = await paymentMethodService.getPaymentMethodConfigs()
-        if (!cancelled) setConfigs(data || [])
+        if (!cancelled) {
+          setConfigs(data || [])
+          setSavedConfigs(data || [])
+        }
       } catch (err) {
         console.error('Erro ao carregar taxas de pagamento:', err)
         if (!cancelled) {
@@ -80,6 +84,31 @@ export default function PaymentMethodSettings() {
       cancelled = true
     }
   }, [])
+
+  const savedByKey = new Map(savedConfigs.map((c) => [configKey(c), c]))
+  const isUnsavedConfig = (item) => {
+    const saved = savedByKey.get(configKey(item))
+    return !saved || !sameFees(item, saved)
+  }
+  const unsavedCount = configs.filter(isUnsavedConfig).length
+  const hasUnsavedChanges = unsavedCount > 0
+
+  useEffect(() => {
+    onDirtyChange?.(hasUnsavedChanges)
+  }, [hasUnsavedChanges, onDirtyChange])
+
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
+
+  // Protege também contra fechar/recarregar a aba do navegador
+  useEffect(() => {
+    if (!hasUnsavedChanges) return undefined
+    const handleBeforeUnload = (e) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
 
   const handleFieldChange = (index, field, value) => {
     setConfigs((prev) => {
@@ -107,6 +136,7 @@ export default function PaymentMethodSettings() {
 
       const updated = await paymentMethodService.updatePaymentMethodConfigs(payload)
       setConfigs(updated)
+      setSavedConfigs(updated)
       setFeedback({
         type: 'success',
         message: 'Matriz de taxas e prazos de liquidação atualizada com sucesso!'
@@ -241,6 +271,9 @@ export default function PaymentMethodSettings() {
               Recomendado
             </span>
           )}
+          {isUnsavedConfig(item) && (
+            <span className="block mt-1 text-[10px] font-semibold text-amber-600">Não salvo</span>
+          )}
         </td>
       </tr>
     )
@@ -295,6 +328,11 @@ export default function PaymentMethodSettings() {
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
+          {hasUnsavedChanges && (
+            <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+              {unsavedCount} {unsavedCount === 1 ? 'alteração não salva' : 'alterações não salvas'}
+            </span>
+          )}
           <button
             type="button"
             onClick={handleResetDefaults}
@@ -308,7 +346,7 @@ export default function PaymentMethodSettings() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={loading || saving}
+            disabled={loading || saving || !hasUnsavedChanges}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition shadow-sm cursor-pointer disabled:opacity-50"
           >
             {saving ? (
