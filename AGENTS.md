@@ -10,7 +10,7 @@ Em caso de conflito entre o card e este guia, siga o card e registre a divergên
 ## 1. Fluxo de um card
 
 1. **Leia o card e a issue vinculada** (critérios de aceite, IDs `US-xx`, `TECH-xx`, `INFRA-xx`).
-2. **Branch** a partir da `main` atualizada:
+2. **Branch** a partir da `develop` atualizada (é a branch de integração; a `main` não recebe PRs de cards):
    - `feature/us-12-historico-fluxo-caixa` (história de usuário)
    - `test/tech-01-financial-precision-tests` (técnico)
    - `fix/<id>-<descricao-curta>` (correção)
@@ -26,7 +26,7 @@ Em caso de conflito entre o card e este guia, siga o card e registre a divergên
    cd frontend && npx eslint src && npx vitest run && npx vite build
    ```
    Nunca diga que algo passou sem ter rodado. Se algo falhar, reporte a saída real.
-5. **Pull Request** com o título igual ao commit principal e corpo neste formato:
+5. **Pull Request para `develop`** com o título igual ao commit principal e corpo neste formato:
    ```markdown
    ## 📌 Contexto
    Implementa a **[US-xx] (Issue #N) - <título>**, <objetivo para o MEI>.
