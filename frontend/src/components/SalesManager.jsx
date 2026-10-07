@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import useSales from '../hooks/useSales'
 import SalesForm from './SalesForm'
+import PageHeader from './PageHeader'
 import { formatCurrencyBRL } from '../utils/formatters'
 import { PAYMENT_METHODS } from '../constants/sales'
 
@@ -80,16 +81,11 @@ export default function SalesManager({ onNavigate }) {
   return (
     <div className="space-y-6">
       {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
-            <ShoppingBag className="w-7 h-7 text-indigo-600" />
-            Registro de Vendas
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Lance vendas com agilidade e acompanhe seu faturamento bruto, taxas e lucro líquido real.
-          </p>
-        </div>
+      <PageHeader
+        Icon={ShoppingBag}
+        title="Registro de Vendas"
+        description="Lance vendas com agilidade e acompanhe seu faturamento bruto, taxas e lucro líquido real."
+      >
         <button
           type="button"
           onClick={() => setShowQuickForm(!showQuickForm)}
@@ -107,7 +103,7 @@ export default function SalesManager({ onNavigate }) {
             </>
           )}
         </button>
-      </div>
+      </PageHeader>
 
       {/* Cards de Métricas Consolidadas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

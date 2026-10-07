@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { CalendarRange, Package, Landmark } from 'lucide-react'
+import { Package, Landmark, Wallet } from 'lucide-react'
+import PageHeader from './PageHeader'
 import CostManager from './CostManager'
 import fixedCostService from '../services/fixedCostService'
 import variableCostService from '../services/variableCostService'
@@ -53,15 +54,12 @@ export default function CostsDashboard() {
 
   return (
     <div className="w-full">
-      <div className="text-center mb-6">
-        <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CalendarRange className="w-7 h-7" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-1">Gestão de Custos</h2>
-        <p className="text-sm text-slate-500">
-          Registre despesas fixas e custos variáveis, vinculando matéria-prima e embalagem a cada
-          produto.
-        </p>
+      <div className="mb-6">
+        <PageHeader
+          Icon={Wallet}
+          title="Gestão de Custos"
+          description="Registre despesas fixas e custos variáveis, vinculando matéria-prima e embalagem a cada produto."
+        />
       </div>
 
       <div className="w-full max-w-3xl mx-auto mb-6">
