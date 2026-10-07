@@ -26,4 +26,7 @@ public class PaymentMethodConfigResponse {
     private Integer settlementDays;
     private Boolean isActive;
     private Boolean isCustomized;
+    private BigDecimal defaultMdrFeePercent;
+    private BigDecimal defaultFixedFeeAmount;
+    private Integer defaultSettlementDays;
 }

@@ -141,31 +141,50 @@ public class PaymentMethodConfigService {
         String key = buildKey(method, installments);
         PaymentMethodConfig saved = savedMap.get(key);
 
+        PaymentMethodConfigResponse.PaymentMethodConfigResponseBuilder builder = PaymentMethodConfigResponse.builder()
+                .paymentMethod(method)
+                .description(formatDescription(method, installments))
+                .installments(installments)
+                .defaultMdrFeePercent(defaultMdr)
+                .defaultFixedFeeAmount(defaultFixedFee)
+                .defaultSettlementDays(defaultSettlementDays);
+
         if (saved != null) {
-            return PaymentMethodConfigResponse.builder()
+            return builder
                     .id(saved.getId())
-                    .paymentMethod(saved.getPaymentMethod())
-                    .description(formatDescription(saved.getPaymentMethod(), saved.getInstallments()))
-                    .installments(saved.getInstallments())
                     .mdrFeePercent(saved.getMdrFeePercent())
                     .fixedFeeAmount(saved.getFixedFeeAmount())
                     .settlementDays(saved.getSettlementDays())
                     .isActive(saved.getIsActive())
-                    .isCustomized(true)
+                    .isCustomized(differsFromDefault(saved, defaultMdr, defaultFixedFee, defaultSettlementDays))
                     .build();
         }
 
-        return PaymentMethodConfigResponse.builder()
+        return builder
                 .id(null)
-                .paymentMethod(method)
-                .description(formatDescription(method, installments))
-                .installments(installments)
                 .mdrFeePercent(defaultMdr)
                 .fixedFeeAmount(defaultFixedFee)
                 .settlementDays(defaultSettlementDays)
                 .isActive(true)
                 .isCustomized(false)
                 .build();
+    }
+
+    // Um registro salvo só é "personalizado" se algum valor divergir do padrão recomendado
+    private boolean differsFromDefault(
+            PaymentMethodConfig saved,
+            BigDecimal defaultMdr,
+            BigDecimal defaultFixedFee,
+            int defaultSettlementDays
+    ) {
+        return !sameAmount(saved.getMdrFeePercent(), defaultMdr)
+                || !sameAmount(saved.getFixedFeeAmount(), defaultFixedFee)
+                || !Integer.valueOf(defaultSettlementDays).equals(saved.getSettlementDays());
+    }
+
+    private boolean sameAmount(BigDecimal value, BigDecimal reference) {
+        BigDecimal safeValue = value != null ? value : BigDecimal.ZERO;
+        return safeValue.compareTo(reference) == 0;
     }
 
     private String formatDescription(PaymentMethod method, int installments) {

@@ -28,6 +28,25 @@ const TAB_OPTIONS = [
 // Parcelamentos acima deste limite ficam agrupados em uma linha expansível
 const VISIBLE_INSTALLMENTS_LIMIT = 3
 
+const configKey = (item) => `${item.paymentMethod}-${item.installments}`
+const toCents = (value) => Math.round(parseFloat(value || 0) * 100)
+const toDays = (value) => parseInt(value || 0, 10)
+
+const sameFees = (a, b) =>
+  toCents(a.mdrFeePercent) === toCents(b.mdrFeePercent) &&
+  toCents(a.fixedFeeAmount) === toCents(b.fixedFeeAmount) &&
+  toDays(a.settlementDays) === toDays(b.settlementDays)
+
+const recommendedValues = (item) => ({
+  mdrFeePercent: item.defaultMdrFeePercent,
+  fixedFeeAmount: item.defaultFixedFeeAmount,
+  settlementDays: item.defaultSettlementDays
+})
+
+// Avaliado por taxa, comparando os valores atuais (inclusive não salvos) com o padrão recomendado
+const isCustomizedConfig = (item) =>
+  item.defaultMdrFeePercent == null ? Boolean(item.isCustomized) : !sameFees(item, recommendedValues(item))
+
 export default function PaymentMethodSettings() {
   const [configs, setConfigs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -106,31 +125,9 @@ export default function PaymentMethodSettings() {
 
   const handleResetDefaults = () => {
     setConfigs((prev) =>
-      prev.map((item) => {
-        let defaultMdr = 0
-        let defaultFixed = 0
-        let defaultDays = 0
-
-        if (item.paymentMethod === 'DEBITO') {
-          defaultMdr = 1.5
-          defaultDays = 1
-        } else if (item.paymentMethod === 'CREDITO_A_VISTA') {
-          defaultMdr = 3.2
-          defaultDays = 30
-        } else if (item.paymentMethod === 'CREDITO_PARCELADO') {
-          const inst = item.installments || 2
-          defaultMdr = 4.5 + (inst - 1) * 1.0
-          defaultDays = 30
-        }
-
-        return {
-          ...item,
-          mdrFeePercent: defaultMdr,
-          fixedFeeAmount: defaultFixed,
-          settlementDays: defaultDays,
-          isActive: true
-        }
-      })
+      prev.map((item) =>
+        item.defaultMdrFeePercent == null ? item : { ...item, ...recommendedValues(item), isActive: true }
+      )
     )
     setFeedback({
       type: 'info',
@@ -159,14 +156,14 @@ export default function PaymentMethodSettings() {
   const extraInstallmentsExpanded = activeTab === 'installments' || showExtraInstallments
   const extraFees = extraInstallments.map((c) => parseFloat(c.mdrFeePercent || 0))
   const extraInstallmentNumbers = extraInstallments.map((c) => c.installments)
-  const customizedExtraCount = extraInstallments.filter((c) => c.isCustomized).length
+  const customizedExtraCount = extraInstallments.filter(isCustomizedConfig).length
 
   const renderConfigRow = (item) => {
     const originalIndex = configs.findIndex(
       (c) => c.paymentMethod === item.paymentMethod && c.installments === item.installments
     )
     return (
-      <tr key={`${item.paymentMethod}-${item.installments}`} className="hover:bg-slate-50/50 transition">
+      <tr key={configKey(item)} className="hover:bg-slate-50/50 transition">
         {/* Modalidade */}
         <td className="py-3.5 px-4 font-semibold text-slate-800">
           <div className="flex items-center gap-2">
@@ -234,7 +231,7 @@ export default function PaymentMethodSettings() {
 
         {/* Origem / Status */}
         <td className="py-3.5 px-4 text-center">
-          {item.isCustomized ? (
+          {isCustomizedConfig(item) ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
               <Sparkles className="w-3 h-3 text-emerald-600" />
               Personalizado

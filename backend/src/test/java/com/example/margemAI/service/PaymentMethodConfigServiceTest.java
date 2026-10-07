@@ -119,6 +119,58 @@ class PaymentMethodConfigServiceTest {
     }
 
     @Test
+    @DisplayName("Não deve sinalizar como personalizada uma configuração salva com os valores padrão")
+    void shouldNotFlagSavedConfigEqualToDefaultsAsCustomized() {
+        PaymentMethodConfig savedDefaultCredito3x = PaymentMethodConfig.builder()
+                .id(UUID.randomUUID())
+                .user(user)
+                .paymentMethod(PaymentMethod.CREDITO_PARCELADO)
+                .installments(3)
+                .mdrFeePercent(new BigDecimal("6.50"))
+                .fixedFeeAmount(BigDecimal.ZERO)
+                .settlementDays(30)
+                .isActive(true)
+                .build();
+
+        when(configRepository.findByUserIdOrderByPaymentMethodAscInstallmentsAsc(userId))
+                .thenReturn(List.of(savedDefaultCredito3x));
+
+        PaymentMethodConfigResponse credito3x = configService.getMatrixForUser(userId).stream()
+                .filter(m -> m.getPaymentMethod() == PaymentMethod.CREDITO_PARCELADO && m.getInstallments() == 3)
+                .findFirst()
+                .orElseThrow();
+
+        assertFalse(credito3x.getIsCustomized());
+        assertEquals(new BigDecimal("6.50"), credito3x.getDefaultMdrFeePercent());
+        assertEquals(30, credito3x.getDefaultSettlementDays());
+    }
+
+    @Test
+    @DisplayName("Deve sinalizar como personalizada quando apenas o prazo de liquidação divergir do padrão")
+    void shouldFlagSavedConfigAsCustomizedWhenOnlySettlementDiffers() {
+        PaymentMethodConfig savedDebito = PaymentMethodConfig.builder()
+                .id(UUID.randomUUID())
+                .user(user)
+                .paymentMethod(PaymentMethod.DEBITO)
+                .installments(1)
+                .mdrFeePercent(new BigDecimal("1.50"))
+                .fixedFeeAmount(BigDecimal.ZERO)
+                .settlementDays(2)
+                .isActive(true)
+                .build();
+
+        when(configRepository.findByUserIdOrderByPaymentMethodAscInstallmentsAsc(userId))
+                .thenReturn(List.of(savedDebito));
+
+        PaymentMethodConfigResponse debito = configService.getMatrixForUser(userId).stream()
+                .filter(m -> m.getPaymentMethod() == PaymentMethod.DEBITO)
+                .findFirst()
+                .orElseThrow();
+
+        assertTrue(debito.getIsCustomized());
+    }
+
+    @Test
     @DisplayName("Deve atualizar matriz em lote (batch upsert) com sucesso")
     void shouldUpdateMatrixSuccessfully() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));

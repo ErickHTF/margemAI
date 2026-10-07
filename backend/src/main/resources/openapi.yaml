@@ -3363,4 +3363,16 @@ components:
           example: true
         isCustomized:
           type: boolean
+          description: Verdadeiro quando algum valor salvo diverge do padrão recomendado.
           example: true
+        defaultMdrFeePercent:
+          type: number
+          format: float
+          example: 6.50
+        defaultFixedFeeAmount:
+          type: number
+          format: float
+          example: 0.00
+        defaultSettlementDays:
+          type: integer
+          example: 30
