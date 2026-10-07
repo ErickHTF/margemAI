@@ -14,7 +14,9 @@ import {
   Info
 } from 'lucide-react'
 import productService from '../services/productService'
-import { PAYMENT_METHODS, calculateEstimatedFee } from '../constants/sales'
+import { PAYMENT_METHODS } from '../constants/sales'
+import usePaymentFees from '../hooks/usePaymentFees'
+import { calculateSaleFee, formatFeePercent } from '../utils/paymentFees'
 import { formatCurrencyBRL } from '../utils/formatters'
 
 export default function SalesForm({ onSaleCreated, onNavigate }) {
@@ -32,6 +34,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState(null)
+  const { getFee, error: feesError } = usePaymentFees()
 
   useEffect(() => {
     let cancelled = false
@@ -69,13 +72,22 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
 
   // Cálculo derivado inline durante o render (em conformidade estrita com o padrão da Skill React)
   const effectivePrice = parseFloat(unitPrice) || 0
-  const calculation = calculateEstimatedFee(
+  const calculation = calculateSaleFee({
     quantity,
-    effectivePrice,
-    paymentMethod,
-    installments,
-    showCustomFee && customFee !== '' ? customFee : null
-  )
+    unitPrice: effectivePrice,
+    fee: getFee(paymentMethod, installments),
+    customFeePercent: showCustomFee && customFee !== '' ? customFee : null
+  })
+
+  const describeFee = ({ mdrFeePercent, fixedFeeAmount }) =>
+    fixedFeeAmount > 0
+      ? `${formatFeePercent(mdrFeePercent)} + ${formatCurrencyBRL(fixedFeeAmount)}`
+      : formatFeePercent(mdrFeePercent)
+
+  const methodFeeLabel = (methodKey) =>
+    methodKey === 'CREDITO_PARCELADO'
+      ? `A partir de ${describeFee(getFee(methodKey, 2))}`
+      : `Taxa ${describeFee(getFee(methodKey))}`
 
   const handleQuantityChange = (delta) => {
     setQuantity((prev) => Math.max(1, prev + delta))
@@ -275,6 +287,9 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
 
         {/* Métodos de Pagamento */}
         <div>
+          {feesError && (
+            <p className="mb-2 text-[11px] font-medium text-amber-700">{feesError}</p>
+          )}
           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
             Forma de Pagamento
           </label>
@@ -303,7 +318,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
                     {getMethodIcon(method.key)}
                   </div>
                   <span className="text-xs font-bold">{method.label}</span>
-                  <span className="text-[10px] text-slate-500 mt-0.5">{method.badge}</span>
+                  <span className="text-[10px] text-slate-500 mt-0.5">{methodFeeLabel(method.key)}</span>
                 </button>
               )
             })}
@@ -316,7 +331,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span className="text-xs font-bold text-purple-900">Número de Parcelas</span>
-                <p className="text-[11px] text-purple-700">Taxa base 4.5% + 1.0% por parcela adicional</p>
+                <p className="text-[11px] text-purple-700">Taxas conforme Configurações › Taxas de Pagamento</p>
               </div>
               <div className="flex items-center gap-2">
                 <select
@@ -326,7 +341,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
                 >
                   {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
                     <option key={n} value={n}>
-                      {n}x (Taxa: {(4.5 + (n - 1) * 1.0).toFixed(1)}%)
+                      {n}x (Taxa: {describeFee(getFee('CREDITO_PARCELADO', n))})
                     </option>
                   ))}
                 </select>
@@ -342,7 +357,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
             onClick={() => setShowCustomFee(!showCustomFee)}
             className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
           >
-            {showCustomFee ? '− Voltar para a taxa padrão' : '+ Usar outra taxa só nesta venda'}
+            {showCustomFee ? '− Voltar para a taxa configurada' : '+ Usar outra taxa só nesta venda'}
           </button>
           {showCustomFee && (
             <div className="mt-2 space-y-2">
@@ -363,7 +378,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
                 <Info className="w-4 h-4 text-amber-600 shrink-0 mt-px" />
                 <p className="leading-relaxed">
                   Esta taxa vale <strong>apenas para esta venda</strong>. Após o lançamento, as próximas vendas
-                  voltam a usar a taxa padrão. Para alterar a taxa de forma permanente, acesse{' '}
+                  voltam a usar a taxa configurada. Para alterar a taxa de forma permanente, acesse{' '}
                   {onNavigate ? (
                     <button
                       type="button"
@@ -405,7 +420,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
             </div>
             <div className="pt-2 sm:pt-0 sm:px-4">
               <span className="text-[11px] text-rose-300 uppercase tracking-wider font-medium">
-                Taxa Operadora ({calculation.feePercent.toFixed(2)}%)
+                Taxa Operadora ({describeFee({ mdrFeePercent: calculation.feePercent, fixedFeeAmount: calculation.fixedFee })})
               </span>
               <p className="text-xl font-bold text-rose-400 mt-0.5">
                 − {formatCurrencyBRL(calculation.feeAmount)}
