@@ -11,7 +11,8 @@ import {
   Loader2,
   ChevronRight,
   ShoppingBag,
-  CreditCard
+  CreditCard,
+  BarChart3
 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
@@ -23,6 +24,7 @@ import CategoryManager from './components/CategoryManager'
 import PricingCalculator from './components/PricingCalculator'
 import SalesManager from './components/SalesManager'
 import PaymentMethodSettings from './components/PaymentMethodSettings'
+import MonthlyFlowDashboard from './components/MonthlyFlowDashboard'
 
 const NAV_GROUPS = [
   {
@@ -43,6 +45,7 @@ const NAV_GROUPS = [
     label: 'Financeiro',
     items: [
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
+      { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
       { key: 'payment-methods', label: 'Taxas de Pagamento', Icon: CreditCard },
       { key: 'costs', label: 'Custos', Icon: Wallet },
       { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator }
@@ -111,6 +114,8 @@ export default function App() {
         return <CategoryManager />
       case 'sales':
         return <SalesManager />
+      case 'cashflow':
+        return <MonthlyFlowDashboard />
       case 'payment-methods':
         return <PaymentMethodSettings />
       case 'costs':
