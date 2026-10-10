@@ -10,6 +10,7 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import profileService from '../services/profileService'
+import PageHeader from './PageHeader'
 import { MEI_SEGMENTS } from '../constants/segments'
 import { validateName } from '../utils/validators'
 import { maskCurrency, unmaskCurrency, currencyToDigits } from '../utils/formatters'
@@ -136,133 +137,133 @@ export default function ProfileForm({ initialProfile, segments = MEI_SEGMENTS, o
     ) : null
 
   return (
-    <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-slate-100 animate-in zoom-in-95">
-      <div className="text-center mb-7">
-        <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Wallet className="w-7 h-7" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-1">Editar dados cadastrais</h2>
-        <p className="text-sm text-slate-500">
-          Mantenha seus dados e o teto anual atualizados para calibrar seus relatórios.
-        </p>
-      </div>
+    <div className="w-full space-y-6">
+      <PageHeader
+        Icon={User}
+        title="Meu Perfil"
+        description="Mantenha seus dados e o teto anual atualizados para calibrar seus relatórios."
+      />
 
-      {serverError && (
-        <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3 animate-in fade-in">
-          <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
-          <div className="text-left">
-            <p className="font-semibold text-sm">{serverError.message}</p>
-            {serverError.details && serverError.details.length > 0 && (
-              <ul className="mt-1.5 list-disc list-inside text-xs text-rose-700 space-y-1">
-                {serverError.details.map((detail, index) => (
-                  <li key={index}>{detail}</li>
+      <div className="w-full max-w-2xl bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+        <h2 className="text-base font-bold text-slate-900 mb-5">Editar dados cadastrais</h2>
+
+        {serverError && (
+          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3 animate-in fade-in">
+            <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
+            <div className="text-left">
+              <p className="font-semibold text-sm">{serverError.message}</p>
+              {serverError.details && serverError.details.length > 0 && (
+                <ul className="mt-1.5 list-disc list-inside text-xs text-rose-700 space-y-1">
+                  {serverError.details.map((detail, index) => (
+                    <li key={index}>{detail}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate className="space-y-5 text-left">
+          <div>
+            <label htmlFor="profile-name" className="block text-sm font-medium text-slate-700 mb-1.5">
+              Nome Completo
+            </label>
+            <div className="relative">
+              {fieldIcon('name', User)}
+              <input
+                id="profile-name"
+                type="text"
+                value={name}
+                onChange={handleNameChange}
+                onBlur={(e) => handleBlur('name', e.target.value)}
+                placeholder="ex: Maria dos Santos"
+                className={inputClass('name')}
+              />
+            </div>
+            {fieldError('name')}
+          </div>
+
+          <div>
+            <label htmlFor="profile-segment" className="block text-sm font-medium text-slate-700 mb-1.5">
+              Segmento de Atuação
+            </label>
+            <div className="relative">
+              {fieldIcon('segment', Briefcase)}
+              <select
+                id="profile-segment"
+                value={segment}
+                onChange={handleSegmentChange}
+                onBlur={(e) => handleBlur('segment', e.target.value)}
+                className={`${inputClass('segment')} pr-8 appearance-none`}
+              >
+                <option value="">Selecione o segmento...</option>
+                {segments.map((seg) => (
+                  <option key={seg.value} value={seg.value}>
+                    {seg.label}
+                  </option>
                 ))}
-              </ul>
-            )}
+              </select>
+            </div>
+            {fieldError('segment')}
           </div>
-        </div>
-      )}
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-5 text-left">
-        <div>
-          <label htmlFor="profile-name" className="block text-sm font-medium text-slate-700 mb-1.5">
-            Nome Completo
-          </label>
-          <div className="relative">
-            {fieldIcon('name', User)}
-            <input
-              id="profile-name"
-              type="text"
-              value={name}
-              onChange={handleNameChange}
-              onBlur={(e) => handleBlur('name', e.target.value)}
-              placeholder="ex: Maria dos Santos"
-              className={inputClass('name')}
-            />
-          </div>
-          {fieldError('name')}
-        </div>
-
-        <div>
-          <label htmlFor="profile-segment" className="block text-sm font-medium text-slate-700 mb-1.5">
-            Segmento de Atuação
-          </label>
-          <div className="relative">
-            {fieldIcon('segment', Briefcase)}
-            <select
-              id="profile-segment"
-              value={segment}
-              onChange={handleSegmentChange}
-              onBlur={(e) => handleBlur('segment', e.target.value)}
-              className={`${inputClass('segment')} pr-8 appearance-none`}
+          <div>
+            <label
+              htmlFor="profile-customAnnualCap"
+              className="block text-sm font-medium text-slate-700 mb-1.5"
             >
-              <option value="">Selecione o segmento...</option>
-              {segments.map((seg) => (
-                <option key={seg.value} value={seg.value}>
-                  {seg.label}
-                </option>
-              ))}
-            </select>
+              Teto Anual de Faturamento (R$)
+            </label>
+            <div className="relative">
+              {fieldIcon('customAnnualCap', Wallet)}
+              <input
+                id="profile-customAnnualCap"
+                type="text"
+                inputMode="numeric"
+                value={maskCurrency(capDigits)}
+                onChange={handleCapChange}
+                onBlur={(e) => handleBlur('customAnnualCap', e.target.value)}
+                placeholder="81.000,00"
+                className={inputClass('customAnnualCap')}
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-1.5">
+              O teto oficial do MEI é de R$ 81.000,00. Defina um valor personalizado para receber
+              alertas mais cedo.
+            </p>
+            {fieldError('customAnnualCap')}
           </div>
-          {fieldError('segment')}
-        </div>
 
-        <div>
-          <label
-            htmlFor="profile-customAnnualCap"
-            className="block text-sm font-medium text-slate-700 mb-1.5"
-          >
-            Teto Anual de Faturamento (R$)
-          </label>
-          <div className="relative">
-            {fieldIcon('customAnnualCap', Wallet)}
-            <input
-              id="profile-customAnnualCap"
-              type="text"
-              inputMode="numeric"
-              value={maskCurrency(capDigits)}
-              onChange={handleCapChange}
-              onBlur={(e) => handleBlur('customAnnualCap', e.target.value)}
-              placeholder="81.000,00"
-              className={inputClass('customAnnualCap')}
-            />
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Cancelar</span>
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-md hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Salvando...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Salvar Alterações</span>
+                </>
+              )}
+            </button>
           </div>
-          <p className="text-xs text-slate-400 mt-1.5">
-            O teto oficial do MEI é de R$ 81.000,00. Defina um valor personalizado para receber
-            alertas mais cedo.
-          </p>
-          {fieldError('customAnnualCap')}
-        </div>
-
-        <div className="flex gap-3 pt-1">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Cancelar</span>
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-md hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Salvando...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Salvar Alterações</span>
-              </>
-            )}
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   )
 }
