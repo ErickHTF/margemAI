@@ -18,6 +18,8 @@ import { paymentMethodService } from '../services/paymentMethodService'
 import TipButton from './TipButton'
 import PageHeader from './PageHeader'
 import { getPillById } from '../data/sebraePills'
+import { formatFeePercent } from '../utils/paymentFees'
+import { formatCurrencyBRL } from '../utils/formatters'
 
 const TAB_OPTIONS = [
   { id: 'all', label: 'Todas as Modalidades' },
@@ -43,6 +45,11 @@ const recommendedValues = (item) => ({
   fixedFeeAmount: item.defaultFixedFeeAmount,
   settlementDays: item.defaultSettlementDays
 })
+
+const describeRecommended = (item) =>
+  `${formatFeePercent(item.defaultMdrFeePercent)} + ${formatCurrencyBRL(item.defaultFixedFeeAmount)} · D+${
+    toDays(item.defaultSettlementDays)
+  }`
 
 // Avaliado por taxa, comparando os valores atuais (inclusive não salvos) com o padrão recomendado
 const isCustomizedConfig = (item) =>
@@ -118,6 +125,14 @@ export default function PaymentMethodSettings({ onDirtyChange }) {
         ...updated[index],
         [field]: value
       }
+      return updated
+    })
+  }
+
+  const handleRestoreRecommended = (index) => {
+    setConfigs((prev) => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], ...recommendedValues(updated[index]) }
       return updated
     })
   }
@@ -271,6 +286,21 @@ export default function PaymentMethodSettings({ onDirtyChange }) {
             <span className="inline-block text-[10px] font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">
               Recomendado
             </span>
+          )}
+          {isCustomizedConfig(item) && item.defaultMdrFeePercent != null && (
+            <button
+              type="button"
+              onClick={() => handleRestoreRecommended(originalIndex)}
+              disabled={saving}
+              title={`Voltar ao recomendado: ${describeRecommended(item)}`}
+              aria-label={`Usar valores recomendados para ${item.description} ${
+                item.installments || 1
+              }x: ${describeRecommended(item)}`}
+              className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 transition cursor-pointer disabled:opacity-50"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Usar recomendado
+            </button>
           )}
           {isUnsavedConfig(item) && (
             <span className="block mt-1 text-[10px] font-semibold text-amber-600">Não salvo</span>
