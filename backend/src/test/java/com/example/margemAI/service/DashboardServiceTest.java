@@ -137,6 +137,9 @@ class DashboardServiceTest {
 
         assertEquals(new BigDecimal("300.00"), response.getTotalRevenue());
         assertEquals(new BigDecimal("2018.00"), response.getTotalExpenses());
+        assertEquals(new BigDecimal("2000.00"), response.getTotalFixedCosts());
+        assertEquals(new BigDecimal("15.00"), response.getTotalVariableCosts());
+        assertEquals(new BigDecimal("3.00"), response.getTotalPaymentFees());
         assertEquals(new BigDecimal("-1718.00"), response.getBalance());
         assertEquals(new BigDecimal("50.00"), response.getAverageRevenue());
         assertEquals(new BigDecimal("336.33"), response.getAverageExpenses());

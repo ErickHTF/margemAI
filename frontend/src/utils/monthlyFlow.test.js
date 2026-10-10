@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatMonthLabel, getChartMax, toBarHeight, hasActivity } from './monthlyFlow'
+import { formatMonthLabel, getChartMax, toBarHeight, hasActivity, expenseShare } from './monthlyFlow'
 
 describe('monthlyFlow utils', () => {
   it('should format YYYY-MM as abbreviated pt-BR month', () => {
@@ -35,5 +35,17 @@ describe('monthlyFlow utils', () => {
     expect(hasActivity([{ revenue: 0, totalExpenses: 0 }])).toBe(false)
     expect(hasActivity([{ revenue: 0, totalExpenses: 50 }])).toBe(true)
     expect(hasActivity([])).toBe(false)
+  })
+
+  it('should compute the share of an expense component as a rounded percentage', () => {
+    expect(expenseShare(500, 2018)).toBe(25)
+    expect(expenseShare(2000, 2018)).toBe(99)
+    expect(expenseShare('3.00', '2018.00')).toBe(0)
+    expect(expenseShare(0, 100)).toBe(0)
+  })
+
+  it('should return null for the expense share when there are no expenses', () => {
+    expect(expenseShare(0, 0)).toBeNull()
+    expect(expenseShare(10, undefined)).toBeNull()
   })
 })

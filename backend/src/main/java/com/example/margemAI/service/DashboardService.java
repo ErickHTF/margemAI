@@ -135,6 +135,9 @@ public class DashboardService {
     private MonthlyFlowResponse buildResponse(YearMonth start, YearMonth end, List<MonthlyFlowEntry> entries) {
         BigDecimal totalRevenue = entries.stream().map(MonthlyFlowEntry::getRevenue).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalExpenses = entries.stream().map(MonthlyFlowEntry::getTotalExpenses).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalFixedCosts = entries.stream().map(MonthlyFlowEntry::getFixedCosts).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalVariableCosts = entries.stream().map(MonthlyFlowEntry::getVariableCosts).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalPaymentFees = entries.stream().map(MonthlyFlowEntry::getPaymentFees).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal size = BigDecimal.valueOf(entries.size());
 
         boolean hasActivity = entries.stream().anyMatch(entry ->
@@ -153,6 +156,9 @@ public class DashboardService {
                 .months(entries)
                 .totalRevenue(scale(totalRevenue))
                 .totalExpenses(scale(totalExpenses))
+                .totalFixedCosts(scale(totalFixedCosts))
+                .totalVariableCosts(scale(totalVariableCosts))
+                .totalPaymentFees(scale(totalPaymentFees))
                 .balance(scale(totalRevenue.subtract(totalExpenses)))
                 .averageRevenue(totalRevenue.divide(size, 2, RoundingMode.HALF_UP))
                 .averageExpenses(totalExpenses.divide(size, 2, RoundingMode.HALF_UP))

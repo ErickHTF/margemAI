@@ -19,6 +19,9 @@ public class MonthlyFlowResponse {
     private List<MonthlyFlowEntry> months;
     private BigDecimal totalRevenue;
     private BigDecimal totalExpenses;
+    private BigDecimal totalFixedCosts;
+    private BigDecimal totalVariableCosts;
+    private BigDecimal totalPaymentFees;
     private BigDecimal balance;
     private BigDecimal averageRevenue;
     private BigDecimal averageExpenses;
