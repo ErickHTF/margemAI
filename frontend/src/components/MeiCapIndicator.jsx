@@ -16,9 +16,9 @@ const SEVERITY_CONFIG = {
     Icon: AlertCircle
   },
   INFO: {
-    bg: 'bg-blue-50 border-blue-200 text-blue-900',
-    bar: 'bg-blue-500',
-    badge: 'bg-blue-100 text-blue-800',
+    bg: 'bg-sky-50 border-sky-200 text-sky-900',
+    bar: 'bg-sky-500',
+    badge: 'bg-sky-100 text-sky-800',
     label: 'Informativo: >= 70% do Teto',
     Icon: Info
   },
