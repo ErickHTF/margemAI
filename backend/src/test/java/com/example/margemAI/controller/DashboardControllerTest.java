@@ -178,6 +178,9 @@ public class DashboardControllerTest {
                 .andExpect(jsonPath("$.months[3].fixedCosts").value(0.00))
                 .andExpect(jsonPath("$.totalRevenue").value(136.00))
                 .andExpect(jsonPath("$.totalExpenses").value(507.00))
+                .andExpect(jsonPath("$.totalFixedCosts").value(500.00))
+                .andExpect(jsonPath("$.totalVariableCosts").value(6.00))
+                .andExpect(jsonPath("$.totalPaymentFees").value(1.00))
                 .andExpect(jsonPath("$.bestMonth").value(twoMonthsAgo))
                 .andExpect(jsonPath("$.worstMonth").value(currentMonth));
     }

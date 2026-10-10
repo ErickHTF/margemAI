@@ -3186,6 +3186,21 @@ components:
           type: number
           x-currency: BRL
           example: 12450.00
+        totalFixedCosts:
+          type: number
+          x-currency: BRL
+          description: Sum of the monthly fixed costs in the period
+          example: 9000.00
+        totalVariableCosts:
+          type: number
+          x-currency: BRL
+          description: Sum of the variable costs of the products sold in the period
+          example: 2850.00
+        totalPaymentFees:
+          type: number
+          x-currency: BRL
+          description: Sum of the payment fees withheld from sales in the period
+          example: 600.00
         balance:
           type: number
           x-currency: BRL
