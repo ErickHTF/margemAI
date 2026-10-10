@@ -378,6 +378,7 @@ class PricingServiceTest {
         assertEquals(100L, response.getBreakEvenQuantity());
         assertEquals(new BigDecimal("5000.00"), response.getBreakEvenRevenue());
         assertTrue(response.getRecommendation().contains("Diretriz SEBRAE"));
+        assertTrue(response.getRecommendation().contains("5.000,00"));
     }
 
     @Test
@@ -413,6 +414,8 @@ class PricingServiceTest {
         assertFalse(response.isViable());
         assertEquals(new BigDecimal("-5.00"), response.getUnitContributionMargin());
         assertTrue(response.getRecommendation().contains("Alerta Crítico SEBRAE"));
+        assertTrue(response.getRecommendation().contains("30,00"));
+        assertTrue(response.getRecommendation().contains("35,00"));
     }
 
     @Test

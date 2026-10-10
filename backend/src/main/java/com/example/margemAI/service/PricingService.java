@@ -18,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -259,7 +261,7 @@ public class PricingService {
         String recommendation;
 
         if (!viable) {
-            recommendation = "Alerta Crítico SEBRAE: O preço de venda (R$ " + sellingPrice + ") é menor ou igual ao custo variável unitário (R$ " + unitVariableCost + "). Cada unidade vendida gera prejuízo operacional direto. É impossível atingir o ponto de equilíbrio sem reajustar o preço ou reduzir custos.";
+            recommendation = "Alerta Crítico SEBRAE: O preço de venda (" + formatBrl(sellingPrice) + ") é menor ou igual ao custo variável unitário (" + formatBrl(unitVariableCost) + "). Cada unidade vendida gera prejuízo operacional direto. É impossível atingir o ponto de equilíbrio sem reajustar o preço ou reduzir custos.";
             contributionMarginRatio = sellingPrice.compareTo(BigDecimal.ZERO) > 0
                     ? unitContributionMargin.multiply(ONE_HUNDRED).divide(sellingPrice, 2, RoundingMode.HALF_UP)
                     : BigDecimal.ZERO;
@@ -278,7 +280,7 @@ public class PricingService {
                 BigDecimal marginRatioDecimal = unitContributionMargin.divide(sellingPrice, 6, RoundingMode.HALF_UP);
                 breakEvenRevenue = totalFixedCosts.divide(marginRatioDecimal, 2, RoundingMode.HALF_UP);
 
-                recommendation = "Diretriz SEBRAE: Você precisa faturar no mínimo R$ " + breakEvenRevenue
+                recommendation = "Diretriz SEBRAE: Você precisa faturar no mínimo " + formatBrl(breakEvenRevenue)
                         + " (aproximadamente " + breakEvenQuantity + " unidades) no mês para cobrir todos os seus custos e despesas fixas. A partir desse volume, o negócio passa a lucrar de verdade.";
             }
         }
@@ -294,5 +296,10 @@ public class PricingService {
                 .viable(viable)
                 .recommendation(recommendation)
                 .build();
+    }
+
+    private static String formatBrl(BigDecimal value) {
+        return NumberFormat.getCurrencyInstance(Locale.of("pt", "BR"))
+                .format(value.setScale(2, RoundingMode.HALF_UP));
     }
 }
