@@ -9,7 +9,9 @@ import {
   Info
 } from 'lucide-react'
 import PageHeader from './PageHeader'
+import MeiCapIndicator from './MeiCapIndicator'
 import useMonthlyFlow from '../hooks/useMonthlyFlow'
+import useMeiCap from '../hooks/useMeiCap'
 import { formatCurrencyBRL } from '../utils/formatters'
 import {
   PERIOD_OPTIONS,
@@ -36,6 +38,7 @@ const SummaryCard = ({ Icon, iconClass, label, value, valueClass = 'text-slate-9
 
 export default function MonthlyFlowDashboard() {
   const { flowData, months, changeMonths, loading, error } = useMonthlyFlow()
+  const { meiCap, error: meiCapError } = useMeiCap()
 
   const entries = flowData?.months || []
   const chartMax = getChartMax(entries)
@@ -66,6 +69,15 @@ export default function MonthlyFlowDashboard() {
           ))}
         </div>
       </PageHeader>
+
+      {/* Teto anual MEI: independe do período escolhido e não bloqueia o restante da tela */}
+      {meiCap && <MeiCapIndicator data={meiCap} />}
+      {meiCapError && (
+        <p className="flex items-start gap-2 text-xs text-amber-700">
+          <Info className="w-4 h-4 shrink-0 mt-px" />
+          <span>{meiCapError}</span>
+        </p>
+      )}
 
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm py-16 flex flex-col items-center justify-center text-slate-500">
