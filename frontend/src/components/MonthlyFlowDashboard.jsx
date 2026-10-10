@@ -6,7 +6,10 @@ import {
   CalendarRange,
   Loader2,
   AlertCircle,
-  Info
+  Info,
+  Building2,
+  Package,
+  CreditCard
 } from 'lucide-react'
 import PageHeader from './PageHeader'
 import useMonthlyFlow from '../hooks/useMonthlyFlow'
@@ -16,8 +19,14 @@ import {
   formatMonthLabel,
   getChartMax,
   toBarHeight,
-  hasActivity
+  hasActivity,
+  expenseShare
 } from '../utils/monthlyFlow'
+
+const shareHint = (value, totalExpenses) => {
+  const share = expenseShare(value, totalExpenses)
+  return share == null ? 'Sem despesas no período' : `${share}% das despesas`
+}
 
 const balanceColor = (value) => (Number(value) < 0 ? 'text-rose-600' : 'text-emerald-600')
 
@@ -110,6 +119,31 @@ export default function MonthlyFlowDashboard() {
               label="Melhor mês"
               value={flowData?.bestMonth ? formatMonthLabel(flowData.bestMonth) : '—'}
               hint={flowData?.worstMonth ? `Pior mês: ${formatMonthLabel(flowData.worstMonth)}` : 'Sem movimentação'}
+            />
+          </div>
+
+          {/* Composição das despesas do período */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <SummaryCard
+              Icon={Building2}
+              iconClass="bg-slate-100 text-slate-600"
+              label="Custos fixos"
+              value={formatCurrencyBRL(flowData?.totalFixedCosts)}
+              hint={shareHint(flowData?.totalFixedCosts, flowData?.totalExpenses)}
+            />
+            <SummaryCard
+              Icon={Package}
+              iconClass="bg-slate-100 text-slate-600"
+              label="Custos variáveis"
+              value={formatCurrencyBRL(flowData?.totalVariableCosts)}
+              hint={shareHint(flowData?.totalVariableCosts, flowData?.totalExpenses)}
+            />
+            <SummaryCard
+              Icon={CreditCard}
+              iconClass="bg-slate-100 text-slate-600"
+              label="Taxas retidas"
+              value={formatCurrencyBRL(flowData?.totalPaymentFees)}
+              hint={shareHint(flowData?.totalPaymentFees, flowData?.totalExpenses)}
             />
           </div>
 

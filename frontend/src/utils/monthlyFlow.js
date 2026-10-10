@@ -26,3 +26,10 @@ export const toBarHeight = (value, max) => {
 
 export const hasActivity = (months = []) =>
   months.some((entry) => Number(entry.revenue) > 0 || Number(entry.totalExpenses) > 0)
+
+// Participação de um componente nas despesas do período, em % inteiro (null sem despesas)
+export const expenseShare = (value, totalExpenses) => {
+  const total = Number(totalExpenses) || 0
+  if (total <= 0) return null
+  return Math.round(((Number(value) || 0) / total) * 100)
+}
