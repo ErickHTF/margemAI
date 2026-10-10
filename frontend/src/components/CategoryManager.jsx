@@ -6,6 +6,7 @@ import {
   Search,
   RefreshCw,
   AlertCircle,
+  CheckCircle2,
   Loader2,
   Power
 } from 'lucide-react'
@@ -24,6 +25,7 @@ export default function CategoryManager() {
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
+  const [feedback, setFeedback] = useState(null)
   const [reloadKey, setReloadKey] = useState(0)
   const formRef = useRef(null)
 
@@ -82,11 +84,16 @@ export default function CategoryManager() {
 
   const handleToggleStatus = async (category) => {
     setSaving(true)
+    setFeedback(null)
     try {
       await categoryService.patchCategoryStatus(category.id, !category.active)
       reload()
-    } catch {
-      window.alert('Não foi possível alterar o status do padrão.')
+    } catch (err) {
+      setFeedback({
+        categoryId: category.id,
+        type: 'error',
+        message: err.response?.data?.message || 'Não foi possível alterar o status do padrão.'
+      })
     } finally {
       setSaving(false)
     }
@@ -94,12 +101,24 @@ export default function CategoryManager() {
 
   const handleRevalidate = async (category) => {
     setSaving(true)
+    setFeedback(null)
     try {
       const result = await categoryService.revalidatePrices(category.id)
-      window.alert(`Preços recalculados. Itens atualizados: ${result.updatedProducts}.`)
+      const updated = Number(result?.updatedProducts) || 0
+      setFeedback({
+        categoryId: category.id,
+        type: 'success',
+        message: `Preços do padrão "${category.name}" recalculados: ${updated} ${
+          updated === 1 ? 'item atualizado' : 'itens atualizados'
+        }.`
+      })
       reload()
     } catch (err) {
-      window.alert(err.response?.data?.message || 'Não foi possível reavaliar os preços.')
+      setFeedback({
+        categoryId: category.id,
+        type: 'error',
+        message: err.response?.data?.message || 'Não foi possível reavaliar os preços.'
+      })
     } finally {
       setSaving(false)
     }
@@ -230,80 +249,98 @@ export default function CategoryManager() {
         ) : (
           <div className="divide-y divide-slate-100">
             {categories.map((category) => (
-              <div
-                key={category.id}
-                className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/70 transition"
-              >
-                <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mt-0.5">
-                    <Tags className="w-5 h-5 text-indigo-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-slate-900 text-sm">{category.name}</h4>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                        {category.type === 'SERVICO' ? 'Serviço' : 'Produto'}
-                      </span>
-                      {!category.active && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-50 text-rose-600">
-                          Inativa
+              <div key={category.id}>
+                <div
+                  className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/70 transition"
+                >
+                  <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <Tags className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-slate-900 text-sm">{category.name}</h4>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                          {category.type === 'SERVICO' ? 'Serviço' : 'Produto'}
                         </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-slate-500 flex-wrap">
-                      <span>
-                        Margem: <strong className="text-slate-800 font-semibold">{formatPercent(category.targetProfitMargin)}</strong>
-                      </span>
-                      <span>•</span>
-                      <span>
-                        Tributos: <strong className="text-slate-800 font-semibold">{formatPercent(category.taxRate)}</strong>
-                      </span>
-                      <span>•</span>
-                      <span>
-                        Teto desconto: <strong className="text-slate-800 font-semibold">{formatPercent(category.maxDiscountAllowed)}</strong>
-                      </span>
-                      <span>•</span>
-                      <span>
-                        Variáveis: <strong className="text-slate-800 font-semibold">{formatPercent(category.variableCostPercent)}</strong>
-                      </span>
-                      {category.parentName && (
-                        <>
-                          <span>•</span>
-                          <span>Baseado em: {category.parentName}</span>
-                        </>
-                      )}
+                        {!category.active && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-50 text-rose-600">
+                            Inativa
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-500 flex-wrap">
+                        <span>
+                          Margem: <strong className="text-slate-800 font-semibold">{formatPercent(category.targetProfitMargin)}</strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Tributos: <strong className="text-slate-800 font-semibold">{formatPercent(category.taxRate)}</strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Teto desconto: <strong className="text-slate-800 font-semibold">{formatPercent(category.maxDiscountAllowed)}</strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Variáveis: <strong className="text-slate-800 font-semibold">{formatPercent(category.variableCostPercent)}</strong>
+                        </span>
+                        {category.parentName && (
+                          <>
+                            <span>•</span>
+                            <span>Baseado em: {category.parentName}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-end gap-1 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => handleRevalidate(category)}
-                    disabled={saving}
-                    title="Reavaliar preços"
-                    className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleStatus(category)}
-                    disabled={saving}
-                    title={category.active ? 'Desativar' : 'Ativar'}
-                    className="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition cursor-pointer disabled:opacity-50"
-                  >
-                    <Power className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(category)}
-                    title="Editar"
-                    className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center justify-end gap-1 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => handleRevalidate(category)}
+                      disabled={saving}
+                      title="Reavaliar preços"
+                      className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStatus(category)}
+                      disabled={saving}
+                      title={category.active ? 'Desativar' : 'Ativar'}
+                      className="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition cursor-pointer disabled:opacity-50"
+                    >
+                      <Power className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(category)}
+                      title="Editar"
+                      className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
+                {feedback?.categoryId === category.id && (
+                  <div
+                    role={feedback.type === 'error' ? 'alert' : 'status'}
+                    className={`mx-5 mb-5 flex items-start gap-3 p-3 rounded-xl text-xs border ${
+                      feedback.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-rose-50 text-rose-800 border-rose-200'
+                    }`}
+                  >
+                    {feedback.type === 'success' ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    )}
+                    <span className="font-medium leading-relaxed">{feedback.message}</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
