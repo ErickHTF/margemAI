@@ -12,13 +12,15 @@ import {
   RefreshCw,
   HelpCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Target
 } from 'lucide-react'
 import PageHeader from './PageHeader'
-import { calculatePricing, simulateDiscount } from '../services/pricingService'
+import { calculatePricing, simulateDiscount, calculateBreakEven } from '../services/pricingService'
 import { productService } from '../services/productService'
 import { operationalService } from '../services/operationalService'
 import {
+  breakEvenUnitVariableCost,
   buildSebraeExplanation,
   SEBRAE_GOLDEN_RULE,
   SEBRAE_PERCENT_BASIS
@@ -57,6 +59,9 @@ export default function PricingCalculator() {
   const [pricingResult, setPricingResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+
+  const [breakEvenResult, setBreakEvenResult] = useState(null)
+  const [breakEvenError, setBreakEvenError] = useState('')
 
   const [discountPercent, setDiscountPercent] = useState('10')
   const [discountResult, setDiscountResult] = useState(null)
@@ -243,6 +248,7 @@ export default function PricingCalculator() {
 
       const data = await calculatePricing(payload)
       setPricingResult(data)
+      runBreakEven(data)
       if (data?.minimumSellingPrice) {
         runDiscountSimulation(data.minimumSellingPrice, discountPercent, baseCostNum, fixedNum, varNum)
       }
@@ -251,6 +257,25 @@ export default function PricingCalculator() {
       setErrorMessage(msg)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Ponto de equilíbrio do preço calculado; custos fixos mensais vêm do cadastro de Custos (backend)
+  const fetchBreakEven = async (pricingData) => {
+    if (!pricingData?.minimumSellingPrice) return null
+    return calculateBreakEven({
+      sellingPrice: Number(pricingData.minimumSellingPrice),
+      unitVariableCost: breakEvenUnitVariableCost(pricingData)
+    })
+  }
+
+  const runBreakEven = async (pricingData) => {
+    setBreakEvenError('')
+    try {
+      setBreakEvenResult(await fetchBreakEven(pricingData))
+    } catch (err) {
+      setBreakEvenResult(null)
+      setBreakEvenError(err.response?.data?.message || 'Não foi possível calcular o ponto de equilíbrio.')
     }
   }
 
@@ -283,6 +308,17 @@ export default function PricingCalculator() {
         })
         if (isMounted) {
           setPricingResult(data)
+          fetchBreakEven(data)
+            .then((breakEven) => {
+              if (isMounted) setBreakEvenResult(breakEven)
+            })
+            .catch((err) => {
+              if (isMounted) {
+                setBreakEvenError(
+                  err.response?.data?.message || 'Não foi possível calcular o ponto de equilíbrio.'
+                )
+              }
+            })
           if (data?.minimumSellingPrice) {
             const discData = await simulateDiscount({
               sellingPrice: parseFloat(data.minimumSellingPrice),
@@ -802,6 +838,89 @@ export default function PricingCalculator() {
                       <span>{formatCurrency(pricingResult.unitProfit)}</span>
                     </div>
                   </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
+                  <div>
+                    <h4 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                      <Target className="w-4 h-4 text-indigo-600" />
+                      Ponto de Equilíbrio (mensal)
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      Quanto vender por mês, a este preço, para cobrir seus custos fixos.
+                    </p>
+                  </div>
+
+                  {breakEvenError ? (
+                    <div className="flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800">
+                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-600" />
+                      <span>{breakEvenError}</span>
+                    </div>
+                  ) : breakEvenResult ? (
+                    <>
+                      {breakEvenResult.viable && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3">
+                            <span className="block text-[11px] font-semibold uppercase tracking-wide text-indigo-700">
+                              Quantidade por mês
+                            </span>
+                            <span className="text-xl font-extrabold text-indigo-900">
+                              {Number(breakEvenResult.breakEvenQuantity).toLocaleString('pt-BR')}{' '}
+                              <span className="text-xs font-semibold">
+                                {Number(breakEvenResult.breakEvenQuantity) === 1 ? 'unidade' : 'unidades'}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3">
+                            <span className="block text-[11px] font-semibold uppercase tracking-wide text-indigo-700">
+                              Faturamento por mês
+                            </span>
+                            <span className="text-xl font-extrabold text-indigo-900">
+                              {formatCurrency(breakEvenResult.breakEvenRevenue)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <span className="text-slate-500 block">Custos fixos mensais</span>
+                          <span className="text-sm font-bold text-slate-900">
+                            {formatCurrency(breakEvenResult.totalFixedCosts)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Custo variável unitário</span>
+                          <span className="text-sm font-bold text-slate-900">
+                            {formatCurrency(breakEvenResult.unitVariableCost)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Margem de contribuição unitária</span>
+                          <span
+                            className={`text-sm font-bold ${
+                              breakEvenResult.viable ? 'text-emerald-700' : 'text-rose-600'
+                            }`}
+                          >
+                            {formatCurrency(breakEvenResult.unitContributionMargin)} (
+                            {Number(breakEvenResult.contributionMarginRatio).toLocaleString('pt-BR')}%)
+                          </span>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`p-3 rounded-lg text-xs leading-relaxed border ${
+                          breakEvenResult.viable
+                            ? 'bg-sky-50 text-sky-900 border-sky-200'
+                            : 'bg-rose-50 text-rose-800 border-rose-200'
+                        }`}
+                      >
+                        {breakEvenResult.recommendation}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-400">Calcule o preço para ver o ponto de equilíbrio.</p>
+                  )}
                 </div>
 
                 <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-4">
