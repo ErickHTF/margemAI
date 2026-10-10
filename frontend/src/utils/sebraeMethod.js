@@ -57,3 +57,14 @@ export const buildSebraeExplanation = ({
     markupFormula: SEBRAE_MARKUP_FORMULA
   }
 }
+
+// Custo variável unitário do ponto de equilíbrio (SEBRAE): tudo que acompanha cada venda —
+// custo base + despesas variáveis/taxas + tributos sobre a venda. Custos fixos ficam de fora.
+export const breakEvenUnitVariableCost = (pricingResult) => {
+  if (!pricingResult) return 0
+  const cents =
+    Math.round(Number(pricingResult.baseCost || 0) * 100) +
+    Math.round(Number(pricingResult.totalVariableCosts || 0) * 100) +
+    Math.round(Number(pricingResult.estimatedTaxes || 0) * 100)
+  return cents / 100
+}

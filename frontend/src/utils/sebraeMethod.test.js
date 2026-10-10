@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  breakEvenUnitVariableCost,
   buildSebraeExplanation,
   SEBRAE_GOLDEN_RULE,
   SEBRAE_PERCENT_BASIS
@@ -86,5 +87,19 @@ describe('sebraeMethod', () => {
     expect(explanation.sumPercentages).toBe(0)
     expect(explanation.goldenRuleRespected).toBe(true)
     expect(explanation.sellingPrice).toBe(0)
+  })
+
+  it('should sum base cost, variable costs and taxes as the break-even unit variable cost', () => {
+    expect(
+      breakEvenUnitVariableCost({ baseCost: 50, totalVariableCosts: 15, estimatedTaxes: 0, allocatedFixedCosts: 10 })
+    ).toBe(65)
+    expect(breakEvenUnitVariableCost({ baseCost: '10.10', totalVariableCosts: '0.20', estimatedTaxes: '1.05' })).toBe(
+      11.35
+    )
+  })
+
+  it('should treat missing pricing values as zero', () => {
+    expect(breakEvenUnitVariableCost(null)).toBe(0)
+    expect(breakEvenUnitVariableCost({ baseCost: 30 })).toBe(30)
   })
 })

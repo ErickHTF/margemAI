@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { calculatePricing, simulateDiscount } from './pricingService'
+import { calculatePricing, simulateDiscount, calculateBreakEven } from './pricingService'
 import api from './api'
 
 vi.mock('./api', () => ({
@@ -61,6 +61,29 @@ describe('pricingService', () => {
     const result = await simulateDiscount(payload)
 
     expect(api.post).toHaveBeenCalledWith('/pricing/simulate-discount', payload)
+    expect(result).toEqual(mockResponse.data)
+  })
+
+  it('should call break-even endpoint with correct payload', async () => {
+    const mockResponse = {
+      data: {
+        sellingPrice: 50.0,
+        unitVariableCost: 20.0,
+        totalFixedCosts: 3000.0,
+        unitContributionMargin: 30.0,
+        contributionMarginRatio: 60.0,
+        breakEvenQuantity: 100,
+        breakEvenRevenue: 5000.0,
+        viable: true
+      }
+    }
+    api.post.mockResolvedValueOnce(mockResponse)
+
+    const payload = { sellingPrice: 50.0, unitVariableCost: 20.0 }
+
+    const result = await calculateBreakEven(payload)
+
+    expect(api.post).toHaveBeenCalledWith('/pricing/break-even', payload)
     expect(result).toEqual(mockResponse.data)
   })
 })
