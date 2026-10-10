@@ -27,3 +27,9 @@ export const unmaskCurrency = (value) => {
 
 export const formatCurrencyBRL = (value) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0)
+
+// '2026-09-16T17:46:00' -> '16/09/2026' (data local, sem conversão de fuso)
+export const formatDateBR = (value) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value || '')
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : '—'
+}
