@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import alertService from '../services/alertService'
 
-// Status do teto anual de faturamento MEI (faturamento acumulado no ano x limite do perfil)
-export function useMeiCap() {
+// Status do teto anual de faturamento MEI (faturamento acumulado no ano x limite do perfil).
+// Mude reloadKey para recarregar (ex.: depois de editar o teto no perfil).
+export function useMeiCap(reloadKey = 0) {
   const [meiCap, setMeiCap] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -31,7 +32,7 @@ export function useMeiCap() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [reloadKey])
 
   return { meiCap, loading, error }
 }
