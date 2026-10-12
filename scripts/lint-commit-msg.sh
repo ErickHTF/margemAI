@@ -46,7 +46,7 @@ add_card_id() {
   card="$(card_id_from_branch "$branch")"
   [ -n "$card" ] || return 0
   [[ "$header" =~ \[(US|TECH|BUG|INFRA|DOCS)- ]] && return 0
-  [[ "$header" =~ ^(feat|fix|refactor|perf|test|style|docs|chore)(\([a-z0-9-]+\))?!?:\ (.+)$ ]] || return 0
+  [[ "$header" =~ ^[a-z]+(\([a-z0-9-]+\))?!?:\ (.+)$ ]] || return 0
   local prefix="${header%%: *}" rest="${header#*: }" tmp
   tmp="$(mktemp)"
   { printf '%s: [%s] %s\n' "$prefix" "$card" "$rest"; tail -n +2 "$file"; } > "$tmp"
