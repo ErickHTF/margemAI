@@ -2785,6 +2785,7 @@ components:
           type: integer
           minimum: 1
           default: 1
+          description: Em CREDITO_PARCELADO, valores abaixo de 2 são registrados e cobrados como 2 parcelas.
         customFeePercentage:
           type: number
           minimum: 0.00

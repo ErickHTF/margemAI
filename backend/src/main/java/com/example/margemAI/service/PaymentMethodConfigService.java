@@ -83,7 +83,7 @@ public class PaymentMethodConfigService {
 
         for (PaymentMethodConfigRequest req : requests) {
             int installments = req.getPaymentMethod() == PaymentMethod.CREDITO_PARCELADO
-                    ? Math.max(2, req.getInstallments() != null ? req.getInstallments() : 2)
+                    ? req.getPaymentMethod().normalizeInstallments(req.getInstallments())
                     : 1;
 
             Optional<PaymentMethodConfig> existingOpt = configRepository
@@ -122,8 +122,8 @@ public class PaymentMethodConfigService {
         if (userId == null || paymentMethod == null) {
             return Optional.empty();
         }
-        int validInstallments = (paymentMethod == PaymentMethod.CREDITO_PARCELADO && installments != null && installments >= 2)
-                ? installments
+        int validInstallments = paymentMethod == PaymentMethod.CREDITO_PARCELADO
+                ? paymentMethod.normalizeInstallments(installments)
                 : 1;
 
         return configRepository.findByUserIdAndPaymentMethodAndInstallments(userId, paymentMethod, validInstallments);

@@ -63,7 +63,7 @@ public class PaymentFeeCalculator {
             throw new IllegalArgumentException("O método de pagamento não pode ser nulo.");
         }
 
-        int validInstallments = (installments == null || installments < 1) ? 1 : installments;
+        int validInstallments = paymentMethod.normalizeInstallments(installments);
         BigDecimal grossAmount = Money.round(quantity.multiply(unitPrice));
 
         BigDecimal effectiveFeePercentage;

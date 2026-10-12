@@ -40,14 +40,11 @@ class CardPaymentPrecisionTest {
 
     @ParameterizedTest(name = "Parcela {0}x deve aplicar MDR padrão correspondente na progressão escalonada")
     @ValueSource(ints = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12})
-    @DisplayName("Deve cobrir exaustivamente parcelamento de cartão de 1x a 12x com acréscimo proporcional de 1.00% por parcela")
+    @DisplayName("Deve cobrir parcelamento de 1x a 12x com acréscimo de 1.00% por parcela, tratando 1x como 2x")
     void shouldCalculateInstallmentCreditFrom1To12(int installments) {
-        // Regra do modelo:
-        // Se 1x: 4.50%
-        // Se N > 1: 4.50% + (N - 1) * 1.00%
-        BigDecimal expectedFeePercent = installments == 1
-                ? new BigDecimal("4.50")
-                : new BigDecimal("4.50").add(BigDecimal.valueOf(installments - 1L).multiply(new BigDecimal("1.00")))
+        int effectiveInstallments = Math.max(2, installments);
+        BigDecimal expectedFeePercent = new BigDecimal("4.50")
+                .add(BigDecimal.valueOf(effectiveInstallments - 1L).multiply(new BigDecimal("1.00")))
                 .setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal quantity = new BigDecimal("1.00");

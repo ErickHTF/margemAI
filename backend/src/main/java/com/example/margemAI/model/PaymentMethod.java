@@ -19,4 +19,11 @@ public enum PaymentMethod {
         this.description = description;
         this.defaultFeePercentage = defaultFeePercentage;
     }
+
+    public static final int MIN_INSTALLMENTS_PARCELADO = 2;
+
+    public int normalizeInstallments(Integer installments) {
+        int requested = installments == null || installments < 1 ? 1 : installments;
+        return this == CREDITO_PARCELADO ? Math.max(MIN_INSTALLMENTS_PARCELADO, requested) : requested;
+    }
 }
