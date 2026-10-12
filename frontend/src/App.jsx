@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import {
+  Landmark,
   Sparkles,
   LogOut,
   CheckCircle2,
@@ -25,6 +26,7 @@ import PricingCalculator from './components/PricingCalculator'
 import SalesManager from './components/SalesManager'
 import PaymentMethodSettings from './components/PaymentMethodSettings'
 import MonthlyFlowDashboard from './components/MonthlyFlowDashboard'
+import BusinessAccounts from './components/BusinessAccounts'
 import ConfirmDialog from './components/ConfirmDialog'
 
 const NAV_GROUPS = [
@@ -44,6 +46,7 @@ const NAV_GROUPS = [
     key: 'finance',
     label: 'Financeiro',
     items: [
+      { key: 'accounts', label: 'Contas Empresariais', Icon: Landmark },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
       { key: 'costs', label: 'Custos', Icon: Wallet },
@@ -146,6 +149,8 @@ export default function App() {
         return <ProductManager />
       case 'categories':
         return <CategoryManager />
+      case 'accounts':
+        return <BusinessAccounts onDirtyChange={setHasUnsavedChanges} />
       case 'sales':
         return <SalesManager onNavigate={navigateTo} />
       case 'cashflow':

@@ -60,6 +60,75 @@ security:
   - bearerAuth: []
 
 paths:
+  /accounts:
+    get:
+      summary: Contas empresariais do titular
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Lista do titular autenticado
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/BusinessAccountResponse'}
+        '401': {description: Não autenticado}
+        '404': {description: Conta não encontrada}
+    post:
+      summary: Registrar conta com saldo inicial
+      description: Valores em reais com duas casas. Movimentos não geram custos ou faturamento. Pró-labore representa desembolso; o custo é cadastrado exclusivamente em Custos Fixos. Datas não podem estar no futuro nem anteceder o saldo inicial de origem ou destino. Saldos negativos são permitidos.
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BusinessAccountRequest'}
+      responses:
+        '201':
+          description: Registro criado
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BusinessAccountResponse'}
+        '400': {description: Dados inválidos}
+        '401': {description: Não autenticado}
+        '404': {description: Conta não encontrada}
+  /accounts/movements:
+    get:
+      summary: Movimentos do titular
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: query
+          name: accountId
+          schema: {type: string, format: uuid}
+          description: Filtra origem e destino; conta de outro titular retorna 404.
+      responses:
+        '200':
+          description: Lista do titular autenticado
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/AccountMovementResponse'}
+        '401': {description: Não autenticado}
+        '404': {description: Conta não encontrada}
+    post:
+      summary: Registrar aporte, retirada, pró-labore ou transferência atômica
+      description: Valores em reais com duas casas. Movimentos não geram custos ou faturamento. Pró-labore representa desembolso; o custo é cadastrado exclusivamente em Custos Fixos. Datas não podem estar no futuro nem anteceder o saldo inicial de origem ou destino. Saldos negativos são permitidos.
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AccountMovementRequest'}
+      responses:
+        '201':
+          description: Registro criado
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AccountMovementResponse'}
+        '400': {description: Dados inválidos}
+        '401': {description: Não autenticado}
+        '404': {description: Conta não encontrada}
   /auth/register:
     post:
       tags:
@@ -1822,6 +1891,41 @@ components:
             message: "Too many requests. Please try again later."
 
   schemas:
+    BusinessAccountRequest:
+      type: object
+      required: [name, openingBalance, openingDate]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+        openingBalance: {type: number, multipleOf: 0.01}
+        openingDate: {type: string, format: date}
+    BusinessAccountResponse:
+      allOf:
+        - $ref: '#/components/schemas/BusinessAccountRequest'
+        - type: object
+          required: [id, balance]
+          properties:
+            id: {type: string, format: uuid}
+            balance: {type: number, multipleOf: 0.01}
+    AccountMovementRequest:
+      type: object
+      required: [accountId, type, amount, date, description]
+      properties:
+        accountId: {type: string, format: uuid}
+        destinationId:
+          type: [string, 'null']
+          format: uuid
+          description: Obrigatório apenas em transferência, diferente da origem e do mesmo titular.
+        type: {type: string, enum: [APORTE, RETIRADA, PRO_LABORE, TRANSFERENCIA]}
+        amount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        date: {type: string, format: date}
+        description: {type: string, minLength: 1, maxLength: 200}
+    AccountMovementResponse:
+      allOf:
+        - $ref: '#/components/schemas/AccountMovementRequest'
+        - type: object
+          required: [id]
+          properties:
+            id: {type: string, format: uuid}
     ErrorResponse:
       type: object
       required:
