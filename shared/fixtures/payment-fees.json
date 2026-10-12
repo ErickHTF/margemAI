@@ -1,0 +1,625 @@
+{
+  "description": "Casos compartilhados da regra de taxa de pagamento. Validados por PaymentFeeSharedCasesTest (backend) e paymentFees.cases.test.js (frontend). Valores decimais como texto para leitura exata em BigDecimal.",
+  "cases": [
+    {
+      "category": "padrao",
+      "description": "Dinheiro sem configuração usa taxa padrão de 0%",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "DINHEIRO",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "0.00",
+        "fixedFee": "0.00",
+        "feeAmount": "0.00",
+        "netAmount": "100.00"
+      }
+    },
+    {
+      "category": "padrao",
+      "description": "Pix sem configuração usa taxa padrão de 0%",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "PIX",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "0.00",
+        "fixedFee": "0.00",
+        "feeAmount": "0.00",
+        "netAmount": "100.00"
+      }
+    },
+    {
+      "category": "padrao",
+      "description": "Débito sem configuração usa taxa padrão de 1,50%",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "DEBITO",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "1.50",
+        "fixedFee": "0.00",
+        "feeAmount": "1.50",
+        "netAmount": "98.50"
+      }
+    },
+    {
+      "category": "padrao",
+      "description": "Crédito à vista sem configuração usa taxa padrão de 3,20%",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "CREDITO_A_VISTA",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "3.20",
+        "fixedFee": "0.00",
+        "feeAmount": "3.20",
+        "netAmount": "96.80"
+      }
+    },
+    {
+      "category": "padrao",
+      "description": "Crédito parcelado em 2x usa 4,50% + 1 ponto por parcela extra (5,50%)",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "CREDITO_PARCELADO",
+        "installments": 2,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "5.50",
+        "fixedFee": "0.00",
+        "feeAmount": "5.50",
+        "netAmount": "94.50"
+      }
+    },
+    {
+      "category": "padrao",
+      "description": "Crédito parcelado em 6x usa 9,50%",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "CREDITO_PARCELADO",
+        "installments": 6,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "9.50",
+        "fixedFee": "0.00",
+        "feeAmount": "9.50",
+        "netAmount": "90.50"
+      }
+    },
+    {
+      "category": "padrao",
+      "description": "Crédito parcelado em 12x usa 15,50%",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "CREDITO_PARCELADO",
+        "installments": 12,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "15.50",
+        "fixedFee": "0.00",
+        "feeAmount": "15.50",
+        "netAmount": "84.50"
+      }
+    },
+    {
+      "category": "parcelas",
+      "description": "Parcelas informadas em débito são ignoradas (sempre à vista)",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "DEBITO",
+        "installments": 5,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "1.50",
+        "fixedFee": "0.00",
+        "feeAmount": "1.50",
+        "netAmount": "98.50"
+      }
+    },
+    {
+      "category": "parcelas",
+      "description": "Parcelas nulas em Pix são tratadas como 1",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "PIX",
+        "installments": null,
+        "quantity": "1",
+        "unitPrice": "80.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "80.00",
+        "feePercent": "0.00",
+        "fixedFee": "0.00",
+        "feeAmount": "0.00",
+        "netAmount": "80.00"
+      }
+    },
+    {
+      "category": "parcelas",
+      "description": "Parcelas zero em crédito à vista buscam a configuração de 1x",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "CREDITO_A_VISTA",
+            "installments": 1,
+            "mdrFeePercent": "2.99",
+            "fixedFeeAmount": "0.00",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "CREDITO_A_VISTA",
+        "installments": 0,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "2.99",
+        "fixedFee": "0.00",
+        "feeAmount": "2.99",
+        "netAmount": "97.01"
+      }
+    },
+    {
+      "category": "parcelas",
+      "description": "Parcelas em crédito à vista buscam a configuração de 1x mesmo quando informadas como 3",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "CREDITO_A_VISTA",
+            "installments": 1,
+            "mdrFeePercent": "2.99",
+            "fixedFeeAmount": "0.00",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "CREDITO_A_VISTA",
+        "installments": 3,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "2.99",
+        "fixedFee": "0.00",
+        "feeAmount": "2.99",
+        "netAmount": "97.01"
+      }
+    },
+    {
+      "category": "matriz",
+      "description": "Configuração ativa de débito com MDR e tarifa fixa substitui o padrão",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "DEBITO",
+            "installments": 1,
+            "mdrFeePercent": "1.25",
+            "fixedFeeAmount": "0.20",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "DEBITO",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "1.25",
+        "fixedFee": "0.20",
+        "feeAmount": "1.45",
+        "netAmount": "98.55"
+      }
+    },
+    {
+      "category": "matriz",
+      "description": "Configuração ativa de crédito parcelado 3x é usada para venda em 3x",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "CREDITO_PARCELADO",
+            "installments": 3,
+            "mdrFeePercent": "7.90",
+            "fixedFeeAmount": "0.00",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "CREDITO_PARCELADO",
+        "installments": 3,
+        "quantity": "1",
+        "unitPrice": "250.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "250.00",
+        "feePercent": "7.90",
+        "fixedFee": "0.00",
+        "feeAmount": "19.75",
+        "netAmount": "230.25"
+      }
+    },
+    {
+      "category": "matriz",
+      "description": "Configuração de outra quantidade de parcelas não se aplica (4x usa o padrão 7,50%)",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "CREDITO_PARCELADO",
+            "installments": 3,
+            "mdrFeePercent": "7.90",
+            "fixedFeeAmount": "0.00",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "CREDITO_PARCELADO",
+        "installments": 4,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "7.50",
+        "fixedFee": "0.00",
+        "feeAmount": "7.50",
+        "netAmount": "92.50"
+      }
+    },
+    {
+      "category": "matriz",
+      "description": "Configuração inativa volta para a taxa padrão e não aplica tarifa fixa",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "CREDITO_A_VISTA",
+            "installments": 1,
+            "mdrFeePercent": "9.99",
+            "fixedFeeAmount": "0.50",
+            "isActive": false
+          }
+        ],
+        "paymentMethod": "CREDITO_A_VISTA",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "3.20",
+        "fixedFee": "0.00",
+        "feeAmount": "3.20",
+        "netAmount": "96.80"
+      }
+    },
+    {
+      "category": "matriz",
+      "description": "Configuração com MDR zero e só tarifa fixa cobra apenas a tarifa",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "PIX",
+            "installments": 1,
+            "mdrFeePercent": "0.00",
+            "fixedFeeAmount": "0.50",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "PIX",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "40.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "40.00",
+        "feePercent": "0.00",
+        "fixedFee": "0.50",
+        "feeAmount": "0.50",
+        "netAmount": "39.50"
+      }
+    },
+    {
+      "category": "matriz",
+      "description": "MDR e tarifa fixa em crédito parcelado 6x com quantidade maior que 1",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "CREDITO_PARCELADO",
+            "installments": 6,
+            "mdrFeePercent": "8.99",
+            "fixedFeeAmount": "0.49",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "CREDITO_PARCELADO",
+        "installments": 6,
+        "quantity": "2",
+        "unitPrice": "149.90",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "299.80",
+        "feePercent": "8.99",
+        "fixedFee": "0.49",
+        "feeAmount": "27.44",
+        "netAmount": "272.36"
+      }
+    },
+    {
+      "category": "avulsa",
+      "description": "Taxa avulsa substitui o percentual configurado e descarta a tarifa fixa",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "DEBITO",
+            "installments": 1,
+            "mdrFeePercent": "1.25",
+            "fixedFeeAmount": "0.20",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "DEBITO",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": "2.00"
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "2.00",
+        "fixedFee": "0.00",
+        "feeAmount": "2.00",
+        "netAmount": "98.00"
+      }
+    },
+    {
+      "category": "avulsa",
+      "description": "Taxa avulsa zero zera percentual e tarifa fixa (zero é diferente de ausente)",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "DEBITO",
+            "installments": 1,
+            "mdrFeePercent": "1.25",
+            "fixedFeeAmount": "0.20",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "DEBITO",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": "0.00"
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "0.00",
+        "fixedFee": "0.00",
+        "feeAmount": "0.00",
+        "netAmount": "100.00"
+      }
+    },
+    {
+      "category": "avulsa",
+      "description": "Taxa avulsa zero sem matriz zera a taxa padrão",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "CREDITO_A_VISTA",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": "0"
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "0.00",
+        "fixedFee": "0.00",
+        "feeAmount": "0.00",
+        "netAmount": "100.00"
+      }
+    },
+    {
+      "category": "avulsa",
+      "description": "Taxa avulsa ausente mantém a configuração da matriz",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "DEBITO",
+            "installments": 1,
+            "mdrFeePercent": "1.25",
+            "fixedFeeAmount": "0.20",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "DEBITO",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "50.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "50.00",
+        "feePercent": "1.25",
+        "fixedFee": "0.20",
+        "feeAmount": "0.83",
+        "netAmount": "49.17"
+      }
+    },
+    {
+      "category": "avulsa",
+      "description": "Taxa avulsa com 3 casas é arredondada para 2 (4,567% → 4,57%)",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "PIX",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": "4.567"
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "4.57",
+        "fixedFee": "0.00",
+        "feeAmount": "4.57",
+        "netAmount": "95.43"
+      }
+    },
+    {
+      "category": "arredondamento",
+      "description": "Taxa de exatamente meio centavo arredonda para cima (0,50 × 1% = 0,005 → 0,01)",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "PIX",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "0.50",
+        "customFeePercent": "1.00"
+      },
+      "expected": {
+        "gross": "0.50",
+        "feePercent": "1.00",
+        "fixedFee": "0.00",
+        "feeAmount": "0.01",
+        "netAmount": "0.49"
+      }
+    },
+    {
+      "category": "arredondamento",
+      "description": "Bruto de meio centavo arredonda para cima (3 × 0,335 = 1,005 → 1,01)",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "DINHEIRO",
+        "installments": 1,
+        "quantity": "3",
+        "unitPrice": "0.335",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "1.01",
+        "feePercent": "0.00",
+        "fixedFee": "0.00",
+        "feeAmount": "0.00",
+        "netAmount": "1.01"
+      }
+    },
+    {
+      "category": "arredondamento",
+      "description": "Taxa de débito em valor pequeno arredonda HALF_UP (2,50 × 1,50% = 0,0375 → 0,04)",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "DEBITO",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "2.50",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "2.50",
+        "feePercent": "1.50",
+        "fixedFee": "0.00",
+        "feeAmount": "0.04",
+        "netAmount": "2.46"
+      }
+    },
+    {
+      "category": "arredondamento",
+      "description": "Taxa avulsa de meio centésimo arredonda para cima (1,005% → 1,01%)",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "PIX",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": "1.005"
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "1.01",
+        "fixedFee": "0.00",
+        "feeAmount": "1.01",
+        "netAmount": "98.99"
+      }
+    },
+    {
+      "category": "quantidade",
+      "description": "Quantidade inteira maior que 1 multiplica o bruto antes da taxa",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "CREDITO_A_VISTA",
+        "installments": 1,
+        "quantity": "3",
+        "unitPrice": "19.90",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "59.70",
+        "feePercent": "3.20",
+        "fixedFee": "0.00",
+        "feeAmount": "1.91",
+        "netAmount": "57.79"
+      }
+    },
+    {
+      "category": "quantidade",
+      "description": "Quantidade fracionada calcula o bruto antes de aplicar a taxa",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "DEBITO",
+        "installments": 1,
+        "quantity": "2.5",
+        "unitPrice": "10.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "25.00",
+        "feePercent": "1.50",
+        "fixedFee": "0.00",
+        "feeAmount": "0.38",
+        "netAmount": "24.62"
+      }
+    }
+  ]
+}

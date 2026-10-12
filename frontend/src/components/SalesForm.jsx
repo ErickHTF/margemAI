@@ -8,9 +8,6 @@ import {
   ShoppingBag,
   Plus,
   Minus,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
   ArrowRight,
   Info
 } from 'lucide-react'
@@ -20,6 +17,7 @@ import { PAYMENT_METHODS } from '../constants/sales'
 import usePaymentFees from '../hooks/usePaymentFees'
 import { calculateSaleFee, formatFeePercent } from '../utils/paymentFees'
 import { formatCurrencyBRL } from '../utils/formatters'
+import { Button, Card, Field, IconButton, Input, Notice, Select } from './ui'
 
 export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftChange, onBusyChange }) {
   const [initialProductId] = useState(draft?.selectedProductId)
@@ -106,7 +104,6 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
     }
   }
 
-  // Cálculo derivado inline durante o render (em conformidade estrita com o padrão da Skill React)
   const effectivePrice = parseFloat(unitPrice) || 0
   const calculation = calculateSaleFee({
     quantity,
@@ -171,7 +168,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
 
     try {
       await onSaleCreated(payload)
-      setFeedback({ type: 'success', message: 'Venda lançada com sucesso no caixa!' })
+      setFeedback({ type: 'success', message: 'Venda registrada com sucesso!' })
       setLastSale(payload)
       applyDraft(EMPTY_SALE_DRAFT)
     } catch (err) {
@@ -233,7 +230,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
   }
 
   return (
-    <div id="sale-form" className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+    <Card id="sale-form">
       <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -241,39 +238,24 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
             Lançamento Rápido de Venda
           </h2>
         </div>
-        <button
-          type="button"
+        <Button
+          variant={isCustomItem ? 'soft' : 'secondary'}
+          size="sm"
+          aria-pressed={isCustomItem}
           onClick={() => {
             setIsCustomItem(!isCustomItem)
             setSelectedProductId('')
             setUnitPrice('')
           }}
-          className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all ${
-            isCustomItem
-              ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
         >
           {isCustomItem ? '← Usar Catálogo' : '+ Item Avulso / Serviço'}
-        </button>
+        </Button>
       </div>
 
       {feedback && (
-        <div
-          role={feedback.type === 'error' ? 'alert' : 'status'}
-          className={`mb-6 p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${
-            feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
-          }`}
-        >
-          {feedback.type === 'success' ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-          )}
-          <span>{feedback.message}</span>
-        </div>
+        <Notice tone={feedback.type === 'success' ? 'emerald' : 'rose'} className="mb-6 font-medium">
+          {feedback.message}
+        </Notice>
       )}
 
       {lastSale && !hasSaleDraft({ selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes }) && (
@@ -286,25 +268,19 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
       <form onSubmit={handleSubmit} className="space-y-6">
         <fieldset disabled={submitting} aria-busy={submitting} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          {/* Seleção do Produto ou Descrição do Item */}
-          <div className="md:col-span-7">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              {isCustomItem ? 'Descrição do Item / Serviço' : 'Produto do Catálogo'}
-            </label>
+          <Field size="sm" label={isCustomItem ? 'Descrição do Item / Serviço' : 'Produto do Catálogo'} className="md:col-span-7">
             {isCustomItem ? (
-              <input
+              <Input
                 type="text"
                 value={customDescription}
                 onChange={(e) => setCustomDescription(e.target.value)}
                 placeholder="Ex: Consultoria rápida, Bolo personalizado..."
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
               />
             ) : (
-              <select
+              <Select
                 value={selectedProductId}
                 onChange={(e) => handleProductSelect(e.target.value)}
                 disabled={loadingProducts}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition disabled:opacity-50"
               >
                 <option value="">Selecione um produto cadastrado...</option>
                 {products.map((p) => (
@@ -312,80 +288,70 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
                     {p.name} — {formatCurrencyBRL(p.sellingPrice)}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
-          </div>
+          </Field>
 
-          {!isCustomItem && !loadingProducts && (
-            <div className="md:col-span-12 text-sm">
-              {productsError ? <p role="alert" className="text-rose-700">{productsError}</p> : products.length === 0 ? <p className="text-slate-600">Seu catálogo ainda não tem produtos ativos. Cadastre um produto ou use um item avulso.</p> : null}
-              {onNavigate && <button type="button" onClick={() => onNavigate('products')} className="mt-1 font-semibold text-indigo-700 underline">{products.length === 0 && !productsError ? 'Cadastrar produto no catálogo' : 'Abrir catálogo para conferir produtos'}</button>}
+          {!isCustomItem && !loadingProducts && (productsError || products.length === 0 || onNavigate) && (
+            <div className="md:col-span-12 space-y-1 text-sm">
+              {productsError
+                ? <Notice tone="rose" size="sm">{productsError}</Notice>
+                : products.length === 0 && <p className="text-slate-600">Seu catálogo ainda não tem produtos ativos. Cadastre um produto ou use um item avulso.</p>}
+              {onNavigate && (
+                <Button variant="link" size="sm" className="underline" onClick={() => onNavigate('products')}>
+                  {products.length === 0 && !productsError ? 'Cadastrar produto no catálogo' : 'Abrir catálogo para conferir produtos'}
+                </Button>
+              )}
             </div>
           )}
-          {/* Quantidade com Controles + / - */}
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Quantidade
-            </label>
-            <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => handleQuantityChange(-1)}
-                className="p-2.5 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <input
+          <Field size="sm" label="Quantidade" htmlFor="sale-quantity" className="md:col-span-2">
+            <div className="flex items-center gap-1">
+              <IconButton label="Diminuir quantidade" Icon={Minus} onClick={() => handleQuantityChange(-1)} />
+              <Input
+                id="sale-quantity"
                 type="number"
                 min="0.01"
                 step="any"
+                className="w-full min-w-0 text-center"
                 value={quantity}
                 onChange={(e) => setQuantity(parseFloat(e.target.value) || 1)}
-                className="w-full text-center bg-transparent text-sm font-semibold text-slate-800 focus:outline-none"
               />
-              <button
-                type="button"
-                onClick={() => handleQuantityChange(1)}
-                className="p-2.5 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+              <IconButton label="Aumentar quantidade" Icon={Plus} onClick={() => handleQuantityChange(1)} />
             </div>
-          </div>
+          </Field>
 
-          {/* Preço Unitário */}
-          <div className="md:col-span-3">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Preço Unitário (R$)
-            </label>
-            <input
+          <Field size="sm" label="Preço Unitário (R$)" className="md:col-span-3">
+            <Input
               type="number"
               step="0.01"
               min="0.01"
               value={unitPrice}
               onChange={(e) => setUnitPrice(e.target.value)}
               placeholder="0,00"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
             />
-          </div>
+          </Field>
         </div>
 
-        {/* Métodos de Pagamento */}
         <div>
           {feesError && (
             <p role="status" className="mb-2 text-[11px] font-medium text-amber-700">{feesError}</p>
           )}
-          {onNavigate && <button type="button" onClick={() => onNavigate('payment-methods')} className="mb-2 text-xs font-semibold text-indigo-700 underline">Conferir taxas configuradas e voltar à venda</button>}
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
+          {onNavigate && (
+            <Button variant="link" size="sm" className="mb-2 underline" onClick={() => onNavigate('payment-methods')}>
+              Conferir taxas configuradas e voltar à venda
+            </Button>
+          )}
+          <p id="sale-payment-method" className="block text-xs font-semibold text-slate-700 mb-2">
             Forma de Pagamento
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          </p>
+          <div role="group" aria-labelledby="sale-payment-method" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {PAYMENT_METHODS.map((method) => {
               const active = paymentMethod === method.key
               return (
                 <button
                   type="button"
                   key={method.key}
+                  aria-pressed={active}
                   onClick={() => {
                     setPaymentMethod(method.key)
                     if (method.key !== 'CREDITO_PARCELADO') {
@@ -394,7 +360,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
                       setInstallments(2)
                     }
                   }}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                     active
                       ? 'border-indigo-600 bg-indigo-50/70 text-indigo-900 shadow-sm ring-2 ring-indigo-500/20'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
@@ -411,93 +377,83 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
           </div>
         </div>
 
-        {/* Opções de Parcelamento para Crédito Parcelado */}
         {paymentMethod === 'CREDITO_PARCELADO' && (
-          <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl">
+          <Card tone="indigo" inset padding="sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="text-xs font-bold text-purple-900">Número de Parcelas</span>
-                <p className="text-[11px] text-purple-700">Taxas conforme Configurações › Taxas de Pagamento</p>
+                <label htmlFor="sale-installments" className="text-xs font-bold text-indigo-900">Número de Parcelas</label>
+                <p className="text-[11px] text-indigo-700">Taxas conforme Configurações › Taxas de Pagamento</p>
               </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={installments}
-                  onChange={(e) => setInstallments(parseInt(e.target.value, 10))}
-                  className="px-3 py-1.5 bg-white border border-purple-200 rounded-lg text-sm font-semibold text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                    <option key={n} value={n}>
-                      {n}x (Taxa: {describeFee(getFee('CREDITO_PARCELADO', n))})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                id="sale-installments"
+                size="sm"
+                className="w-auto"
+                value={installments}
+                onChange={(e) => setInstallments(parseInt(e.target.value, 10))}
+              >
+                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                  <option key={n} value={n}>
+                    {n}x (Taxa: {describeFee(getFee('CREDITO_PARCELADO', n))})
+                  </option>
+                ))}
+              </Select>
             </div>
-          </div>
+          </Card>
         )}
 
-        {/* Ajuste de Taxa Customizada (Opcional) */}
         <div>
-          <button
-            type="button"
-            onClick={() => setShowCustomFee(!showCustomFee)}
-            className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
-          >
+          <Button variant="link" size="sm" aria-expanded={showCustomFee} onClick={() => setShowCustomFee(!showCustomFee)}>
             {showCustomFee ? '− Voltar para a taxa configurada' : '+ Usar outra taxa só nesta venda'}
-          </button>
+          </Button>
           {showCustomFee && (
             <div className="mt-2 space-y-2">
               <div className="flex items-center gap-3">
-                <input
+                <Input
+                  size="sm"
+                  className="w-32"
                   type="number"
                   step="0.01"
                   min="0"
                   max="100"
+                  aria-label="Taxa avulsa desta venda (%)"
                   placeholder="Ex: 2.99"
                   value={customFee}
                   onChange={(e) => setCustomFee(e.target.value)}
-                  className="w-32 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <span className="text-xs text-slate-500">% retido pela adquirente</span>
               </div>
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-px" />
-                <p className="leading-relaxed">
+              <Notice tone="amber" size="sm" Icon={Info} role="note">
+                <p>
                   Esta taxa vale <strong>apenas para esta venda</strong>. Após o lançamento, as próximas vendas
                   voltam a usar a taxa configurada. Para alterar a taxa de forma permanente, acesse{' '}
                   {onNavigate ? (
-                    <button
-                      type="button"
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="underline underline-offset-2"
                       onClick={() => onNavigate('payment-methods')}
-                      className="font-semibold text-indigo-700 underline underline-offset-2 hover:text-indigo-900 cursor-pointer"
                     >
                       Configurações › Taxas de Pagamento
-                    </button>
+                    </Button>
                   ) : (
                     <strong>Configurações › Taxas de Pagamento</strong>
                   )}
                   .
                 </p>
-              </div>
+              </Notice>
             </div>
           )}
         </div>
 
-        {/* Observações Opcionais */}
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-            Observações / Notas (Opcional)
-          </label>
-          <input
+        <Field size="sm" label="Observações / Notas (Opcional)">
+          <Input
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Ex: Pagamento na entrega, cliente VIP..."
-            className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
           />
-        </div>
+        </Field>
 
-        {/* Painel de Cálculo em Tempo Real */}
         <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-md">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left divide-y sm:divide-y-0 sm:divide-x divide-slate-800">
             <div className="sm:pr-4">
@@ -523,28 +479,19 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
           </div>
         </div>
 
-        {/* Botão de Envio */}
         <div className="flex justify-end">
-          <button
+          <Button
             type="submit"
-            disabled={submitting || loadingProducts || loadingFees || calculation.gross <= 0}
-            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+            loading={submitting}
+            TrailingIcon={ArrowRight}
+            className="w-full sm:w-auto"
+            disabled={loadingProducts || loadingFees || calculation.gross <= 0}
           >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Registrando Venda...
-              </>
-            ) : (
-              <>
-                Confirmar e Lançar Venda
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+            {submitting ? 'Registrando Venda...' : 'Confirmar e Lançar Venda'}
+          </Button>
         </div>
         </fieldset>
       </form>
-    </div>
+    </Card>
   )
 }

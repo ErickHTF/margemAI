@@ -1,166 +1,248 @@
-# Guia para agentes — Margem.AI
+# AGENTS.md — Margem.AI
 
-Leia este arquivo inteiro antes de implementar qualquer card do quadro
-[Margem.AI (GitHub Project #2)](https://github.com/users/ErickHTF/projects/2).
-Ele descreve o fluxo de trabalho e os padrões de UI/código que o projeto já segue.
-Em caso de conflito entre o card e este guia, siga o card e registre a divergência no PR.
+The only instructions file for AI coding agents in this repository (`CLAUDE.md` just imports it).
 
----
+Margem.AI is a pricing, cost and cash-flow tool for Brazilian MEIs (micro-entrepreneurs), based on SEBRAE guidance:
+a Spring Boot REST API (`backend/`) and a React SPA (`frontend/`). Despite the name, it does **not** call any AI/LLM;
+all calculations are deterministic business rules.
 
-## 1. Fluxo de um card
+**Language.** This file is in English; the product is Brazilian. UI text, error messages, commits, cards, PRs and test
+names (`@DisplayName`, Vitest descriptions) are in **Brazilian Portuguese**.
 
-1. **Leia o card e a issue vinculada** (critérios de aceite, IDs `US-xx`, `TECH-xx`, `INFRA-xx`).
-2. **Branch** a partir da `develop` atualizada (é a branch de integração; a `main` não recebe PRs de cards):
-   - `feature/us-12-historico-fluxo-caixa` (história de usuário)
-   - `test/tech-01-financial-precision-tests` (técnico)
-   - `fix/<id>-<descricao-curta>` (correção)
-3. **Implemente em commits pequenos e separados por assunto** (um commit = uma mudança revisável).
-   Conventional Commits em português, com o ID do card quando houver:
-   - `feat(dashboard): [US-12] histórico e evolução mensal do fluxo de caixa`
-   - `fix(taxas): status Personalizado calculado por taxa comparando com o padrão recomendado`
-   - Tipos usados: `feat`, `fix`, `refactor`, `style`, `chore`, `test`, `docs`.
-   - Escopos usados: `menu`, `vendas`, `taxas`, `markup`, `pricing`, `dashboard`, `ui`, `layout`, `alerts`, `sebrae`, `devops`, `infra`, `precision`.
-4. **Valide antes de cada commit** (mesmos passos do CI em `.github/workflows/ci.yml`):
-   ```bash
-   cd backend  && ./mvnw test
-   cd frontend && npx eslint src && npx vitest run && npx vite build
-   ```
-   Nunca diga que algo passou sem ter rodado. Se algo falhar, reporte a saída real.
-5. **Pull Request para `develop`** com o título igual ao commit principal e corpo neste formato:
-   ```markdown
-   ## 📌 Contexto
-   Implementa a **[US-xx] (Issue #N) - <título>**, <objetivo para o MEI>.
-
-   ## 🛠️ Alterações Realizadas
-   ### Backend (Spring Boot 3.4.2)
-   - ...
-   ### Frontend (React + Vite)
-   - ...
-
-   ## 🧪 Validação
-   - **Backend**: N testes executados e aprovados.
-   - **Frontend**: N testes Vitest executados e aprovados.
-   - **Lint & Build**: eslint e vite build verdes.
-
-   Closes #N
-   ```
-6. **Não commite** `backend/src/main/resources/application-local.properties` (configuração local de cada dev).
+**Precedence.** The card wins over this file. Record any deviation in the PR.
 
 ---
 
-## 2. Stack e organização
+## Commands
 
-| Camada | Stack | Onde |
-|---|---|---|
-| Backend | Java 21, Spring Boot 3.4.2, JPA, PostgreSQL (H2 nos testes) | `backend/src/main/java/com/example/margemAI/{controller,service,repository,model,dto}` |
-| Contrato | OpenAPI | `backend/src/main/resources/openapi.yaml` — **atualize sempre que mudar um DTO/endpoint** |
-| Frontend | React 19, Vite, Tailwind CSS v4, lucide-react, Vitest | `frontend/src` |
-
-Frontend:
-- `services/` — clientes HTTP (axios em `api.js`), um por recurso, com teste `*.test.js`.
-- `hooks/` — carregamento de dados por tela (`useSales`, `useMonthlyFlow`, `usePaymentFees`). Padrão: `cancelled` no `useEffect`, estados `loading`/`error`, mensagem de erro de `err.response?.data?.message` com fallback em português.
-- `utils/` — regras puras e testáveis (`sebraeMethod`, `paymentFees`, `monthlyFlow`). Regra de negócio nova vai aqui, com teste.
-- `constants/` — rótulos e listas fixas (não valores de negócio configuráveis pelo usuário).
-- `components/` — telas e componentes compartilhados.
-
-Backend:
-- Valores monetários e percentuais sempre em `BigDecimal`, `setScale(2, RoundingMode.HALF_UP)`; compare com `compareTo`, nunca `equals`.
-- Testes de serviço com Mockito (`@ExtendWith(MockitoExtension.class)`), de controller com MockMvc; `@DisplayName` em português.
-
----
-
-## 3. Regras de negócio que viraram padrão
-
-### 3.1 Taxas de pagamento vêm sempre da matriz configurada
-A fonte única é **Configurações › Taxas de Pagamento** (`GET /settings/financial/payment-methods`).
-- Frontend: use o hook `usePaymentFees()` (`getFee(metodo, parcelas)`) e as funções de `utils/paymentFees.js`
-  (`resolvePaymentFee`, `calculateSaleFee`, `formatFeePercent`). **Nunca** escreva percentuais de taxa fixos em telas.
-- A regra espelha o `PaymentFeeCalculator` do backend: configuração ativa → senão padrão recomendado;
-  taxa = percentual (MDR) + tarifa fixa; taxa avulsa informada na venda substitui o percentual e não aplica tarifa fixa.
-- Se mudar a regra de cálculo, mude **backend e `utils/paymentFees.js` juntos**, com testes nos dois.
-- Toda tela que calcula preço ou valor líquido deve oferecer a taxa configurada (ex.: Calculadora Markup tem
-  "Incluir taxa de pagamento configurada", somada às despesas variáveis e com aviso para não contar a taxa duas vezes).
-- Quando uma tela permitir um valor avulso (só para aquela operação), deixe explícito que **não persiste** e
-  ofereça atalho para a tela de configuração (ver aviso em `SalesForm.jsx`).
-
-### 3.2 "Personalizado" x "Recomendado"
-Um valor configurável só é "Personalizado" se **divergir do padrão recomendado**, comparando valor a valor
-(não pela existência de registro salvo). O backend devolve os padrões (`default*`) junto da configuração para o
-frontend comparar em tempo real e para "Restaurar Padrões" sem duplicar valores.
-
-### 3.3 Alterações não salvas
-Telas de edição com botão "Salvar" devem:
-- rastrear o que mudou em relação ao último estado salvo (contador "N alterações não salvas" e marca "Não salvo" no item);
-- desabilitar "Salvar" quando não houver alterações;
-- informar o `App` via prop `onDirtyChange` — o `App` intercepta navegação e logout e abre o `ConfirmDialog`
-  ("Sair sem salvar?", foco em "Continuar editando");
-- registrar `beforeunload` enquanto houver alterações.
-Referência: `PaymentMethodSettings.jsx`.
-
----
-
-## 4. Padrões de UI/UX
-
-Idioma da interface: **português do Brasil** (textos, mensagens de erro, rótulos). Evite jargão em inglês na UI.
-
-### 4.1 Menu (`App.jsx` → `NAV_GROUPS`)
-O menu é dirigido por dados. Para adicionar uma tela, inclua o item no grupo certo e o `case` em `renderSection`:
-- **Conta** — perfil do usuário.
-- **Cadastros** — entidades do dia a dia (Catálogo).
-- **Financeiro** — operação e análise (Vendas, Fluxo de Caixa, Custos, Calculadora Markup).
-- **Configurações** — regras e parâmetros definidos uma vez e reutilizados (Padrões de Preço, Taxas de Pagamento).
-O ícone do item no menu é o mesmo do cabeçalho da tela. Navegação entre telas a partir de um componente: receba
-`onNavigate` e chame `onNavigate('<key>')` (passa pela proteção de alterações não salvas).
-O menu lateral é fixo (`sticky`, altura da tela) e a página reserva o espaço da barra de rolagem (`scrollbar-gutter: stable`).
-
-### 4.2 Cabeçalho de tela
-Toda tela usa `PageHeader`:
-```jsx
-<PageHeader
-  Icon={ShoppingBag}                 // mesmo ícone do menu
-  title="Registro de Vendas"         // nome do módulo
-  description="Uma frase dizendo o que o usuário faz aqui."
-  tip={<TipButton pill={pill} />}    // opcional
->
-  {/* ações à direita (botões), opcional */}
-</PageHeader>
+```bash
+scripts/setup.sh            # once per clone: enables git hooks, installs frontend deps
+scripts/check.sh            # what CI runs: backend tests, lint, Vitest, build — prints the counts for the PR
+scripts/check.sh frontend   # or: backend
 ```
-Não crie cabeçalhos próprios (centralizados, com ícone em círculo etc.).
 
-### 4.3 Largura e espaçamento
-- A largura máxima é definida uma vez no `App` (`max-w-6xl`). **Telas não definem `max-w-*` no contêiner raiz**;
-  use `<div className="w-full space-y-6">`.
-- Abas/segmentos ficam alinhados à esquerda com largura natural (não esticados).
-
-### 4.4 Dicas educativas (pílulas SEBRAE)
-Não coloque cartões de dica no meio da tela. Use `TipButton` no `tip` do `PageHeader`: um "?" discreto que abre a
-pílula em popover (fecha com clique fora/Esc) e balança ao entrar na tela e quando a dica contextual muda.
-A animação respeita `prefers-reduced-motion`. Conteúdo das pílulas: `data/sebraePills.js`.
-
-### 4.5 Listas longas
-Agrupe opções repetitivas em linha expansível em vez de exibir tudo (ex.: parcelamentos acima de 3x em
-Taxas de Pagamento mostram um resumo "Crédito Parcelado de 4x a 12x · 9 opções · faixa de taxas · N personalizadas").
-Se o usuário filtrou explicitamente por aquele grupo, mostre tudo aberto.
-
-### 4.6 Feedback e confirmação
-- Cores: sucesso `emerald`, informação `sky`, atenção/aviso `amber`, erro/destrutivo `rose`, ação primária `indigo`.
-- Aviso que não é erro (ex.: "vale só para esta venda") usa `amber` com ícone `Info`.
-- Confirmações usam `ConfirmDialog` (nunca `window.confirm`); foco inicial na opção segura.
-- Textos de botão dizem o efeito real ("Usar outra taxa só nesta venda", "Voltar para a taxa configurada").
-
-### 4.7 Acessibilidade
-`aria-expanded`/`aria-controls` em expansíveis, `role="dialog"`/`alertdialog` com `aria-modal` em diálogos,
-`aria-label` em botões só com ícone, nada interativo dentro de `<h1>`.
+Run `scripts/check.sh` before every commit. Never claim something passed without running it; if it fails, report the
+real output.
 
 ---
 
-## 5. Antes de abrir o PR — checklist
+## Workflow: card → branch → commits → PR
 
-- [ ] Critérios de aceite do card atendidos.
-- [ ] Commits separados por assunto, no padrão acima.
-- [ ] `./mvnw test`, `eslint`, `vitest` e `vite build` rodados e verdes (com números no PR).
-- [ ] `openapi.yaml` atualizado se algum contrato mudou.
-- [ ] Nenhum valor de negócio configurável escrito fixo na UI (taxas, margens, prazos).
-- [ ] Telas novas usam `PageHeader`, sem `max-w-*` próprio, ícone igual ao do menu.
-- [ ] Textos em português, sem jargão em inglês.
-- [ ] Falhas, pendências e o que não foi verificado (ex.: não testado no navegador) estão descritos no PR.
+Every change starts from a card on the [Margem.AI board (GitHub Project #2)](https://github.com/users/ErickHTF/projects/2).
+Always use `scripts/card`; prefix with `DRY_RUN=1` to preview.
+
+| Step | Command | Result |
+|---|---|---|
+| Create card | `scripts/card new US "Reaproveitar venda registrada" --layer frontend --priority should --domain sales` | Next free ID (`[US-36] — …`), body template, labels, column *Backlog* |
+| Start card | `scripts/card start 91` | Branch `feature/us-35-reaproveitar-…` from fresh `origin/develop`, assignee, column *In Progress* |
+| Commit | `git commit -m "feat(vendas): reaproveitar venda registrada"` | Hook validates the format and inserts `[US-35]` from the branch |
+| Existing branch | `scripts/card link 95` | Associates the current branch with the card, column *In Progress* |
+| Adopt a branch | `scripts/card link 95` | Links the current branch to an existing card, column *In Progress* |
+| Open PR | `scripts/card pr --body-file <arquivo.md>` | Lints commits, pushes, PR to `develop` titled like the main commit, `Closes #N`, column *In Review* |
+
+**Cards.** Types `US` (value for the MEI), `TECH` (refactor/tests/tooling), `BUG`, `INFRA`, `DOCS`. Title
+`[<TYPE>-<NN>] — <título no infinitivo>`. Body: Contexto, Critérios de aceite (verifiable), Fora do escopo, Dependências.
+Read the card and the issues it links before coding.
+
+**Branches.** `<prefix>/<type>-<nn>-<slug>` from an up-to-date `develop` (`main` never receives card PRs). Prefixes:
+`feature` (US), `fix` (BUG), `test`, `refactor`, `chore` (TECH/INFRA), `docs`. Branching from another feature branch:
+`scripts/card start <n> --base <branch>`, and say so in the PR.
+
+**Commits.** `<type>(<scope>): [<CARD>] <descrição>` — lowercase, no final period, header ≤ 100 chars, one topic each.
+- Types: `feat` `fix` `refactor` `perf` `test` `style` `docs` `chore` `ci` `build` `revert`
+  (the first six require a scope).
+- Scopes: `auth` `perfil` `produtos` `categorias` `custos` `vendas` `contas` `dashboard` (fluxo de caixa) `pricing`
+  (markup) `taxas` `alerts` `sebrae` `tours` `ui` `layout` `menu` `precision` `security` `api` `db` `infra` `devops`
+  `ci` `deps` `docs` `agentes`.
+- Card ID: `[US-12]`, `[TECH-08]`, `[US-32 a US-35]`.
+- Source of truth: `scripts/lib/conventions.sh` (change it and this list together). Stage files by path, never `git add -A`.
+
+**Pull requests.** Target `develop`. Body:
+
+```markdown
+## 📌 Contexto
+Implementa a **[US-xx] (Issue #N) — <título>**, <objetivo para o MEI>.
+
+## 🛠️ Alterações
+### Backend
+- ...
+### Frontend
+- ...
+
+## 🧪 Validação
+<resumo final de scripts/check.sh>
+
+## ⚠️ Pendências e o que não foi verificado
+<ex.: não testado no navegador; divergências deste guia; "Nenhuma">
+```
+
+---
+
+## Shared business rules
+
+**Payment fees come from the configured matrix** (Configurações › Taxas de Pagamento,
+`GET /settings/financial/payment-methods`): active configuration → otherwise the recommended default; fee = percentage
+(MDR) + fixed charge; a one-off fee on a sale replaces the percentage and skips the fixed charge. The rule exists in
+`PaymentFeeCalculator` (backend) and `utils/paymentFees.js` (frontend); both run the same cases in
+`shared/fixtures/payment-fees.json` (decimals as strings; `customFeePercent: null` = none, `"0.00"` = zero fee).
+To change the rule: **edit the fixture first, then both implementations**; never delete a case to make a side pass.
+
+**"Personalizado" vs. "Recomendado".** A value is "Personalizado" only if it differs from the recommended default,
+compared value by value (not by whether a record exists). The backend returns `default*` values with the configuration.
+
+**Configurable values are never hard-coded** (fees, margins, deadlines, MEI cap). `constants/` holds labels and fixed
+lists only. Screens that compute a price or net amount offer the configured fee; one-off values say they **are not
+saved** and link to the settings screen (see `SalesForm.jsx`).
+
+---
+
+## Frontend (`frontend/src`, React 19 + Vite + Tailwind v4)
+
+| Folder | Contents |
+|---|---|
+| `components/ui/` | **The UI kit.** Every button, field, card, badge, notice, empty state and segmented control comes from here. |
+| `components/` | Screens (PascalCase) and app-level components (`PageHeader`, `TipButton`, `ConfirmDialog`, `SectionTour`). |
+| `hooks/` | Per-screen data hooks built on `useApiResource`; `useDraft` for unsaved changes. |
+| `services/` | One axios client per resource (singular names: `saleService.js`), on `api.js` (`VITE_API_URL`). Tested in `endpoints.test.js`. |
+| `utils/` | Pure business rules and formatters. **New rules go here, with tests.** |
+| `constants/`, `data/` | Fixed labels; SEBRAE tips (`sebraePills.js`) and tours (`menuTours.js`). |
+
+### UI kit — no hand-written look
+
+Import from `components/ui` (`import { Button, Card, Field, Input } from './ui'`). Screens write layout classes only
+(`grid`, `flex`, `gap-*`, `space-y-*`, widths). Never write color/border/radius/shadow strings for controls or
+surfaces in a screen; if the kit lacks a variant, add it to the kit.
+
+| Primitive | Props (besides native ones and `className` for layout) |
+|---|---|
+| `Button` | `variant` primary·secondary·soft·danger·ghost·link, `size` sm·md, `Icon`, `TrailingIcon`, `loading`, `fullWidth` (`type` defaults to `"button"`) |
+| `IconButton` | `label` (required → `aria-label`), `Icon`, `tone` slate·indigo·emerald·amber·rose, `size` sm·md·lg |
+| `Card` | `as`, `tone` white·muted·indigo·emerald·sky·amber·rose, `padding` none·sm·md·lg, `inset` (nested panel) |
+| `Field` | `label`, `hint`, `error`, `size`, `htmlFor` (only for compound children) — wires `id`, `aria-invalid`, `aria-describedby` |
+| `Input` · `Select` · `Textarea` | `size` sm·md, `Icon` (leading), `prefix`/`suffix` (`"R$"`, `"%"`), `TrailingIcon`, `action` |
+| `Checkbox` | native checkbox props |
+| `Badge` | `tone`, `Icon` |
+| `Notice` | `tone`, `size`, `title`, `Icon`, `role` (`alert` for rose, `status` otherwise) |
+| `EmptyState` | `Icon`, `title`, `description`, `action`, `tone` slate·rose, `loading` |
+| `SegmentedControl` | `options` `[{ value, label, Icon }]`, `value`, `onChange`, `size`, `label` |
+
+```jsx
+<Field label="Preço de venda" error={errors.price}>
+  <Input prefix="R$" type="number" inputMode="decimal" value={price} onChange={onPriceChange} />
+</Field>
+<Button Icon={Plus} onClick={addItem}>Novo item</Button>
+```
+
+Bespoke visuals (sidebar, payment-method tiles, sliders, dialog surfaces) may keep their own classes; anything reused
+twice belongs in the kit.
+
+Colors: success `emerald`, info `sky`, warning `amber`, error/destructive `rose`, primary `indigo`.
+
+### Mobile-first (mandatory for every design)
+
+Most MEIs use the app on a phone. Design for ~360px first, then enhance:
+
+- Base classes target the phone; add `sm:`/`md:`/`lg:` only to *enhance* larger screens (never `max-*:` to fix desktop
+  layouts after the fact). Grids start at one column (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`).
+- No horizontal page scroll at 360px. Wide tables become stacked cards on small screens, or scroll inside their own
+  container (`overflow-x-auto`) when columns must stay aligned.
+- Touch targets ≥ 44px tall for primary actions; form actions stack full-width on phones (`w-full sm:w-auto`).
+- Inputs use the right `type`/`inputMode` (`decimal` for money, `numeric` for counts) so phones show the right keyboard.
+- Nothing essential depends on hover; popovers, tours and dialogs fit the phone viewport.
+- Check every screen at 360px wide before calling it done, and state in the PR if you couldn't.
+
+### Screens
+
+- **Header:** every screen uses `PageHeader` (`Icon` = same icon as the menu, `title`, one-sentence `description`,
+  optional `tip={<TipButton pill={pill} />}`, actions as children). No custom headers.
+- **Width:** set once in `App` (`max-w-6xl`). Screen root is `<div className="w-full space-y-6">`, no `max-w-*`.
+  Tabs/segments are left-aligned at natural width.
+- **Menu:** data-driven `NAV_GROUPS` in `App.jsx` — Conta (perfil), Cadastros (entidades do dia a dia), Financeiro
+  (operação e análise), Configurações (parâmetros reutilizados). Navigate with `onNavigate('<key>')`.
+- **Tips:** SEBRAE pills only through `TipButton` in the header, never as cards mid-screen.
+- **Tours:** each menu key has steps in `MENU_TOURS`; each step `target` matches a `data-tour="…"` element. Short,
+  objective Portuguese.
+- **Unsaved changes:** forms with "Salvar" use `useDraft(value, baseline)` → `{ dirty, changes, markSaved, guard }`.
+  `App` blocks navigation/logout/reload while dirty with `ConfirmDialog` ("Sair sem salvar?"). Show
+  "N alterações não salvas", mark changed items "Não salvo", disable "Salvar" when clean, call `markSaved` after saving.
+- **Confirmation:** `ConfirmDialog` only (never `window.confirm`), initial focus on the safe option, button text states
+  the effect ("Usar outra taxa só nesta venda").
+- **Long lists:** collapse repetitive options into an expandable summary row; show expanded when filtered to that group.
+- **Accessibility:** `aria-expanded`/`aria-controls` on expandables, `role="dialog"`/`alertdialog` + `aria-modal`,
+  `IconButton` always has `label`, nothing interactive inside `<h1>`, motion respects `prefers-reduced-motion`.
+
+### Data hooks
+
+```js
+const { data: flowData, loading, error } = useApiResource(
+  () => dashboardService.getMonthlyFlow({ months }), [months],
+  { errorMessage: 'Erro ao carregar o histórico do fluxo de caixa.' }
+)
+```
+
+`useApiResource(fetcher, deps, { initialData, errorMessage })` → `{ data, loading, error, reload, setData }` handles
+stale responses and maps errors with `getApiErrorMessage` (`services/apiError.js`). Don't hand-roll
+`useEffect` + `cancelled` + `loading` again.
+
+### Adding a screen
+
+1. Component in `components/` using `PageHeader` and the UI kit.
+2. Item in `NAV_GROUPS` + `case` in `renderSection` (same icon in both places).
+3. Tour steps in `data/menuTours.js` with matching `data-tour` attributes; SEBRAE pill in `data/sebraePills.js` if any.
+4. Service methods + rows in `services/endpoints.test.js`; hook on `useApiResource`; rules in `utils/` with tests.
+
+`src/app.consistency.test.js` fails if a menu item lacks a `case`, a tour or `PageHeader`, if a tour target has no
+`data-tour` element, or if `window.confirm` appears.
+
+---
+
+## Backend (`backend/`, Java 21 + Spring Boot 3.4)
+
+- **Layers** (`com.example.margemAI`): `controller` (REST only) → `service` (rules, calculations) → `repository`
+  (Spring Data). `dto/request` (Bean Validation) and `dto/response`; `model` (JPA entities, **singular** names; tables
+  plural snake_case); `exception` (+ `GlobalExceptionHandler`); `event`; `config`; `security`; `util`.
+- **Money:** always `BigDecimal`, never `double`/`float`. Use `util.Money`: `Money.round(x)` (scale 2, HALF_UP),
+  `Money.percentOf(amount, percent)`, `Money.percentageOf(part, whole)`, `Money.ZERO`. Compare with `compareTo`.
+  Use another scale/rounding only on purpose (e.g. markup at scale 4) and keep it local.
+- **Entities:** UUID ids, `createdAt`/`updatedAt`, every query scoped to the authenticated user.
+- **Validation and errors:** `@Valid @RequestBody`; constraints in request DTOs; duplicates throw
+  `DuplicateResourceException` → 409; validation → 400 with `ErrorResponse`; missing → `ResourceNotFoundException` → 404.
+- **Contract:** update `src/main/resources/openapi.yaml` with every DTO/endpoint change.
+- **Tests:** services with JUnit 5 + Mockito (`@ExtendWith(MockitoExtension.class)`), controllers with MockMvc,
+  `@DisplayName` in Portuguese, H2 in tests (avoid vendor-specific SQL).
+
+**Adding an endpoint:** request/response DTOs → service + test → controller + MockMvc test → `openapi.yaml` →
+frontend service method + row in `endpoints.test.js`.
+
+---
+
+## Tests that earn their place
+
+A test exists to fail when the behavior it names breaks. Name the bug it would catch before writing it.
+
+- **Distinguishable data:** different values for fields that could be swapped; prices other than 100; a mock never
+  returns the value the test then asserts.
+- **Observable effects:** returned values, persisted entities, HTTP status/body, rendered text. Verify interactions only
+  at boundaries (HTTP verb/URL/payload, published events).
+- **Table-driven variations** (`it.each`, `@ParameterizedTest`) instead of copy-pasted cases.
+- **Bug fix → regression test** that fails before the fix.
+- **Don't write:** snapshots, CSS-class assertions, "is defined"/"renders without crashing", getters/setters,
+  framework behavior, a second test for a covered scenario.
+- Removing a test is fine when it asserts nothing or duplicates another; name the covering test in the PR.
+
+---
+
+## Boundaries
+
+- ✅ **Always:** `scripts/check.sh` before committing; `openapi.yaml` with contract changes; tests per the policy above.
+- ⚠️ **Ask first:** new dependency; non-additive schema change; CI/deploy workflow change; changing a shared
+  calculation (fees, markup, MEI cap); deleting more than a handful of tests.
+- 🚫 **Never:** commit `backend/src/main/resources/application-local.properties` or secrets; hard-code configurable
+  business values; PR a card into `main`; `--no-verify`; report validation you didn't run; add new `.md` docs —
+  agent-facing rules go in this file.
+
+## Gotchas
+
+- `develop` often lags open feature PRs (stacked work): check `gh pr list` before assuming something is missing.
+- Sales and expenses do **not** post into Contas Empresariais automatically; account movements are separate records.
+- Code is comment-free by convention: no comments restating *what* the code does; a short *why* is fine.

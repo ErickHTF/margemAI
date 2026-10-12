@@ -4,6 +4,7 @@ import com.example.margemAI.dto.response.*;
 import com.example.margemAI.model.*;
 import com.example.margemAI.repository.*;
 import com.example.margemAI.exception.*;
+import com.example.margemAI.util.Money;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +33,7 @@ public class BusinessAccountService {
     @Transactional
     public BusinessAccountResponse create(UUID userId, BusinessAccountRequest r) {
         var a = accounts.save(BusinessAccount.builder().name(r.name().trim())
-            .openingBalance(r.openingBalance().setScale(2, RoundingMode.HALF_UP)).openingDate(r.openingDate())
+            .openingBalance(Money.round(r.openingBalance())).openingDate(r.openingDate())
             .user(users.getReferenceById(userId)).build());
         return response(a, a.getOpeningBalance());
     }
@@ -59,7 +60,7 @@ public class BusinessAccountService {
             throw new InvalidRequestException("O movimento não pode ser anterior ao saldo inicial das contas.");
         // Record cash movement only; payroll costs belong to FixedCost.
         return response(movements.save(AccountMovement.builder().account(account).destination(destination)
-            .type(r.type()).amount(r.amount().setScale(2, RoundingMode.HALF_UP))
+            .type(r.type()).amount(Money.round(r.amount()))
             .date(r.date()).description(r.description().trim()).build()));
     }
     private BusinessAccount owned(UUID userId, UUID id) {
@@ -67,7 +68,7 @@ public class BusinessAccountService {
             .orElseThrow(() -> new ResourceNotFoundException("Conta empresarial não encontrada."));
     }
     private BusinessAccountResponse response(BusinessAccount a, BigDecimal balance) {
-        return new BusinessAccountResponse(a.getId(), a.getName(), a.getOpeningBalance(), a.getOpeningDate(), balance.setScale(2, RoundingMode.HALF_UP));
+        return new BusinessAccountResponse(a.getId(), a.getName(), a.getOpeningBalance(), a.getOpeningDate(), Money.round(balance));
     }
     private AccountMovementResponse response(AccountMovement m) {
         return new AccountMovementResponse(m.getId(), m.getAccount().getId(), m.getDestination() == null ? null : m.getDestination().getId(), m.getType(), m.getAmount(), m.getDate(), m.getDescription());

@@ -2,7 +2,6 @@ import useDraft from '../hooks/useDraft'
 import { useState, useEffect } from 'react'
 import {
   Calculator,
-  Loader2,
   AlertCircle,
   AlertTriangle,
   Percent,
@@ -17,6 +16,7 @@ import {
   Target
 } from 'lucide-react'
 import PageHeader from './PageHeader'
+import { Badge, Button, Card, Checkbox, EmptyState, Field, Input, Notice, Select } from './ui'
 import PricingResultExplanation from './PricingResultExplanation'
 import { buildPricingExplanation } from '../utils/pricingExplanation'
 import { calculatePricing, simulateDiscount, calculateBreakEven } from '../services/pricingService'
@@ -73,7 +73,6 @@ export default function PricingCalculator({ onNavigate }) {
   const [activeContextAction, setActiveContextAction] = useState(null)
   const [selectedPillId, setSelectedPillId] = useState(null)
 
-  // Taxa de pagamento configurada (Configurações › Taxas de Pagamento), opcional e somada às despesas variáveis
   const { getFee, error: feesError } = usePaymentFees()
   const [useConfiguredFee, setUseConfiguredFee] = useState(false)
   const [feeMethod, setFeeMethod] = useState('CREDITO_A_VISTA')
@@ -269,7 +268,6 @@ export default function PricingCalculator({ onNavigate }) {
     }
   }
 
-  // Ponto de equilíbrio do preço calculado; custos fixos mensais vêm do cadastro de Custos (backend)
   const fetchBreakEven = async (pricingData) => {
     if (!pricingData?.minimumSellingPrice) return null
     return calculateBreakEven({
@@ -372,12 +370,17 @@ export default function PricingCalculator({ onNavigate }) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
   }
 
-  const percentInputClass =
-    'block w-full pl-3 pr-9 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50/50 border-slate-200 focus:ring-indigo-100 focus:border-indigo-500'
 
-  const amountInputClass =
-    'block w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50/50 border-slate-200 focus:ring-indigo-100 focus:border-indigo-500'
-
+  const lockedHint = (
+    <>
+      Herdado do padrão do item.{' '}
+      {onNavigate && (
+        <Button variant="link" size="sm" className="underline" onClick={() => onNavigate('categories')}>
+          Conferir padrões de preço
+        </Button>
+      )}
+    </>
+  )
   return (
     <div className="w-full space-y-6">
       <PageHeader
@@ -393,82 +396,62 @@ export default function PricingCalculator({ onNavigate }) {
         description="Calcule o preço de venda ideal cobrindo despesas e garantindo sua margem, com base na metodologia SEBRAE."
       />
 
-      <div className="w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+      <Card padding="none" className="w-full overflow-hidden">
         <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div data-tour="pricing-parameters" className="lg:col-span-5 space-y-5">
             <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
               Parâmetros de Custo e Margem
             </h3>
 
-            <div>
-              <label htmlFor="pricing-product" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Produto Cadastrado (opcional)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Package className="w-4 h-4" />
-                </div>
-                <select
-                  data-tour="pricing-product"
-                  id="pricing-product"
-                  value={selectedProductId}
-                  onChange={(e) => handleProductSelect(e.target.value)}
-                  disabled={loadingProducts}
-                  className="block w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50/50 border-slate-200 focus:ring-indigo-100 focus:border-indigo-500"
-                >
-                  <option value="">
-                    {loadingProducts ? 'Carregando...' : 'Selecione um produto...'}
+            <Field
+              label="Produto Cadastrado (opcional)"
+              hint={selectedProductId ? 'Dados do produto preenchidos automaticamente. Ajuste conforme necessário.' : undefined}
+            >
+              <Select
+                data-tour="pricing-product"
+                id="pricing-product"
+                Icon={Package}
+                value={selectedProductId}
+                onChange={(e) => handleProductSelect(e.target.value)}
+                disabled={loadingProducts}
+              >
+                <option value="">
+                  {loadingProducts ? 'Carregando...' : 'Selecione um produto...'}
+                </option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.type === 'SERVICO' ? '🔧' : '📦'} {product.name}
                   </option>
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.type === 'SERVICO' ? '🔧' : '📦'} {product.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {selectedProductId && (
-                <p className="mt-1.5 text-xs text-slate-500">
-                  Dados do produto preenchidos automaticamente. Ajuste conforme necessário.
-                </p>
-              )}
-            </div>
+                ))}
+              </Select>
+            </Field>
 
-            <div>
-              <label htmlFor="pricing-baseCost" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Custo de Aquisição / Produção Base (R$)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Banknote className="w-4 h-4" />
-                </div>
-                <input
-                  id="pricing-baseCost"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={formData.baseCost}
-                  onChange={(e) => handleInputChange('baseCost', e.target.value)}
-                  readOnly={!!selectedProductId}
-                  className={`${amountInputClass}${selectedProductId ? ' bg-slate-100 text-slate-600' : ''}`}
-                  placeholder="0,00"
-                />
-              </div>
-            </div>
+            <Field label="Custo de Aquisição / Produção Base (R$)">
+              <Input
+                id="pricing-baseCost"
+                type="number"
+                step="0.01"
+                min="0.01"
+                Icon={Banknote}
+                value={formData.baseCost}
+                onChange={(e) => handleInputChange('baseCost', e.target.value)}
+                readOnly={!!selectedProductId}
+                placeholder="0,00"
+              />
+            </Field>
 
-            {onNavigate && <p className="text-xs text-slate-500">O rateio usa os custos fixos do negócio. <button type="button" onClick={() => onNavigate('costs')} className="font-medium text-indigo-700 underline cursor-pointer">Conferir custos cadastrados</button></p>}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4">
+            {onNavigate && <p className="text-xs text-slate-500">O rateio usa os custos fixos do negócio. <Button variant="link" size="sm" className="underline" onClick={() => onNavigate('costs')}>Conferir custos cadastrados</Button></p>}
+            <Card tone="muted" inset padding="sm" className="space-y-4">
               <div className="flex items-center justify-between">
                 <label htmlFor="toggleFixed" className="text-sm font-medium text-slate-700 cursor-pointer">
                   Despesas Fixas Alocadas (%)
                 </label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     id="toggleFixed"
                     checked={formData.includeFixedCosts}
                     onChange={(e) => handleInputChange('includeFixedCosts', e.target.checked)}
                     disabled={useAutomaticFixedCosts}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
                   />
                   <label htmlFor="toggleFixed" className="text-xs text-slate-500 cursor-pointer">
                     Incluir
@@ -480,19 +463,17 @@ export default function PricingCalculator({ onNavigate }) {
                 <span className="text-xs font-medium text-slate-600">
                   Usar rateio automático (R_cf do consolidador)
                 </span>
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="toggleAutomaticFixed"
                   checked={useAutomaticFixedCosts}
                   onChange={(e) => setUseAutomaticFixedCosts(e.target.checked)}
                   disabled={profileLocked}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
                 />
               </label>
 
               {formData.includeFixedCosts && (
                 useAutomaticFixedCosts ? (
-                  <div className="rounded-lg border border-indigo-200 bg-white p-3 space-y-2">
+                  <Card inset padding="none" className="p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-500">Alíquota de absorção (R_cf)</span>
                       <span className="text-sm font-bold text-indigo-700">
@@ -504,67 +485,61 @@ export default function PricingCalculator({ onNavigate }) {
                       <span>Faturamento base: {formatCurrency(rateioSummary?.revenueBaseline)}</span>
                     </div>
                     {rateioSummary?.severeRisk && (
-                      <div className="flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[11px] text-rose-700">
-                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                        <span>{rateioSummary.riskMessage}</span>
-                      </div>
+                      <Notice tone="rose" size="sm" Icon={AlertTriangle} className="text-[11px]">
+                        {rateioSummary.riskMessage}
+                      </Notice>
                     )}
-                  </div>
+                  </Card>
                 ) : (
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="99"
-                      value={formData.fixedCostPercent}
-                      onChange={(e) => handleInputChange('fixedCostPercent', e.target.value)}
-                      className={`${percentInputClass} bg-white`}
-                      placeholder="Ex: 10"
-                    />
-                    <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                      <Percent className="w-4 h-4" />
-                    </span>
-                  </div>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="99"
+                    TrailingIcon={Percent}
+                    aria-label="Despesas fixas alocadas (%)"
+                    value={formData.fixedCostPercent}
+                    onChange={(e) => handleInputChange('fixedCostPercent', e.target.value)}
+                    placeholder="Ex: 10"
+                  />
                 )
               )}
 
-              <button
-                type="button"
+              <Button
+                variant="link"
+                size="sm"
+                Icon={Settings2}
+                aria-expanded={showRateioConfig}
                 onClick={() => setShowRateioConfig((value) => !value)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
               >
-                <Settings2 className="w-3.5 h-3.5" />
                 {showRateioConfig ? 'Fechar configuração de rateio' : 'Configurar rateio de custos fixos'}
-              </button>
+              </Button>
 
               {showRateioConfig && (
-                <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-3">
-                  {rateioError && <p className="text-[11px] text-rose-600">{rateioError}</p>}
+                <Card inset padding="none" className="p-3 space-y-3">
+                  {rateioError && <p role="alert" className="text-[11px] text-rose-600">{rateioError}</p>}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        Modalidade de faturamento base
-                      </label>
-                      <select
+                    <Field size="sm" label="Modalidade de faturamento base">
+                      <Select
+                        size="sm"
                         value={rateioForm.revenueBaselineMode}
                         onChange={(e) =>
                           setRateioForm((prev) => ({ ...prev, revenueBaselineMode: e.target.value }))
                         }
-                        className="w-full px-2.5 py-2 rounded-lg border border-slate-200 text-xs bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
                       >
                         <option value="TARGET_REVENUE">Faturamento estimado (meta)</option>
                         <option value="HISTORICAL_AVERAGE">Média histórica</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        {rateioForm.revenueBaselineMode === 'HISTORICAL_AVERAGE'
-                          ? 'Média histórica mensal (R$)'
-                          : 'Faturamento mensal estimado (R$)'}
-                      </label>
-                      <input
+                      </Select>
+                    </Field>
+                    <Field
+                      size="sm"
+                      label={rateioForm.revenueBaselineMode === 'HISTORICAL_AVERAGE'
+                        ? 'Média histórica mensal (R$)'
+                        : 'Faturamento mensal estimado (R$)'}
+                    >
+                      <Input
+                        size="sm"
                         type="number"
                         step="0.01"
                         min="0"
@@ -573,19 +548,16 @@ export default function PricingCalculator({ onNavigate }) {
                           setRateioForm((prev) => ({ ...prev, revenueBaseline: e.target.value }))
                         }
                         placeholder="Ex: 5000"
-                        className="w-full px-2.5 py-2 rounded-lg border border-slate-200 text-xs bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
                       />
-                    </div>
+                    </Field>
                   </div>
 
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={rateioForm.automaticRateio}
                       onChange={(e) =>
                         setRateioForm((prev) => ({ ...prev, automaticRateio: e.target.checked }))
                       }
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
                     />
                     <span className="text-[11px] text-slate-600">
                       Calcular R_cf automaticamente (desmarque para definir manualmente)
@@ -593,11 +565,9 @@ export default function PricingCalculator({ onNavigate }) {
                   </label>
 
                   {!rateioForm.automaticRateio && (
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                        Percentual de rateio manual (%)
-                      </label>
-                      <input
+                    <Field size="sm" label="Percentual de rateio manual (%)">
+                      <Input
+                        size="sm"
                         type="number"
                         step="0.01"
                         min="0"
@@ -609,79 +579,59 @@ export default function PricingCalculator({ onNavigate }) {
                             manualAllocatedFixedCostPercent: e.target.value
                           }))
                         }
-                        className="w-full px-2.5 py-2 rounded-lg border border-slate-200 text-xs bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
                       />
-                    </div>
+                    </Field>
                   )}
 
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    fullWidth
+                    Icon={RefreshCw}
+                    loading={savingRateio}
                     onClick={handleSaveRateioConfig}
-                    disabled={savingRateio || !rateioDirty}
-                    className="w-full py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                    disabled={!rateioDirty}
                   >
-                    {savingRateio ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Salvando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>Salvar e recalcular</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+                    {savingRateio ? 'Salvando...' : 'Salvar e recalcular'}
+                  </Button>
+                </Card>
               )}
-            </div>
+            </Card>
 
             {profileLocked && (
-              <div className="flex items-start gap-2 rounded-xl bg-indigo-50 border border-indigo-200 p-3 text-xs text-indigo-800">
-                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                <span>
-                  Este item possui um padrão de precificação vinculado. Os parâmetros foram preenchidos
-                  automaticamente e ficam bloqueados nesta tela — edite o padrão para alterá-los.
-                </span>
-              </div>
+              <Notice tone="indigo" size="sm" Icon={AlertCircle} role="note">
+                Este item possui um padrão de precificação vinculado. Os parâmetros foram preenchidos
+                automaticamente e ficam bloqueados nesta tela — edite o padrão para alterá-los.
+              </Notice>
             )}
 
             <div>
-              <label htmlFor="pricing-variableCostPercent" className="block text-sm font-medium text-slate-700 mb-1.5">
-                {useConfiguredFee ? 'Outras Despesas Variáveis (%)' : 'Despesas Variáveis e Taxas de Venda / Cartão (%)'}
-              </label>
-              <div className="relative">
-                <input
+              <Field
+                label={useConfiguredFee ? 'Outras Despesas Variáveis (%)' : 'Despesas Variáveis e Taxas de Venda / Cartão (%)'}
+                hint={profileLocked ? lockedHint : undefined}
+              >
+                <Input
                   id="pricing-variableCostPercent"
                   type="number"
                   step="0.1"
                   min="0"
                   max="99"
+                  TrailingIcon={Percent}
                   value={formData.variableCostPercent}
                   onChange={(e) => handleInputChange('variableCostPercent', e.target.value)}
                   disabled={profileLocked}
-                  className={`${percentInputClass}${profileLocked ? ' bg-slate-100 text-slate-600 cursor-not-allowed' : ''}`}
                   placeholder="Ex: 15"
                 />
-                <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                  <Percent className="w-4 h-4" />
-                </span>
-              </div>
-              {profileLocked && (
-                <p className="mt-1 text-[11px] text-slate-500">Herdado do padrão do item. {onNavigate && <button type="button" onClick={() => onNavigate('categories')} className="font-medium text-indigo-700 underline cursor-pointer">Conferir padrões de preço</button>}</p>
-              )}
+              </Field>
 
-              <div className="mt-3 p-3 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2.5">
+              <Card tone="muted" inset padding="none" className="mt-3 p-3 space-y-2.5">
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={useConfiguredFee}
                     onChange={(e) => {
                       setUseConfiguredFee(e.target.checked)
                       setActiveContextAction('payment')
                       setSelectedPillId(null)
                     }}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                   />
                   Incluir taxa de pagamento configurada
                 </label>
@@ -689,31 +639,33 @@ export default function PricingCalculator({ onNavigate }) {
                 {useConfiguredFee && (
                   <>
                     <div className="flex flex-wrap gap-2">
-                      <select
+                      <Select
+                        size="sm"
+                        className="flex-1 min-w-[10rem]"
                         aria-label="Forma de pagamento"
                         value={feeMethod}
                         onChange={(e) => setFeeMethod(e.target.value)}
-                        className="flex-1 min-w-[10rem] px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       >
                         {PAYMENT_METHODS.map((m) => (
                           <option key={m.key} value={m.key}>
                             {m.label}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       {feeMethod === 'CREDITO_PARCELADO' && (
-                        <select
+                        <Select
+                          size="sm"
+                          className="w-auto"
                           aria-label="Número de parcelas"
                           value={feeInstallments}
                           onChange={(e) => setFeeInstallments(parseInt(e.target.value, 10))}
-                          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
                           {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
                             <option key={n} value={n}>
                               {n}x
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       )}
                     </div>
                     <p className="text-[11px] text-slate-600">
@@ -732,67 +684,40 @@ export default function PricingCalculator({ onNavigate }) {
                     {feesError && <p className="text-[11px] text-amber-700">{feesError}</p>}
                   </>
                 )}
-              </div>
+              </Card>
             </div>
 
-            {onNavigate && <p className="text-xs text-slate-500">A taxa aplicada vem da matriz de pagamento. <button type="button" onClick={() => onNavigate('payment-methods')} className="font-medium text-indigo-700 underline cursor-pointer">Conferir taxas de pagamento</button></p>}
-            <div>
-              <label htmlFor="pricing-desiredMargin" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Margem de Lucro Desejada (%)
-              </label>
-              <div className="relative">
-                <input
-                  id="pricing-desiredMargin"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="99"
-                  value={formData.desiredMargin}
-                  onChange={(e) => handleInputChange('desiredMargin', e.target.value)}
-                  disabled={profileLocked}
-                  className={`${percentInputClass}${profileLocked ? ' bg-slate-100 text-slate-600 cursor-not-allowed' : ''}`}
-                  placeholder="Ex: 25"
-                />
-                <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                  <Percent className="w-4 h-4" />
-                </span>
-              </div>
-              {profileLocked && (
-                <p className="mt-1 text-[11px] text-slate-500">Herdado do padrão do item. {onNavigate && <button type="button" onClick={() => onNavigate('categories')} className="font-medium text-indigo-700 underline cursor-pointer">Conferir padrões de preço</button>}</p>
-              )}
-            </div>
+            {onNavigate && <p className="text-xs text-slate-500">A taxa aplicada vem da matriz de pagamento. <Button variant="link" size="sm" className="underline" onClick={() => onNavigate('payment-methods')}>Conferir taxas de pagamento</Button></p>}
+            <Field label="Margem de Lucro Desejada (%)" hint={profileLocked ? lockedHint : undefined}>
+              <Input
+                id="pricing-desiredMargin"
+                type="number"
+                step="0.1"
+                min="0"
+                max="99"
+                TrailingIcon={Percent}
+                value={formData.desiredMargin}
+                onChange={(e) => handleInputChange('desiredMargin', e.target.value)}
+                disabled={profileLocked}
+                placeholder="Ex: 25"
+              />
+            </Field>
 
             {errorMessage && (
-              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
-                <p className="text-sm font-medium">{errorMessage}</p>
-              </div>
+              <Notice tone="rose">
+                <p className="font-medium">{errorMessage}</p>
+              </Notice>
             )}
 
-            <button
-              type="button"
-              onClick={handleCalculate}
-              disabled={loading}
-              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Calculando...</span>
-                </>
-              ) : (
-                <>
-                  <Calculator className="w-4 h-4" />
-                  <span>Recalcular Preço Ideal</span>
-                </>
-              )}
-            </button>
+            <Button fullWidth Icon={Calculator} loading={loading} onClick={handleCalculate}>
+              {loading ? 'Calculando...' : 'Recalcular Preço Ideal'}
+            </Button>
           </div>
 
           <div data-tour="pricing-results" className="lg:col-span-7 space-y-6">
             {pricingResult ? (
               <>
-                <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100">
+                <Card tone="emerald" inset>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-emerald-100">
                     <div>
                       <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
@@ -802,14 +727,14 @@ export default function PricingCalculator({ onNavigate }) {
                         {formatCurrency(pricingResult.minimumSellingPrice)}
                       </p>
                     </div>
-                    <div className="bg-white px-4 py-2 rounded-xl border border-emerald-200 text-center self-start sm:self-auto">
+                    <Card inset padding="none" className="px-4 py-2 text-center self-start sm:self-auto">
                       <span className="block text-[11px] uppercase tracking-wide text-slate-500 font-medium">
                         Fator Markup
                       </span>
                       <span className="text-xl font-bold text-emerald-700">{pricingResult.markup}x</span>
-                    </div>
+                    </Card>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 text-xs">
                     <div>
                       <span className="text-slate-500 block">{Number(pricingResult.estimatedTaxes) > 0 ? 'Lucro estimado antes dos tributos' : 'Lucro Estimado'}</span>
                       <span className="text-sm font-bold text-emerald-700">
@@ -827,11 +752,11 @@ export default function PricingCalculator({ onNavigate }) {
                       <span className="text-sm font-bold text-emerald-700">{pricingResult.grossMargin}%</span>
                     </div>
                   </div>
-                </div>
+                </Card>
 
                 <PricingResultExplanation explanation={resultExplanation} />
 
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
+                <Card inset className="space-y-4">
                   <div>
                     <h4 className="flex items-center gap-2 text-sm font-bold text-slate-800">
                       <Target className="w-4 h-4 text-indigo-600" />
@@ -843,15 +768,12 @@ export default function PricingCalculator({ onNavigate }) {
                   </div>
 
                   {breakEvenError ? (
-                    <div className="flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800">
-                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-600" />
-                      <span>{breakEvenError}</span>
-                    </div>
+                    <Notice tone="rose" size="sm">{breakEvenError}</Notice>
                   ) : breakEvenResult ? (
                     <>
                       {breakEvenResult.viable && (
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <Card tone="indigo" inset padding="none" className="p-3">
                             <span className="block text-[11px] font-semibold uppercase tracking-wide text-indigo-700">
                               Quantidade por mês
                             </span>
@@ -861,15 +783,15 @@ export default function PricingCalculator({ onNavigate }) {
                                 {Number(breakEvenResult.breakEvenQuantity) === 1 ? 'unidade' : 'unidades'}
                               </span>
                             </span>
-                          </div>
-                          <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3">
+                          </Card>
+                          <Card tone="indigo" inset padding="none" className="p-3">
                             <span className="block text-[11px] font-semibold uppercase tracking-wide text-indigo-700">
                               Faturamento por mês
                             </span>
                             <span className="text-xl font-extrabold text-indigo-900">
                               {formatCurrency(breakEvenResult.breakEvenRevenue)}
                             </span>
-                          </div>
+                          </Card>
                         </div>
                       )}
 
@@ -899,22 +821,16 @@ export default function PricingCalculator({ onNavigate }) {
                         </div>
                       </div>
 
-                      <div
-                        className={`p-3 rounded-lg text-xs leading-relaxed border ${
-                          breakEvenResult.viable
-                            ? 'bg-sky-50 text-sky-900 border-sky-200'
-                            : 'bg-rose-50 text-rose-800 border-rose-200'
-                        }`}
-                      >
+                      <Notice tone={breakEvenResult.viable ? 'sky' : 'rose'} size="sm" Icon={null} role="status">
                         {breakEvenResult.recommendation}
-                      </div>
+                      </Notice>
                     </>
                   ) : (
                     <p className="text-xs text-slate-400">Calcule o preço para ver o ponto de equilíbrio.</p>
                   )}
-                </div>
+                </Card>
 
-                <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-4">
+                <Card tone="muted" inset className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <h4 className="text-sm font-bold text-slate-800">Simulador de Desconto e Balcão</h4>
@@ -922,9 +838,9 @@ export default function PricingCalculator({ onNavigate }) {
                         Veja se conceder desconto ainda mantém sua operação no azul.
                       </p>
                     </div>
-                    <span className="shrink-0 text-xs font-semibold text-indigo-700 bg-white px-2.5 py-1 rounded-full border border-indigo-200 shadow-sm">
+                    <Badge tone="indigo" className="shrink-0">
                       {discountPercent}% OFF
-                    </span>
+                    </Badge>
                   </div>
 
                   <input
@@ -934,12 +850,13 @@ export default function PricingCalculator({ onNavigate }) {
                     step="1"
                     value={discountPercent}
                     onChange={(e) => handleDiscountChange(e.target.value)}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    aria-label="Percentual de desconto"
+                    className="w-full cursor-pointer accent-indigo-600"
                   />
 
                   {discountResult && (
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <Card inset padding="sm" className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                         <div>
                           <span className="text-slate-500 block">Preço com Desconto</span>
                           <span className="text-sm font-bold text-slate-900">
@@ -960,23 +877,21 @@ export default function PricingCalculator({ onNavigate }) {
                         </div>
                       </div>
 
-                      <div className={`p-3 rounded-lg text-xs leading-relaxed ${
-                        !discountResult.viable
-                          ? 'bg-rose-50 text-rose-800 border border-rose-200'
-                          : discountResult.discountedMargin < 10
-                          ? 'bg-amber-50 text-amber-900 border border-amber-200'
-                          : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-                      }`}>
+                      <Notice
+                        size="sm"
+                        role="status"
+                        tone={!discountResult.viable ? 'rose' : discountResult.discountedMargin < 10 ? 'amber' : 'emerald'}
+                      >
                         {discountResult.recommendation}
-                      </div>
-                    </div>
+                      </Notice>
+                    </Card>
                   )}
-                </div>
+                </Card>
               </>
             ) : (
-              <div className="h-full flex items-center justify-center p-8 text-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
-                Preencha os parâmetros ao lado para calcular o preço de venda ideal.
-              </div>
+              <Card tone="muted" inset className="h-full flex items-center justify-center border-dashed">
+                <EmptyState Icon={Calculator} description="Preencha os parâmetros ao lado para calcular o preço de venda ideal." />
+              </Card>
             )}
           </div>
         </div>
@@ -987,6 +902,7 @@ export default function PricingCalculator({ onNavigate }) {
             aria-expanded={showExplanation}
             aria-controls="pricing-method-preview"
             onClick={() => setShowExplanation((value) => !value)}
+            aria-expanded={showExplanation}
             className="w-full flex items-center justify-between gap-3 px-6 sm:px-8 py-4 text-left cursor-pointer"
           >
             <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -1003,7 +919,7 @@ export default function PricingCalculator({ onNavigate }) {
           {showExplanation && (
             <div id="pricing-method-preview" className="px-6 sm:px-8 pb-6 sm:pb-8 space-y-4">
               <p className="text-xs text-slate-500">Esta prévia acompanha as entradas atuais. O resultado acima só muda ao recalcular.</p>
-              <div className="rounded-xl border border-indigo-100 bg-white p-4 space-y-2">
+              <Card inset padding="sm" className="space-y-2">
                 <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
                   Fórmula simplificada
                 </p>
@@ -1013,14 +929,13 @@ export default function PricingCalculator({ onNavigate }) {
                 <code className="block text-[11px] text-slate-500 overflow-x-auto whitespace-nowrap">
                   {explanation.markupFormula}
                 </code>
-              </div>
+              </Card>
 
-              <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
-                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
-                <span>{SEBRAE_PERCENT_BASIS}</span>
-              </div>
+              <Notice tone="amber" size="sm" role="note">
+                {SEBRAE_PERCENT_BASIS}
+              </Notice>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+              <Card inset padding="sm" className="space-y-3">
                 <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
                   Exemplo com seus valores
                 </p>
@@ -1065,22 +980,15 @@ export default function PricingCalculator({ onNavigate }) {
                     </span>
                   </div>
                 )}
-              </div>
+              </Card>
 
-              <div
-                className={`flex items-start gap-2 rounded-xl border p-3 text-xs ${
-                  explanation.goldenRuleRespected
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                    : 'bg-rose-50 border-rose-200 text-rose-800'
-                }`}
-              >
-                <span className="font-semibold shrink-0">Regra de ouro:</span>
-                <span>{SEBRAE_GOLDEN_RULE}</span>
-              </div>
+              <Notice tone={explanation.goldenRuleRespected ? 'emerald' : 'rose'} size="sm" role="note">
+                <span className="font-semibold">Regra de ouro:</span> {SEBRAE_GOLDEN_RULE}
+              </Notice>
             </div>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

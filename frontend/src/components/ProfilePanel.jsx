@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { User, Pencil, AlertCircle, Loader2, Info } from 'lucide-react'
+import { User, Pencil, AlertCircle, Info } from 'lucide-react'
 import profileService from '../services/profileService'
 import segmentService from '../services/segmentService'
 import { MEI_SEGMENTS } from '../constants/segments'
@@ -7,6 +7,7 @@ import { maskCnpj } from '../utils/validators'
 import { formatCurrencyBRL, formatDateBR } from '../utils/formatters'
 import useMeiCap from '../hooks/useMeiCap'
 import PageHeader from './PageHeader'
+import { Button, Card, EmptyState } from './ui'
 import MeiCapIndicator from './MeiCapIndicator'
 import ProfileForm from './ProfileForm'
 
@@ -73,7 +74,6 @@ export default function ProfilePanel({ user, onUserUpdate }) {
   const handleSaved = (updatedProfile) => {
     setProfile(updatedProfile)
     setEditing(false)
-    // O teto anual pode ter mudado
     setMeiCapReloadKey((key) => key + 1)
     if (onUserUpdate) {
       onUserUpdate({ name: updatedProfile.name, segment: updatedProfile.segment })
@@ -97,38 +97,28 @@ export default function ProfilePanel({ user, onUserUpdate }) {
     <div className="w-full space-y-6">
       <PageHeader Icon={User} title="Meu Perfil" description={PROFILE_DESCRIPTION}>
         {profile && (
-          <button
-            type="button"
-            data-tour="profile-edit"
-            onClick={() => setEditing(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm shadow-sm transition-all cursor-pointer self-start sm:self-auto"
-          >
-            <Pencil className="w-4 h-4" />
-            <span>Editar dados cadastrais</span>
-          </button>
+          <Button data-tour="profile-edit" Icon={Pencil} onClick={() => setEditing(true)} className="self-start sm:self-auto">
+            Editar dados cadastrais
+          </Button>
         )}
       </PageHeader>
 
       {loading ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm py-16 flex flex-col items-center justify-center text-slate-500">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
-          <span className="text-sm font-medium">Carregando seus dados...</span>
-        </div>
+        <Card padding="none">
+          <EmptyState loading title="Carregando seus dados..." />
+        </Card>
       ) : error ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center flex flex-col items-center justify-center gap-3">
-          <AlertCircle className="w-8 h-8 text-rose-500" />
-          <p className="text-sm text-rose-600 font-medium">{error}</p>
-          <button
-            type="button"
-            onClick={handleRetry}
-            className="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm transition-all cursor-pointer"
-          >
-            Tentar novamente
-          </button>
-        </div>
+        <Card padding="none">
+          <EmptyState
+            tone="rose"
+            Icon={AlertCircle}
+            title={error}
+            action={<Button onClick={handleRetry}>Tentar novamente</Button>}
+          />
+        </Card>
       ) : (
         <>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <Card padding="none" className="overflow-hidden">
             <div className="p-5 sm:p-6 flex items-center gap-4 border-b border-slate-100">
               <div
                 aria-hidden="true"
@@ -156,7 +146,7 @@ export default function ProfilePanel({ user, onUserUpdate }) {
               </ProfileField>
               <ProfileField label="Última atualização">{formatDateBR(profile?.updatedAt)}</ProfileField>
             </dl>
-          </div>
+          </Card>
 
           {meiCap && <MeiCapIndicator data={meiCap} />}
           {meiCapError && (

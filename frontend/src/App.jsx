@@ -30,6 +30,7 @@ import BusinessAccounts from './components/BusinessAccounts'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
+import { Button, Card, IconButton } from './components/ui'
 
 const NAV_GROUPS = [
   {
@@ -109,7 +110,6 @@ export default function App() {
   const [showRegister, setShowRegister] = useState(false)
   const [registeredUser, setRegisteredUser] = useState(null)
   const [activeSection, setActiveSection] = useState(readSection)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [drafts, setDrafts] = useState({})
   const registerDraft = useCallback((id, dirty) => setDrafts(previous => {
     if (Boolean(previous[id]) === dirty) return previous
@@ -118,7 +118,7 @@ export default function App() {
     else delete next[id]
     return next
   }), [])
-  const dirty = hasUnsavedChanges || Object.values(drafts).some(Boolean)
+  const dirty = Object.values(drafts).some(Boolean)
   const historyIndex = useRef(window.history.state?.margemIndex || 0)
   const ignorePop = useRef(false)
   const allowPop = useRef(false)
@@ -177,7 +177,8 @@ export default function App() {
       setReturnSection({ owner: userKey, section: activeSection })
       changeSection(sectionKey)
     }
-    if (activeSection === 'sales' && !hasUnsavedChanges) navigate()
+    // Na tela de Vendas o rascunho fica guardado no App: dá para sair e voltar sem perder nada.
+    if (activeSection === 'sales') navigate()
     else guardLeave(navigate)
   }
 
@@ -188,7 +189,7 @@ export default function App() {
       setReturnSection(null)
       logout()
     }
-    if (currentDraft && !hasUnsavedChanges) setPendingLeaveAction(() => leave)
+    if (currentDraft) setPendingLeaveAction(() => leave)
     else guardLeave(leave)
   }
   useEffect(() => {
@@ -236,7 +237,6 @@ export default function App() {
   const confirmLeave = () => {
     const action = pendingLeaveAction
     setPendingLeaveAction(null)
-    setHasUnsavedChanges(false)
     action?.()
   }
 
@@ -254,13 +254,13 @@ export default function App() {
       case 'categories':
         return <CategoryManager />
       case 'accounts':
-        return <BusinessAccounts onDirtyChange={setHasUnsavedChanges} />
+        return <BusinessAccounts />
       case 'sales':
         return <SalesManager key={userKey} onNavigate={navigateContext} draft={currentDraft} onDraftChange={saveSaleDraft} onBusyChange={setSaleBusy} />
       case 'cashflow':
         return <MonthlyFlowDashboard onNavigate={navigateContext} />
       case 'payment-methods':
-        return <PaymentMethodSettings onDirtyChange={setHasUnsavedChanges} />
+        return <PaymentMethodSettings />
       case 'costs':
         return <CostsDashboard />
       case 'pricing':
@@ -311,14 +311,9 @@ export default function App() {
               <p className="text-xs text-slate-500 truncate">{user?.email}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sair</span>
-          </button>
+          <Button variant="danger" fullWidth Icon={LogOut} onClick={handleLogout}>
+            Sair
+          </Button>
         </div>
       </aside>
 
@@ -326,15 +321,7 @@ export default function App() {
         <header className="lg:hidden sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-slate-200">
           <div className="flex items-center justify-between px-4 py-3">
             <Brand />
-            <button
-              type="button"
-              onClick={handleLogout}
-              title="Sair"
-              aria-label="Sair"
-              className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+            <IconButton label="Sair" Icon={LogOut} tone="rose" size="lg" onClick={handleLogout} />
           </div>
           <div className="flex items-stretch gap-3 overflow-x-auto px-4 pb-3">
             {NAV_GROUPS.map((group, groupIndex) => (
@@ -349,7 +336,7 @@ export default function App() {
                       key={key}
                       type="button"
                       aria-current={activeSection === key ? 'page' : undefined}
-                  onClick={() => navigateTo(key)}
+                      onClick={() => navigateTo(key)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                         activeSection === key
                           ? 'bg-indigo-600 text-white shadow-sm'
@@ -418,7 +405,7 @@ export default function App() {
 
     if (registeredUser) {
       return (
-        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-slate-100 text-center animate-in zoom-in-95">
+        <Card padding="lg" className="w-full max-w-md text-center">
           <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5">
             <CheckCircle2 className="w-8 h-8" />
           </div>
@@ -427,14 +414,10 @@ export default function App() {
             Olá, <strong className="text-slate-900">{registeredUser.user?.name}</strong>. Sua conta
             MEI foi cadastrada com sucesso.
           </p>
-          <button
-            type="button"
-            onClick={() => setRegisteredUser(null)}
-            className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm shadow-sm transition-all cursor-pointer"
-          >
+          <Button fullWidth onClick={() => setRegisteredUser(null)}>
             Entrar na plataforma
-          </button>
-        </div>
+          </Button>
+        </Card>
       )
     }
 
@@ -445,13 +428,9 @@ export default function App() {
         ) : (
           <LoginForm onLoginSuccess={handleLoginSuccess} />
         )}
-        <button
-          type="button"
-          onClick={() => setShowRegister(!showRegister)}
-          className="w-full mt-4 py-2.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition-colors cursor-pointer"
-        >
+        <Button variant="link" fullWidth className="mt-4 py-2.5" onClick={() => setShowRegister(!showRegister)}>
           {showRegister ? 'Já tenho uma conta. Entrar' : 'Ainda não tenho conta. Cadastrar'}
-        </button>
+        </Button>
       </div>
     )
   }
