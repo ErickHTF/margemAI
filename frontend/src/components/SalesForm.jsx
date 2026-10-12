@@ -32,6 +32,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
   const [isCustomItem, setIsCustomItem] = useState(() => draft?.isCustomItem ?? EMPTY_SALE_DRAFT.isCustomItem)
   const [quantity, setQuantity] = useState(() => draft?.quantity ?? EMPTY_SALE_DRAFT.quantity)
   const [unitPrice, setUnitPrice] = useState(() => draft?.unitPrice ?? EMPTY_SALE_DRAFT.unitPrice)
+  const [unitCost, setUnitCost] = useState(() => draft?.unitCost ?? EMPTY_SALE_DRAFT.unitCost)
   const [paymentMethod, setPaymentMethod] = useState(() => draft?.paymentMethod ?? EMPTY_SALE_DRAFT.paymentMethod)
   const [installments, setInstallments] = useState(() => draft?.installments ?? EMPTY_SALE_DRAFT.installments)
   const [customFee, setCustomFee] = useState(() => draft?.customFee ?? EMPTY_SALE_DRAFT.customFee)
@@ -42,9 +43,9 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
   const { getFee, loading: loadingFees, error: feesError } = usePaymentFees(feesVersion)
 
   useEffect(() => {
-    const value = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes }
+    const value = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, unitCost, paymentMethod, installments, customFee, showCustomFee, notes }
     onDraftChange?.(hasSaleDraft(value) ? value : null)
-  }, [selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes, onDraftChange])
+  }, [selectedProductId, customDescription, isCustomItem, quantity, unitPrice, unitCost, paymentMethod, installments, customFee, showCustomFee, notes, onDraftChange])
 
   const applyDraft = (value) => {
     setSelectedProductId(value.selectedProductId)
@@ -52,13 +53,14 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
     setIsCustomItem(value.isCustomItem)
     setQuantity(value.quantity)
     setUnitPrice(value.unitPrice)
+    setUnitCost(value.unitCost)
     setPaymentMethod(value.paymentMethod)
     setInstallments(value.installments)
     setCustomFee(value.customFee)
     setShowCustomFee(value.showCustomFee)
     setNotes(value.notes)
   }
-  const formDraft = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes }
+  const formDraft = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, unitCost, paymentMethod, installments, customFee, showCustomFee, notes }
   useDraft(formDraft, EMPTY_SALE_DRAFT)
 
   useEffect(() => {
@@ -92,6 +94,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
   }, [initialProductId])
 
   const handleProductSelect = (prodId) => {
+    setUnitCost('')
     setSelectedProductId(prodId)
     if (!prodId) {
       setUnitPrice('')
@@ -160,6 +163,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
       description: isCustomItem ? customDescription.trim() : (products.find(p => String(p.id) === String(selectedProductId))?.name || customDescription.trim()),
       quantity: Number(quantity),
       unitPrice: effectivePrice,
+      unitCost: unitCost === '' ? null : Number(unitCost),
       paymentMethod,
       installments: paymentMethod === 'CREDITO_PARCELADO' ? Number(installments) : 1,
       customFeePercentage: showCustomFee && customFee !== '' ? Number(customFee) : null,
@@ -243,6 +247,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
           size="sm"
           aria-pressed={isCustomItem}
           onClick={() => {
+            setUnitCost('')
             setIsCustomItem(!isCustomItem)
             setSelectedProductId('')
             setUnitPrice('')
@@ -258,7 +263,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
         </Notice>
       )}
 
-      {lastSale && !hasSaleDraft({ selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes }) && (
+      {lastSale && !hasSaleDraft(formDraft) && (
         <div className="mb-4 text-sm text-slate-600">
           <button type="button" className="font-semibold text-indigo-700 underline" disabled={submitting || loadingProducts} onClick={repeatSale}>Registrar outra venda semelhante</button>
           <p>Reaproveita item, preço e pagamento. Quantidade volta a 1; observações e taxa avulsa são apagadas. Revise e confirme o novo registro.</p>
@@ -331,6 +336,26 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
             />
           </Field>
         </div>
+
+        <Field
+          size="sm"
+          label="Custo unitário da operação (R$)"
+          hint={`${isCustomItem
+            ? 'Informe o custo do item avulso. Se deixar vazio, será registrado R$ 0,00.'
+            : 'Se deixar vazio, usa os custos vinculados ao produto; sem valor vinculado, usa o custo base manual.'} O custo fica guardado nesta venda e não muda quando o catálogo for alterado. Um valor informado aqui vale apenas para esta venda e substitui o custo do catálogo.`}
+        >
+          <Input
+            id="sale-unit-cost"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            prefix="R$"
+            value={unitCost}
+            onChange={(event) => setUnitCost(event.target.value)}
+            placeholder={isCustomItem ? '0,00' : 'Usar custo do catálogo'}
+          />
+        </Field>
 
         <div>
           {feesError && (

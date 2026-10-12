@@ -2135,6 +2135,7 @@ components:
         - OUTRO
 
     FixedCost:
+      description: Edições e exclusões preservam as competências até o mês atual inclusive. Os novos valores e regras valem para competências futuras.
       type: object
       properties:
         id:
@@ -2698,6 +2699,20 @@ components:
           type: number
           minimum: 0
           example: 45.00
+        unitCost:
+          type: number
+          minimum: 0
+          readOnly: true
+          description: Custo unitário preservado na venda.
+        operationCost:
+          type: number
+          minimum: 0
+          readOnly: true
+          description: Custo unitário multiplicado pela quantidade, arredondado com HALF_UP.
+        costEstimated:
+          type: boolean
+          readOnly: true
+          description: Indica custo de venda legada estimado uma única vez na atualização, a partir do cadastro disponível.
         grossAmount:
           type: number
           x-currency: BRL
@@ -2758,6 +2773,7 @@ components:
           readOnly: true
 
     SaleRequest:
+      description: Na edição, omitir unitCost preserva o custo unitário histórico se o produto não mudar. Alterar quantidade recalcula apenas o custo total; trocar produto resolve o custo do novo item.
       type: object
       required:
         - quantity
@@ -2786,6 +2802,10 @@ components:
           minimum: 1
           default: 1
           description: Em CREDITO_PARCELADO, valores abaixo de 2 são registrados e cobrados como 2 parcelas.
+        unitCost:
+          type: number
+          minimum: 0
+          description: Custo unitário exclusivo desta operação. Quando omitido na criação, usa a soma positiva dos custos vinculados, senão custo base manual; venda avulsa usa zero. Nunca soma custo base e custos vinculados. Zero explícito é respeitado.
         customFeePercentage:
           type: number
           minimum: 0.00

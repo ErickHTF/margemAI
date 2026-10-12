@@ -23,6 +23,9 @@ public class SaleResponse {
     private String description;
     private BigDecimal quantity;
     private BigDecimal unitPrice;
+    private BigDecimal unitCost;
+    private BigDecimal operationCost;
+    private Boolean costEstimated;
     private BigDecimal grossAmount;
     private PaymentMethod paymentMethod;
     private String paymentMethodDescription;

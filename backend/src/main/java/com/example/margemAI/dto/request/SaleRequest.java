@@ -37,6 +37,9 @@ public class SaleRequest {
     @JsonAlias({"unitAmount", "unit_price", "unitPrice"})
     private BigDecimal unitPrice;
 
+    @DecimalMin(value = "0.00", message = "O custo unitário não pode ser negativo.")
+    private BigDecimal unitCost;
+
     @NotNull(message = "O método de pagamento é obrigatório.")
     private PaymentMethod paymentMethod;
 

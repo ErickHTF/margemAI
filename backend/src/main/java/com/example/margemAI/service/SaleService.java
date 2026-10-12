@@ -10,9 +10,11 @@ import com.example.margemAI.model.PaymentMethod;
 import com.example.margemAI.model.Product;
 import com.example.margemAI.model.Sale;
 import com.example.margemAI.model.User;
+import com.example.margemAI.model.VariableCost;
 import com.example.margemAI.repository.ProductRepository;
 import com.example.margemAI.repository.SaleRepository;
 import com.example.margemAI.repository.UserRepository;
+import com.example.margemAI.repository.VariableCostRepository;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,9 +26,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -43,6 +47,7 @@ public class SaleService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final PaymentFeeCalculator paymentFeeCalculator;
+    private final VariableCostRepository variableCostRepository;
 
     @Transactional
     public SaleResponse create(UUID userId, SaleRequest request) {
@@ -101,6 +106,7 @@ public class SaleService {
                 .notes(request.getNotes())
                 .build();
 
+        snapshotCost(sale, resolveUnitCost(userId, product, request.getUnitCost()));
         Sale saved = saleRepository.save(sale);
         return toResponse(saved);
     }
@@ -146,9 +152,18 @@ public class SaleService {
         LocalDateTime soldAt = request.getSoldAt() != null ? request.getSoldAt() : sale.getSoldAt();
         int installments = request.getPaymentMethod().normalizeInstallments(request.getInstallments());
 
+        boolean sameProduct = Objects.equals(
+                sale.getProduct() != null ? sale.getProduct().getId() : null,
+                product != null ? product.getId() : null);
+        BigDecimal unitCost = request.getUnitCost() == null && sameProduct && sale.getUnitCost() != null
+                ? sale.getUnitCost() : resolveUnitCost(userId, product, request.getUnitCost());
+        if (request.getUnitCost() != null || !sameProduct) {
+            sale.setCostEstimated(false);
+        }
         sale.setProduct(product);
         sale.setDescription(description.trim());
         sale.setQuantity(request.getQuantity());
+        snapshotCost(sale, unitCost);
         sale.setUnitPrice(unitPrice);
         sale.setGrossAmount(feeResult.grossAmount());
         sale.setPaymentMethod(request.getPaymentMethod());
@@ -242,6 +257,9 @@ public class SaleService {
                 .description(sale.getDescription())
                 .quantity(sale.getQuantity())
                 .unitPrice(sale.getUnitPrice())
+                .unitCost(sale.getUnitCost())
+                .operationCost(sale.getOperationCost())
+                .costEstimated(sale.getCostEstimated())
                 .grossAmount(sale.getGrossAmount())
                 .paymentMethod(sale.getPaymentMethod())
                 .paymentMethodDescription(sale.getPaymentMethod().getDescription())
@@ -253,6 +271,30 @@ public class SaleService {
                 .notes(sale.getNotes())
                 .createdAt(sale.getCreatedAt())
                 .build();
+    }
+
+    public BigDecimal resolveUnitCost(UUID userId, Product product, BigDecimal explicitCost) {
+        if (explicitCost != null) {
+            if (explicitCost.signum() < 0) {
+                throw new InvalidRequestException("O custo unitário não pode ser negativo.");
+            }
+            return explicitCost.setScale(2, RoundingMode.HALF_UP);
+        }
+        if (product == null) {
+            return BigDecimal.ZERO.setScale(2);
+        }
+        BigDecimal linkedCost = variableCostRepository
+                .findByProductIdAndUserIdAndActiveTrue(product.getId(), userId).stream()
+                .map(VariableCost::getUnitAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal cost = linkedCost.signum() > 0 ? linkedCost
+                : product.getBaseCost() != null ? product.getBaseCost() : BigDecimal.ZERO;
+        return cost.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public void snapshotCost(Sale sale, BigDecimal unitCost) {
+        sale.setUnitCost(unitCost);
+        sale.setOperationCost(unitCost.multiply(sale.getQuantity()).setScale(2, RoundingMode.HALF_UP));
     }
 
     private void validatePagination(int page, int size) {

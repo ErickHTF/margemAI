@@ -266,7 +266,7 @@ export default function MonthlyFlowDashboard({ onNavigate }) {
             <Info className="w-4 h-4 shrink-0 mt-px" />
             <span>
               Despesas do mês = custos fixos vigentes (recorrentes a partir do mês de cadastro e pontuais no
-              mês de vencimento) + custos variáveis dos produtos vendidos + taxas das formas de pagamento.
+              mês de vencimento) + custos preservados das vendas, incluindo itens avulsos + taxas das formas de pagamento.
             </span>
           </p>
         </>

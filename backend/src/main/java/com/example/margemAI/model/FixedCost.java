@@ -1,6 +1,9 @@
 package com.example.margemAI.model;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -20,8 +23,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -67,6 +74,50 @@ public class FixedCost {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(name = "fixed_cost_competencies", joinColumns = @JoinColumn(name = "fixed_cost_id"))
+    @MapKeyColumn(name = "competency", length = 7)
+    @Column(name = "amount", nullable = false, precision = 12, scale = 2)
+    private Map<String, BigDecimal> competencyAmounts = new HashMap<>();
+
+    @Column(name = "preserved_through", length = 7)
+    private String preservedThrough;
+
+    public BigDecimal amountForMonth(YearMonth month) {
+        if (preservedThrough != null && !month.isAfter(YearMonth.parse(preservedThrough))) {
+            return competencyAmounts.getOrDefault(month.toString(), BigDecimal.ZERO);
+        }
+        YearMonth first = createdAt != null ? YearMonth.from(createdAt) : month;
+        if (Boolean.FALSE.equals(recurring)) {
+            YearMonth reference = dueDate != null ? YearMonth.from(dueDate) : first;
+            if (!month.equals(reference)) {
+                return BigDecimal.ZERO;
+            }
+        } else if (month.isBefore(first)) {
+            return BigDecimal.ZERO;
+        }
+        if (Boolean.FALSE.equals(active) && (updatedAt == null || month.isAfter(YearMonth.from(updatedAt)))) {
+            return BigDecimal.ZERO;
+        }
+        return amount.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public void preserveCompetencies(YearMonth through) {
+        YearMonth first = createdAt != null ? YearMonth.from(createdAt) : through;
+        if (dueDate != null && YearMonth.from(dueDate).isBefore(first)) {
+            first = YearMonth.from(dueDate);
+        }
+        if (preservedThrough != null) {
+            first = YearMonth.parse(preservedThrough).plusMonths(1);
+        }
+        for (YearMonth month = first; !month.isAfter(through); month = month.plusMonths(1)) {
+            BigDecimal historicalAmount = amountForMonth(month);
+            competencyAmounts.put(month.toString(), historicalAmount);
+        }
+        preservedThrough = through.toString();
+    }
 
     @PrePersist
     public void prePersist() {

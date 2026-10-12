@@ -101,6 +101,7 @@ public class FixedCostService {
     public FixedCostResponse update(UUID userId, UUID id, FixedCostRequest request) {
         validateFullRequest(request);
         FixedCost cost = findActive(userId, id);
+        cost.preserveCompetencies(YearMonth.now());
         cost.setName(normalizeName(request.getName()));
         cost.setAmount(request.getAmount());
         cost.setCategory(request.getCategory());
@@ -113,6 +114,7 @@ public class FixedCostService {
     @Transactional
     public FixedCostResponse patch(UUID userId, UUID id, FixedCostRequest request) {
         FixedCost cost = findActive(userId, id);
+        cost.preserveCompetencies(YearMonth.now());
         if (request.getName() != null) {
             cost.setName(normalizeName(request.getName()));
         }
@@ -136,7 +138,10 @@ public class FixedCostService {
     public void delete(UUID userId, UUID id) {
         FixedCost cost = fixedCostRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MESSAGE));
-        cost.setActive(false);
+        if (Boolean.TRUE.equals(cost.getActive())) {
+            cost.preserveCompetencies(YearMonth.now());
+            cost.setActive(false);
+        }
         publishRecalculated(userId);
     }
 

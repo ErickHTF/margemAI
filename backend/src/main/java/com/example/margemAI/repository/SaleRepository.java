@@ -16,6 +16,8 @@ import java.util.UUID;
 @Repository
 public interface SaleRepository extends JpaRepository<Sale, UUID>, JpaSpecificationExecutor<Sale> {
 
+    List<Sale> findByOperationCostIsNull();
+
     Optional<Sale> findByIdAndUserId(UUID id, UUID userId);
 
     @Query("SELECT COALESCE(SUM(s.grossAmount), 0) FROM Sale s WHERE s.user.id = :userId")

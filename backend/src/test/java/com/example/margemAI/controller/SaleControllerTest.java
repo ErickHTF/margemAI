@@ -1,5 +1,13 @@
 package com.example.margemAI.controller;
 
+import com.example.margemAI.repository.VariableCostRepository;
+import com.example.margemAI.repository.FixedCostRepository;
+import com.example.margemAI.service.FixedCostService;
+import com.example.margemAI.service.HistoricalSaleCostInitializer;
+import com.example.margemAI.model.VariableCost;
+import com.example.margemAI.model.VariableCostCategory;
+import com.example.margemAI.dto.request.FixedCostRequest;
+import com.example.margemAI.model.FixedCostCategory;
 import com.example.margemAI.dto.request.SaleRequest;
 import com.example.margemAI.model.ItemType;
 import com.example.margemAI.model.PaymentMethod;
@@ -25,7 +33,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -66,6 +76,21 @@ public class SaleControllerTest {
 
     @Autowired
     private JwtService jwtService;
+
+    @Autowired
+    private VariableCostRepository variableCostRepository;
+
+    @Autowired
+    private FixedCostRepository fixedCostRepository;
+
+    @Autowired
+    private FixedCostService fixedCostService;
+
+    @Autowired
+    private HistoricalSaleCostInitializer historicalSaleCostInitializer;
+
+    @Autowired
+    private EntityManager entityManager;
 
     private User savedUser;
     private User otherUser;
@@ -431,5 +456,102 @@ public class SaleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Deve manter custo manual e vinculado após alterar catálogo, editar e cancelar venda")
+    void shouldPreserveHistoricalCostsThroughoutSaleLifecycle() throws Exception {
+        SaleRequest request = SaleRequest.builder().productId(userProduct.getId())
+                .quantity(new BigDecimal("2.00")).paymentMethod(PaymentMethod.PIX).build();
+        String manualJson = mockMvc.perform(post("/sales").header("Authorization", bearerHeader())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.unitCost").value(8.00))
+                .andExpect(jsonPath("$.operationCost").value(16.00))
+                .andReturn().getResponse().getContentAsString();
+        String manualId = objectMapper.readTree(manualJson).get("id").asText();
+        var linked = variableCostRepository.save(VariableCost.builder()
+                .name("Embalagem").unitAmount(new BigDecimal("3.00"))
+                .category(VariableCostCategory.EMBALAGEM)
+                .productId(userProduct.getId()).user(savedUser).build());
+        String linkedJson = mockMvc.perform(post("/sales").header("Authorization", bearerHeader())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.unitCost").value(3.00))
+                .andExpect(jsonPath("$.operationCost").value(6.00))
+                .andReturn().getResponse().getContentAsString();
+        String linkedId = objectMapper.readTree(linkedJson).get("id").asText();
+        userProduct.setBaseCost(new BigDecimal("999.00"));
+        linked.setUnitAmount(new BigDecimal("999.00"));
+        linked.setActive(false);
+        entityManager.flush();
+        entityManager.clear();
+        mockMvc.perform(get("/dashboard/monthly-flow").header("Authorization", bearerHeader()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalVariableCosts").value(22.00));
+        request.setQuantity(new BigDecimal("3.00"));
+        mockMvc.perform(put("/sales/" + linkedId).header("Authorization", bearerHeader())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.unitCost").value(3.00))
+                .andExpect(jsonPath("$.operationCost").value(9.00));
+        mockMvc.perform(delete("/sales/" + manualId).header("Authorization", bearerHeader()))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/dashboard/monthly-flow").header("Authorization", bearerHeader()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalVariableCosts").value(9.00))
+                .andExpect(jsonPath("$.totalRevenue").value(54.00));
+    }
+
+    @Test
+    @DisplayName("Deve registrar custo avulso e rejeitar valores negativos no contrato HTTP")
+    void shouldValidateStandaloneCostContract() throws Exception {
+        SaleRequest request = SaleRequest.builder().description("Serviço avulso")
+                .quantity(new BigDecimal("1.50")).unitPrice(new BigDecimal("10.00"))
+                .unitCost(new BigDecimal("2.35")).paymentMethod(PaymentMethod.PIX).build();
+        mockMvc.perform(post("/sales").header("Authorization", bearerHeader())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.unitCost").value(2.35))
+                .andExpect(jsonPath("$.operationCost").value(3.53));
+        request.setUnitCost(new BigDecimal("-1.00"));
+        mockMvc.perform(post("/sales").header("Authorization", bearerHeader())
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Deve persistir competências de custo fixo após edição e exclusão")
+    void shouldPersistFixedCostCompetencies() {
+        var request = FixedCostRequest.builder().name("Aluguel")
+                .amount(new BigDecimal("100.00"))
+                .category(FixedCostCategory.ALUGUEL).recurring(true).build();
+        var created = fixedCostService.create(savedUser.getId(), request);
+        request.setAmount(new BigDecimal("200.00"));
+        fixedCostService.update(savedUser.getId(), created.getId(), request);
+        entityManager.flush();
+        entityManager.clear();
+        var cost = fixedCostRepository.findByIdAndUserId(created.getId(), savedUser.getId()).orElseThrow();
+        assertEquals(new BigDecimal("100.00"), cost.amountForMonth(YearMonth.now()));
+        assertEquals(new BigDecimal("200.00"), cost.amountForMonth(YearMonth.now().plusMonths(1)));
+        fixedCostService.delete(savedUser.getId(), created.getId());
+        entityManager.flush();
+        entityManager.clear();
+        cost = fixedCostRepository.findByIdAndUserId(created.getId(), savedUser.getId()).orElseThrow();
+        assertEquals(new BigDecimal("100.00"), cost.amountForMonth(YearMonth.now()));
+        assertEquals(BigDecimal.ZERO, cost.amountForMonth(YearMonth.now().plusMonths(1)));
+    }
+
+    @Test
+    @DisplayName("Deve estimar custo legado uma única vez sem reescrever estimativa após mudar catálogo")
+    void shouldInitializeLegacyCostOnlyOnce() {
+        Sale legacy = saleRepository.save(Sale.builder().user(savedUser).product(userProduct)
+                .description("Legada").quantity(new BigDecimal("2.00")).unitPrice(new BigDecimal("18.00"))
+                .grossAmount(new BigDecimal("36.00")).paymentMethod(PaymentMethod.PIX)
+                .feePercentage(BigDecimal.ZERO).feeAmount(BigDecimal.ZERO).netAmount(new BigDecimal("36.00"))
+                .soldAt(LocalDateTime.now()).build());
+        historicalSaleCostInitializer.run(null);
+        assertEquals(new BigDecimal("16.00"), legacy.getOperationCost());
+        assertEquals(Boolean.TRUE, legacy.getCostEstimated());
+        userProduct.setBaseCost(new BigDecimal("999.00"));
+        historicalSaleCostInitializer.run(null);
+        entityManager.flush();
+        entityManager.clear();
+        legacy = saleRepository.findByIdAndUserId(legacy.getId(), savedUser.getId()).orElseThrow();
+        assertEquals(new BigDecimal("16.00"), legacy.getOperationCost());
     }
 }

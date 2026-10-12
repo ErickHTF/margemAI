@@ -1,6 +1,6 @@
 export const EMPTY_SALE_DRAFT = {
   selectedProductId: '', customDescription: '', isCustomItem: false,
-  quantity: 1, unitPrice: '', paymentMethod: 'PIX', installments: 1,
+  quantity: 1, unitPrice: '', unitCost: '', paymentMethod: 'PIX', installments: 1,
   customFee: '', showCustomFee: false, notes: ''
 }
 export function hasSaleDraft(draft) {

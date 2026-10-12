@@ -10,6 +10,8 @@ import com.example.margemAI.model.PaymentMethod;
 import com.example.margemAI.model.Product;
 import com.example.margemAI.model.Sale;
 import com.example.margemAI.model.User;
+import com.example.margemAI.model.VariableCost;
+import com.example.margemAI.repository.VariableCostRepository;
 import com.example.margemAI.repository.ProductRepository;
 import com.example.margemAI.repository.SaleRepository;
 import com.example.margemAI.repository.UserRepository;
@@ -52,6 +54,9 @@ class SaleServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private VariableCostRepository variableCostRepository;
 
     @Spy
     private PaymentFeeCalculator paymentFeeCalculator = new PaymentFeeCalculator();
@@ -288,5 +293,49 @@ class SaleServiceTest {
 
         // Assert
         verify(saleRepository).delete(sale);
+    }
+
+    @Test
+    @DisplayName("Deve usar custo base manual sem somá-lo aos custos vinculados")
+    void shouldResolveManualAndLinkedCostsWithoutDuplication() {
+        testProduct.setBaseCost(new BigDecimal("12.00"));
+        assertEquals(new BigDecimal("12.00"), saleService.resolveUnitCost(userId, testProduct, null));
+        when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId))
+                .thenReturn(List.of(VariableCost.builder()
+                        .unitAmount(new BigDecimal("3.00")).build(),
+                        VariableCost.builder().unitAmount(new BigDecimal("2.00")).build()));
+        assertEquals(new BigDecimal("5.00"), saleService.resolveUnitCost(userId, testProduct, null));
+    }
+
+    @Test
+    @DisplayName("Deve aceitar custo avulso, zero explícito e arredondar quantidade fracionária")
+    void shouldResolveStandaloneCostAndRoundHalfUp() {
+        assertEquals(new BigDecimal("0.00"), saleService.resolveUnitCost(userId, null, null));
+        assertEquals(new BigDecimal("0.00"), saleService.resolveUnitCost(userId, testProduct, BigDecimal.ZERO));
+        Sale sale = Sale.builder().quantity(new BigDecimal("1.50")).build();
+        saleService.snapshotCost(sale, saleService.resolveUnitCost(userId, null, new BigDecimal("2.35")));
+        assertEquals(new BigDecimal("3.53"), sale.getOperationCost());
+        assertThrows(InvalidRequestException.class,
+                () -> saleService.resolveUnitCost(userId, null, new BigDecimal("-1")));
+    }
+
+    @Test
+    @DisplayName("Deve preservar custo unitário na edição e recalcular apenas o total")
+    void shouldPreserveHistoricalCostOnEdit() {
+        Sale sale = Sale.builder().id(UUID.randomUUID()).product(testProduct)
+                .quantity(new BigDecimal("2.00")).unitCost(new BigDecimal("5.00"))
+                .operationCost(new BigDecimal("10.00")).soldAt(LocalDateTime.now()).build();
+        testProduct.setBaseCost(new BigDecimal("999.00"));
+        when(saleRepository.findByIdAndUserId(sale.getId(), userId)).thenReturn(Optional.of(sale));
+        when(productRepository.findByIdAndUserId(productId, userId)).thenReturn(Optional.of(testProduct));
+        when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        SaleRequest request = SaleRequest.builder().productId(productId).quantity(new BigDecimal("3.00"))
+                .paymentMethod(PaymentMethod.PIX).build();
+        SaleResponse response = saleService.update(userId, sale.getId(), request);
+        assertEquals(new BigDecimal("5.00"), response.getUnitCost());
+        assertEquals(new BigDecimal("15.00"), response.getOperationCost());
+        request.setUnitCost(new BigDecimal("7.00"));
+        response = saleService.update(userId, sale.getId(), request);
+        assertEquals(new BigDecimal("21.00"), response.getOperationCost());
     }
 }

@@ -137,6 +137,8 @@ public class DashboardControllerTest {
                 .description("Venda")
                 .quantity(new BigDecimal(quantity))
                 .unitPrice(grossAmount)
+                .unitCost(product != null ? new BigDecimal("3.00") : BigDecimal.ZERO)
+                .operationCost(product != null ? new BigDecimal("3.00").multiply(new BigDecimal(quantity)) : BigDecimal.ZERO)
                 .grossAmount(grossAmount)
                 .paymentMethod(PaymentMethod.PIX)
                 .feePercentage(BigDecimal.ZERO)

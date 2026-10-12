@@ -197,6 +197,7 @@ export default function SalesManager({ onNavigate, draft, onDraftChange, onBusyC
                   <th className="py-3 px-4">Item / Produto</th>
                   <th className="py-3 px-4 text-center">Qtd</th>
                   <th className="py-3 px-4 text-right">Valor Bruto</th>
+                  <th className="py-3 px-4 text-right">Custo da operação</th>
                   <th className="py-3 px-4">Pagamento</th>
                   <th className="py-3 px-4 text-right">Taxa (-%)</th>
                   <th className="py-3 px-4 text-right">Líquido no Caixa</th>
@@ -229,6 +230,14 @@ export default function SalesManager({ onNavigate, draft, onDraftChange, onBusyC
                     </td>
                     <td className="py-3.5 px-4 text-right font-medium text-slate-800">
                       {formatCurrencyBRL(sale.grossAmount)}
+                    </td>
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      {formatCurrencyBRL(sale.operationCost)}
+                      {sale.costEstimated && (
+                        <Badge tone="amber" className="ml-1" title="Venda antiga: custo estimado a partir do cadastro disponível na atualização.">
+                          Estimado
+                        </Badge>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <Badge tone="indigo">
