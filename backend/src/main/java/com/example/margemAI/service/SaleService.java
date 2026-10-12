@@ -83,9 +83,7 @@ public class SaleService {
         );
 
         LocalDateTime soldAt = request.getSoldAt() != null ? request.getSoldAt() : LocalDateTime.now();
-        int installments = (request.getInstallments() != null && request.getInstallments() >= 1)
-                ? request.getInstallments()
-                : 1;
+        int installments = request.getPaymentMethod().normalizeInstallments(request.getInstallments());
 
         Sale sale = Sale.builder()
                 .user(user)
@@ -146,9 +144,7 @@ public class SaleService {
         );
 
         LocalDateTime soldAt = request.getSoldAt() != null ? request.getSoldAt() : sale.getSoldAt();
-        int installments = (request.getInstallments() != null && request.getInstallments() >= 1)
-                ? request.getInstallments()
-                : 1;
+        int installments = request.getPaymentMethod().normalizeInstallments(request.getInstallments());
 
         sale.setProduct(product);
         sale.setDescription(description.trim());

@@ -83,7 +83,7 @@ class PaymentFeeSharedCasesTest {
                     .installments(entry.path("installments").asInt(1))
                     .mdrFeePercent(decimal(entry, "mdrFeePercent"))
                     .fixedFeeAmount(decimal(entry, "fixedFeeAmount"))
-                    .isActive(entry.path("isActive").asBoolean(true))
+                    .isActive(entry.path("isActive").isBoolean() ? entry.path("isActive").asBoolean() : null)
                     .build());
         }
 
