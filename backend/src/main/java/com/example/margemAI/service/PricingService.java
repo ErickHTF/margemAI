@@ -12,6 +12,7 @@ import com.example.margemAI.model.Product;
 import com.example.margemAI.model.VariableCost;
 import com.example.margemAI.repository.ProductRepository;
 import com.example.margemAI.repository.VariableCostRepository;
+import com.example.margemAI.util.Money;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,17 +82,11 @@ public class PricingService {
                 .multiply(ONE_HUNDRED)
                 .divide(markupDenominator, 2, RoundingMode.HALF_UP);
 
-        BigDecimal allocatedFixedCosts = minimumSellingPrice
-                .multiply(fixedPercent)
-                .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
+        BigDecimal allocatedFixedCosts = Money.percentOf(minimumSellingPrice, fixedPercent);
 
-        BigDecimal totalVariableCosts = minimumSellingPrice
-                .multiply(varPercent)
-                .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
+        BigDecimal totalVariableCosts = Money.percentOf(minimumSellingPrice, varPercent);
 
-        BigDecimal estimatedTaxes = minimumSellingPrice
-                .multiply(taxPercent)
-                .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
+        BigDecimal estimatedTaxes = Money.percentOf(minimumSellingPrice, taxPercent);
 
         BigDecimal totalUnitCost = baseCost
                 .add(allocatedFixedCosts)
@@ -101,7 +96,7 @@ public class PricingService {
                 .subtract(totalUnitCost);
 
         BigDecimal grossMargin = minimumSellingPrice.compareTo(BigDecimal.ZERO) > 0
-                ? minimumSellingPrice.subtract(baseCost).multiply(ONE_HUNDRED).divide(minimumSellingPrice, 2, RoundingMode.HALF_UP)
+                ? Money.percentageOf(minimumSellingPrice.subtract(baseCost), minimumSellingPrice)
                 : BigDecimal.ZERO;
 
         BigDecimal contributionMargin = minimumSellingPrice
@@ -110,14 +105,14 @@ public class PricingService {
         return PricingResponse.builder()
                 .productId(productId)
                 .productName(productName)
-                .baseCost(baseCost.setScale(2, RoundingMode.HALF_UP))
+                .baseCost(Money.round(baseCost))
                 .totalVariableCosts(totalVariableCosts)
                 .allocatedFixedCosts(allocatedFixedCosts)
                 .estimatedTaxes(estimatedTaxes)
                 .totalUnitCost(totalUnitCost)
-                .desiredMargin(desiredMargin.setScale(2, RoundingMode.HALF_UP))
+                .desiredMargin(Money.round(desiredMargin))
                 .minimumSellingPrice(minimumSellingPrice)
-                .markup(markupMultiplier.setScale(2, RoundingMode.HALF_UP))
+                .markup(Money.round(markupMultiplier))
                 .unitProfit(unitProfit)
                 .grossMargin(grossMargin)
                 .contributionMargin(contributionMargin)
@@ -164,9 +159,7 @@ public class PricingService {
         BigDecimal sellingPrice = request.getSellingPrice();
         BigDecimal discountPercentage = request.getDiscountPercentage();
 
-        BigDecimal discountAmount = sellingPrice
-                .multiply(discountPercentage)
-                .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
+        BigDecimal discountAmount = Money.percentOf(sellingPrice, discountPercentage);
 
         BigDecimal discountedPrice = sellingPrice.subtract(discountAmount);
 
@@ -176,22 +169,18 @@ public class PricingService {
 
         BigDecimal totalPercentages = fixedPercent.add(varPercent);
 
-        BigDecimal originalAllocatedCosts = sellingPrice
-                .multiply(totalPercentages)
-                .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
+        BigDecimal originalAllocatedCosts = Money.percentOf(sellingPrice, totalPercentages);
         BigDecimal originalTotalCost = baseCost.add(originalAllocatedCosts);
         BigDecimal originalProfit = sellingPrice.subtract(originalTotalCost);
         BigDecimal originalMargin = sellingPrice.compareTo(BigDecimal.ZERO) > 0
-                ? originalProfit.multiply(ONE_HUNDRED).divide(sellingPrice, 2, RoundingMode.HALF_UP)
+                ? Money.percentageOf(originalProfit, sellingPrice)
                 : BigDecimal.ZERO;
 
-        BigDecimal discountedAllocatedCosts = discountedPrice
-                .multiply(totalPercentages)
-                .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
+        BigDecimal discountedAllocatedCosts = Money.percentOf(discountedPrice, totalPercentages);
         BigDecimal discountedTotalCost = baseCost.add(discountedAllocatedCosts);
         BigDecimal discountedProfit = discountedPrice.subtract(discountedTotalCost);
         BigDecimal discountedMargin = discountedPrice.compareTo(BigDecimal.ZERO) > 0
-                ? discountedProfit.multiply(ONE_HUNDRED).divide(discountedPrice, 2, RoundingMode.HALF_UP)
+                ? Money.percentageOf(discountedProfit, discountedPrice)
                 : BigDecimal.ZERO;
 
         boolean viable = discountedProfit.compareTo(BigDecimal.ZERO) > 0;
@@ -207,7 +196,7 @@ public class PricingService {
         }
 
         return SimulateDiscountResponse.builder()
-                .originalPrice(sellingPrice.setScale(2, RoundingMode.HALF_UP))
+                .originalPrice(Money.round(sellingPrice))
                 .discount(discountAmount)
                 .discountedPrice(discountedPrice)
                 .totalCost(discountedTotalCost)
@@ -263,15 +252,14 @@ public class PricingService {
         if (!viable) {
             recommendation = "Alerta Crítico SEBRAE: O preço de venda (" + formatBrl(sellingPrice) + ") é menor ou igual ao custo variável unitário (" + formatBrl(unitVariableCost) + "). Cada unidade vendida gera prejuízo operacional direto. É impossível atingir o ponto de equilíbrio sem reajustar o preço ou reduzir custos.";
             contributionMarginRatio = sellingPrice.compareTo(BigDecimal.ZERO) > 0
-                    ? unitContributionMargin.multiply(ONE_HUNDRED).divide(sellingPrice, 2, RoundingMode.HALF_UP)
+                    ? Money.percentageOf(unitContributionMargin, sellingPrice)
                     : BigDecimal.ZERO;
         } else {
-            contributionMarginRatio = unitContributionMargin.multiply(ONE_HUNDRED)
-                    .divide(sellingPrice, 2, RoundingMode.HALF_UP);
+            contributionMarginRatio = Money.percentageOf(unitContributionMargin, sellingPrice);
 
             if (totalFixedCosts.compareTo(BigDecimal.ZERO) <= 0) {
                 breakEvenQuantity = 0L;
-                breakEvenRevenue = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+                breakEvenRevenue = Money.ZERO;
                 recommendation = "Ponto de equilíbrio zero: Nenhum custo fixo registrado. Qualquer venda já cobre a estrutura do negócio e gera lucro.";
             } else {
                 BigDecimal rawQty = totalFixedCosts.divide(unitContributionMargin, 4, RoundingMode.CEILING);
@@ -286,10 +274,10 @@ public class PricingService {
         }
 
         return BreakEvenResponse.builder()
-                .sellingPrice(sellingPrice.setScale(2, RoundingMode.HALF_UP))
-                .unitVariableCost(unitVariableCost.setScale(2, RoundingMode.HALF_UP))
-                .totalFixedCosts(totalFixedCosts.setScale(2, RoundingMode.HALF_UP))
-                .unitContributionMargin(unitContributionMargin.setScale(2, RoundingMode.HALF_UP))
+                .sellingPrice(Money.round(sellingPrice))
+                .unitVariableCost(Money.round(unitVariableCost))
+                .totalFixedCosts(Money.round(totalFixedCosts))
+                .unitContributionMargin(Money.round(unitContributionMargin))
                 .contributionMarginRatio(contributionMarginRatio)
                 .breakEvenQuantity(breakEvenQuantity)
                 .breakEvenRevenue(breakEvenRevenue)
@@ -300,6 +288,6 @@ public class PricingService {
 
     private static String formatBrl(BigDecimal value) {
         return NumberFormat.getCurrencyInstance(Locale.of("pt", "BR"))
-                .format(value.setScale(2, RoundingMode.HALF_UP));
+                .format(Money.round(value));
     }
 }
