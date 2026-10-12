@@ -153,6 +153,10 @@ class AlertServiceTest {
         assertEquals(new BigDecimal("60000.00"), response.getAccumulatedRevenue());
         assertEquals(new BigDecimal("74.07"), response.getUsagePercent());
         assertEquals("INFO", response.getSeverity());
+        int year = LocalDate.now().getYear();
+        org.mockito.Mockito.verify(saleRepository).sumGrossAmountByUserIdAndPeriod(
+                userId, LocalDateTime.of(year, 1, 1, 0, 0, 0),
+                LocalDateTime.of(year, 12, 31, 23, 59, 59));
     }
 
     @Test

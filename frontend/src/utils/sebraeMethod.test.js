@@ -29,8 +29,7 @@ describe('sebraeMethod', () => {
   it('should expose the simplified formula and the golden rule', () => {
     const explanation = buildSebraeExplanation({ baseCost: 50, desiredMargin: 25 })
 
-    expect(explanation.formula).toContain('Preço de venda')
-    expect(explanation.formula).toContain('100')
+    expect(explanation.formula).toBe('Preço de venda = Custo base ÷ (1 − soma dos percentuais ÷ 100)')
     expect(SEBRAE_GOLDEN_RULE).toContain('nunca pode ser igual ou superior a 100%')
   })
 
@@ -48,9 +47,9 @@ describe('sebraeMethod', () => {
     expect(explanation.markup).toBe(2.22)
   })
 
-  it('should break the price down proportionally to the percentages', () => {
+  it('deve decompor o preço de venda em valores proporcionais', () => {
     const explanation = buildSebraeExplanation({
-      baseCost: 50,
+      baseCost: 80,
       fixedPercent: 10,
       variablePercent: 15,
       desiredMargin: 25
@@ -59,11 +58,14 @@ describe('sebraeMethod', () => {
     const fixed = explanation.breakdown.find((item) => item.key === 'fixed')
     const margin = explanation.breakdown.find((item) => item.key === 'margin')
 
-    expect(fixed.value).toBe(10)
-    expect(margin.value).toBe(25)
+    expect(fixed.value).toBe(16)
+    expect(margin.value).toBe(40)
+
+    expect(explanation.breakdown.find((item) => item.key === 'variable').value).toBe(24)
+    expect(explanation.sellingPrice).toBe(160)
 
     const total = explanation.breakdown.reduce((sum, item) => sum + item.value, 0)
-    expect(total).toBe(100)
+    expect(total).toBe(160)
   })
 
   it('should flag when the golden rule is violated (sum >= 100%)', () => {
