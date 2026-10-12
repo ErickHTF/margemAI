@@ -11,6 +11,7 @@ export function useSales(initialFilters = {}) {
   })
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [operationError, setOperationError] = useState(null)
   const [error, setError] = useState(null)
   const [filters, setFilters] = useState(initialFilters)
   const [reloadKey, setReloadKey] = useState(0)
@@ -50,14 +51,13 @@ export function useSales(initialFilters = {}) {
 
   const recordSale = async (salePayload) => {
     setSubmitting(true)
-    setError(null)
+    setOperationError(null)
     try {
       const created = await saleService.createSale(salePayload)
       reload()
       return created
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.details?.[0] || 'Erro ao registrar venda.'
-      setError(msg)
       throw new Error(msg, { cause: err })
     } finally {
       setSubmitting(false)
@@ -65,12 +65,13 @@ export function useSales(initialFilters = {}) {
   }
 
   const removeSale = async (saleId) => {
+    setOperationError(null)
     try {
       await saleService.deleteSale(saleId)
       reload()
     } catch (err) {
       const msg = err.response?.data?.message || 'Erro ao excluir venda.'
-      setError(msg)
+      setOperationError(msg)
       throw new Error(msg, { cause: err })
     }
   }
@@ -80,6 +81,7 @@ export function useSales(initialFilters = {}) {
     loading,
     submitting,
     error,
+    operationError,
     filters,
     setFilters,
     reload,

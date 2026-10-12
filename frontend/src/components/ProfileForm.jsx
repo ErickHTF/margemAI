@@ -1,3 +1,4 @@
+import useDraft from '../hooks/useDraft'
 import { useState } from 'react'
 import {
   User,
@@ -19,6 +20,8 @@ export default function ProfileForm({ initialProfile, segments = MEI_SEGMENTS, o
   const [name, setName] = useState(initialProfile?.name || '')
   const [segment, setSegment] = useState(initialProfile?.segment || '')
   const [capDigits, setCapDigits] = useState(currencyToDigits(initialProfile?.customAnnualCap))
+  const { dirty, changes, guard } = useDraft({ name, segment, capDigits })
+
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
   const [loading, setLoading] = useState(false)
@@ -163,7 +166,8 @@ export default function ProfileForm({ initialProfile, segments = MEI_SEGMENTS, o
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-5 text-left">
+        <form data-tour="profile-form" onSubmit={handleSubmit} noValidate className="space-y-5 text-left">
+        {dirty && <p role="status" className="text-sm text-amber-700">{changes} {changes === 1 ? 'alteração não salva' : 'alterações não salvas'}</p>}
           <div>
             <label htmlFor="profile-name" className="block text-sm font-medium text-slate-700 mb-1.5">
               Nome Completo
@@ -237,7 +241,7 @@ export default function ProfileForm({ initialProfile, segments = MEI_SEGMENTS, o
           <div className="flex gap-3 pt-1">
             <button
               type="button"
-              onClick={onCancel}
+              onClick={() => guard(onCancel)}
               disabled={loading}
               className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
@@ -245,8 +249,8 @@ export default function ProfileForm({ initialProfile, segments = MEI_SEGMENTS, o
               <span>Cancelar</span>
             </button>
             <button
-              type="submit"
-              disabled={loading}
+              data-tour="profile-save" type="submit"
+              disabled={loading || !dirty}
               className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-md hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {loading ? (

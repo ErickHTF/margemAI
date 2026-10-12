@@ -61,7 +61,7 @@ export default function MonthlyFlowDashboard() {
         title="Fluxo de Caixa Mensal"
         description="Compare receitas e despesas mês a mês e identifique a sazonalidade do seu negócio."
       >
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl self-start sm:self-auto">
+        <div data-tour="flow-period" className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl self-start sm:self-auto">
           {PERIOD_OPTIONS.map((option) => (
             <button
               key={option}
@@ -101,7 +101,7 @@ export default function MonthlyFlowDashboard() {
       ) : (
         <>
           {/* Cards de resumo do período */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div data-tour="flow-summary" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <SummaryCard
               Icon={TrendingUp}
               iconClass="bg-emerald-50 text-emerald-600"
@@ -160,7 +160,7 @@ export default function MonthlyFlowDashboard() {
           </div>
 
           {/* Gráfico de barras */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+          <div data-tour="flow-chart" className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <h2 className="text-base font-bold text-slate-900">Receitas x Despesas por mês</h2>
               <div className="flex items-center gap-4 text-xs font-medium text-slate-600">

@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Landmark, CircleHelp } from 'lucide-react'
-import AccountsTour from './AccountsTour'
+import { useEffect, useState } from 'react'
+import { Landmark } from 'lucide-react'
 import PageHeader from './PageHeader'
 import TipButton from './TipButton'
 import { SEBRAE_PILLS } from '../data/sebraePills'
@@ -16,13 +15,6 @@ const fieldClass = 'mt-1 w-full rounded-xl border border-slate-200 p-2.5 bg-whit
 const buttonClass = 'rounded-lg bg-indigo-600 text-white px-4 py-2 disabled:opacity-50'
 
 export default function BusinessAccounts({ onDirtyChange }) {
-  const [tourOpen, setTourOpen] = useState(() => {
-    try { return localStorage.getItem('margemai.accounts-tour.v1') !== 'seen' } catch { return true }
-  })
-  const closeTour = useCallback(() => {
-    setTourOpen(false)
-    try { localStorage.setItem('margemai.accounts-tour.v1', 'seen') } catch { /* O guia continua disponível sem armazenamento local. */ }
-  }, [])
   const [filter, setFilter] = useState('')
   const { accounts, movements, loading, error, reload } = useBusinessAccounts(filter)
   const [account, setAccount] = useState(emptyAccount)
@@ -59,24 +51,21 @@ export default function BusinessAccounts({ onDirtyChange }) {
   const updateMovement = e => setMovement({ ...movement, [e.target.name]: e.target.value, ...(e.target.name === 'type' ? { destinationId: '' } : {}) })
   const accountName = id => accounts.find(a => a.id === id)?.name || '—'
   return <div className="w-full space-y-6">
-    <PageHeader Icon={Landmark} title="Contas Empresariais" description="Saldos e movimentos do dinheiro do negócio." tip={<TipButton pill={SEBRAE_PILLS.find(p => p.id === 'pro-labore')} />}>
-      <button type="button" onClick={() => setTourOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"><CircleHelp className="h-4 w-4" />Como usar</button>
-    </PageHeader>
-    {tourOpen && <AccountsTour onClose={closeTour} />}
+    <PageHeader Icon={Landmark} title="Contas Empresariais" description="Saldos e movimentos do dinheiro do negócio." tip={<TipButton pill={SEBRAE_PILLS.find(p => p.id === 'pro-labore')} />} />
     {(error || failure) && <p role="alert" className="text-rose-700">{failure || error}</p>}
     {feedback && <p role="status" className="text-emerald-700">{feedback}</p>}
     {dirty && <p className="text-amber-700">{accountChanges + movementChanges} alterações não salvas</p>}
-    <label className="block sm:w-72 text-sm font-medium text-slate-600">Filtrar por conta<select className={fieldClass} value={filter} onChange={e => setFilter(e.target.value)}><option value="">Todas as contas</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+    <label data-tour="accounts-filter" className="block sm:w-72 text-sm font-medium text-slate-600">Filtrar por conta<select className={fieldClass} value={filter} onChange={e => setFilter(e.target.value)}><option value="">Todas as contas</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
     {loading ? <p role="status">Carregando contas...</p> : <div className="grid gap-4 sm:grid-cols-2">{accounts.filter(a => !filter || a.id === filter).map(a => <article key={a.id} className="bg-white border border-slate-200 rounded-xl p-4"><h2 className="font-semibold">{a.name}</h2><p className="text-2xl font-bold">{formatCurrencyBRL(a.balance)}</p><p className="text-sm text-slate-500">Saldo inicial: {formatCurrencyBRL(a.openingBalance)} em {formatDateBR(a.openingDate)}</p></article>)}{!accounts.length && <p>Comece cadastrando uma conta, como seu banco PJ ou caixa em dinheiro.</p>}</div>}
     <div className="grid gap-6 md:grid-cols-2">
-      <form onSubmit={e => submit(e, 'account')} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+      <form data-tour="accounts-new" onSubmit={e => submit(e, 'account')} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
         <h2 className="font-semibold">Nova conta {accountChanges > 0 && <span className="text-amber-700 text-sm">Não salvo</span>}</h2>
         <label className="block">Nome da conta<input placeholder="Ex.: Banco PJ ou Caixa em dinheiro" required maxLength={100} name="name" value={account.name} onChange={updateAccount} className={fieldClass} /></label>
         <label className="block">Saldo inicial (R$)<input required type="number" step="0.01" name="openingBalance" value={account.openingBalance} onChange={updateAccount} className={fieldClass} /></label>
         <label className="block">Data do saldo inicial<input required type="date" max={today()} name="openingDate" value={account.openingDate} onChange={updateAccount} className={fieldClass} /></label>
         <button disabled={busy || !accountChanges || !account.name.trim()} className={buttonClass}>Salvar conta</button>
       </form>
-      <form onSubmit={e => submit(e, 'movement')} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+      <form data-tour="accounts-movement" onSubmit={e => submit(e, 'movement')} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
         <h2 className="font-semibold">Novo movimento {movementChanges > 0 && <span className="text-amber-700 text-sm">Não salvo</span>}</h2>
         <label className="block">Tipo<select name="type" value={movement.type} onChange={updateMovement} className={fieldClass}>{Object.entries(labels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         <label className="block">{movement.type === 'APORTE' ? 'Conta que recebe o aporte' : movement.type === 'TRANSFERENCIA' ? 'Conta de origem' : 'Conta de onde sai o dinheiro'}<select required name="accountId" value={movement.accountId} onChange={updateMovement} className={fieldClass}><option value="">Selecione</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>

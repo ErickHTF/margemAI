@@ -57,7 +57,7 @@ public class BusinessAccountService {
         if (r.date().isBefore(account.getOpeningDate()) ||
             (destination != null && r.date().isBefore(destination.getOpeningDate())))
             throw new InvalidRequestException("O movimento não pode ser anterior ao saldo inicial das contas.");
-        // Pró-labore é desembolso: o custo continua exclusivamente no módulo de custos.
+        // Record cash movement only; payroll costs belong to FixedCost.
         return response(movements.save(AccountMovement.builder().account(account).destination(destination)
             .type(r.type()).amount(r.amount().setScale(2, RoundingMode.HALF_UP))
             .date(r.date()).description(r.description().trim()).build()));

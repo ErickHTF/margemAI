@@ -99,6 +99,7 @@ export default function ProfilePanel({ user, onUserUpdate }) {
         {profile && (
           <button
             type="button"
+            data-tour="profile-edit"
             onClick={() => setEditing(true)}
             className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm shadow-sm transition-all cursor-pointer self-start sm:self-auto"
           >
@@ -143,7 +144,7 @@ export default function ProfilePanel({ user, onUserUpdate }) {
               </div>
             </div>
 
-            <dl className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <dl data-tour="profile-details" className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               <ProfileField label="Nome">{profile?.name}</ProfileField>
               <ProfileField label="E-mail">{profile?.email}</ProfileField>
               <ProfileField label="CNPJ">{maskCnpj(profile?.cnpj)}</ProfileField>

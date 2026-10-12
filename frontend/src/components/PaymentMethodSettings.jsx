@@ -369,6 +369,7 @@ export default function PaymentMethodSettings({ onDirtyChange }) {
           </button>
           <button
             type="button"
+            data-tour="fees-save"
             onClick={handleSave}
             disabled={loading || saving || !hasUnsavedChanges}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition shadow-sm cursor-pointer disabled:opacity-50"
@@ -390,7 +391,7 @@ export default function PaymentMethodSettings({ onDirtyChange }) {
 
       {/* Feedback Toast / Alert */}
       {feedback && (
-        <div
+        <div role={feedback.type === 'error' ? 'alert' : 'status'}
           className={`flex items-start gap-3 p-4 rounded-xl text-xs border ${
             feedback.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -411,7 +412,7 @@ export default function PaymentMethodSettings({ onDirtyChange }) {
       )}
 
       {/* Navegação por Abas */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-200 pb-2">
+      <div data-tour="fees-tabs" className="flex flex-wrap items-center gap-1.5 border-b border-slate-200 pb-2">
         {TAB_OPTIONS.map((tab) => (
           <button
             key={tab.id}
@@ -435,7 +436,7 @@ export default function PaymentMethodSettings({ onDirtyChange }) {
           <p className="text-xs">Carregando matriz de taxas de pagamento...</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div data-tour="fees-table" className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>

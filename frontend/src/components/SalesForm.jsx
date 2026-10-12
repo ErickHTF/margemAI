@@ -1,3 +1,4 @@
+import useDraft from '../hooks/useDraft'
 import { useState, useEffect } from 'react'
 import {
   Banknote,
@@ -34,6 +35,9 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState(null)
+  const draft = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes }
+  const { markSaved } = useDraft(draft)
+
   const { getFee, error: feesError } = usePaymentFees()
 
   useEffect(() => {
@@ -127,7 +131,8 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
 
     try {
       await onSaleCreated(payload)
-      setFeedback({ type: 'success', message: 'Venda lançada com sucesso no caixa!' })
+      setFeedback({ type: 'success', message: 'Venda registrada com sucesso!' })
+      markSaved({ ...draft, selectedProductId: isCustomItem ? selectedProductId : '', customDescription: '', unitPrice: '', quantity: 1, notes: '', customFee: '', showCustomFee: false })
       // Reset form para nova venda rápida
       if (!isCustomItem) {
         setSelectedProductId('')
@@ -190,6 +195,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
 
       {feedback && (
         <div
+          role={feedback.type === 'error' ? 'alert' : 'status'}
           className={`mb-6 p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${
             feedback.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
@@ -288,7 +294,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
         {/* Métodos de Pagamento */}
         <div>
           {feesError && (
-            <p className="mb-2 text-[11px] font-medium text-amber-700">{feesError}</p>
+            <p role="status" className="mb-2 text-[11px] font-medium text-amber-700">{feesError}</p>
           )}
           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
             Forma de Pagamento

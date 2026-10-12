@@ -1,3 +1,4 @@
+import useDraft from '../hooks/useDraft'
 import { useState, useEffect } from 'react'
 import {
   Calculator,
@@ -75,16 +76,20 @@ export default function PricingCalculator() {
   const [feeMethod, setFeeMethod] = useState('CREDITO_A_VISTA')
   const [feeInstallments, setFeeInstallments] = useState(2)
 
+  useDraft({ formData, selectedProductId, useAutomaticFixedCosts, discountPercent, useConfiguredFee, feeMethod, feeInstallments })
+  const [savedRateioForm, setSavedRateioForm] = useState(rateioForm)
+  const { dirty: rateioDirty } = useDraft(rateioForm, savedRateioForm)
+
   const applyRateioSummary = (data) => {
     setRateioSummary(data)
-    setRateioForm((prev) => ({
-      ...prev,
+    const next = {
       revenueBaselineMode: data.revenueBaselineMode || 'TARGET_REVENUE',
       revenueBaseline: data.revenueBaseline != null ? String(data.revenueBaseline) : '',
       automaticRateio: data.automaticRateio ?? true,
-      manualAllocatedFixedCostPercent:
-        data.allocatedFixedCostPercent != null ? String(data.allocatedFixedCostPercent) : ''
-    }))
+      manualAllocatedFixedCostPercent: data.allocatedFixedCostPercent != null ? String(data.allocatedFixedCostPercent) : ''
+    }
+    setRateioForm(next)
+    setSavedRateioForm(next)
   }
 
   useEffect(() => {
@@ -129,7 +134,7 @@ export default function PricingCalculator() {
     ? getPillById(selectedPillId)
     : selectContextualPill({
         action: activeContextAction,
-        discountActive: activeContextAction === 'discount' || Number(discountPercent) > 0,
+        discountActive: activeContextAction === 'discount',
         fixedCostPercent: effectiveFixedPercent,
         variableCostPercent: effectiveVariablePercent
       })
@@ -385,7 +390,7 @@ export default function PricingCalculator() {
 
       <div className="w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
         <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-5 space-y-5">
+          <div data-tour="pricing-parameters" className="lg:col-span-5 space-y-5">
             <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
               Parâmetros de Custo e Margem
             </h3>
@@ -399,6 +404,7 @@ export default function PricingCalculator() {
                   <Package className="w-4 h-4" />
                 </div>
                 <select
+                  data-tour="pricing-product"
                   id="pricing-product"
                   value={selectedProductId}
                   onChange={(e) => handleProductSelect(e.target.value)}
@@ -605,7 +611,7 @@ export default function PricingCalculator() {
                   <button
                     type="button"
                     onClick={handleSaveRateioConfig}
-                    disabled={savingRateio}
+                    disabled={savingRateio || !rateioDirty}
                     className="w-full py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
                   >
                     {savingRateio ? (
@@ -776,7 +782,7 @@ export default function PricingCalculator() {
             </button>
           </div>
 
-          <div className="lg:col-span-7 space-y-6">
+          <div data-tour="pricing-results" className="lg:col-span-7 space-y-6">
             {pricingResult ? (
               <>
                 <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100">

@@ -1,3 +1,4 @@
+import useDraft from '../hooks/useDraft'
 import { useState, useEffect, useRef } from 'react'
 import {
   Plus,
@@ -37,6 +38,7 @@ const KIND_META = {
 const PAGE_SIZE = 50
 
 export default function CostManager({ kind, service, categories, products = [] }) {
+  const { guard } = useDraft(null)
   const meta = KIND_META[kind]
   const amountKey = meta.amountKey
   const isVariable = kind === 'variable'
@@ -49,6 +51,7 @@ export default function CostManager({ kind, service, categories, products = [] }
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [formVersion, setFormVersion] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editingCost, setEditingCost] = useState(null)
   const formRef = useRef(null)
@@ -109,11 +112,13 @@ export default function CostManager({ kind, service, categories, products = [] }
   }
 
   const handleNew = () => {
+    setFormVersion(version => version + 1)
     setEditingCost(null)
     setShowForm(true)
   }
 
   const handleEdit = (cost) => {
+    setFormVersion(version => version + 1)
     setEditingCost(cost)
     setShowForm(true)
   }
@@ -169,6 +174,7 @@ export default function CostManager({ kind, service, categories, products = [] }
   const formSection = showForm ? (
     <div className="w-full mb-6" ref={formRef}>
       <CostForm
+            key={formVersion}
         kind={kind}
         service={service}
         categories={categories}
@@ -201,7 +207,7 @@ export default function CostManager({ kind, service, categories, products = [] }
         </div>
         <button
           type="button"
-          onClick={handleNew}
+          onClick={() => guard(handleNew)}
           className="inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-sm transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -347,7 +353,7 @@ export default function CostManager({ kind, service, categories, products = [] }
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => handleEdit(cost)}
+                    onClick={() => guard(() => handleEdit(cost))}
                     title="Editar"
                     className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
                   >

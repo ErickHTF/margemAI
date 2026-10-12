@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Landmark,
   Sparkles,
@@ -27,6 +27,8 @@ import SalesManager from './components/SalesManager'
 import PaymentMethodSettings from './components/PaymentMethodSettings'
 import MonthlyFlowDashboard from './components/MonthlyFlowDashboard'
 import BusinessAccounts from './components/BusinessAccounts'
+import SectionTour from './components/SectionTour'
+import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
 
 const NAV_GROUPS = [
@@ -62,6 +64,11 @@ const NAV_GROUPS = [
     ]
   }
 ]
+
+const readSection = () => {
+  const key = window.location.hash.slice(1)
+  return NAV_GROUPS.some(group => group.items.some(item => item.key === key)) ? key : 'profile'
+}
 
 const findActive = (sectionKey) => {
   for (const group of NAV_GROUPS) {
@@ -101,8 +108,20 @@ export default function App() {
   const { user, login, logout, updateUser, isAuthenticated, initializing } = useAuth()
   const [showRegister, setShowRegister] = useState(false)
   const [registeredUser, setRegisteredUser] = useState(null)
-  const [activeSection, setActiveSection] = useState('profile')
+  const [activeSection, setActiveSection] = useState(readSection)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [drafts, setDrafts] = useState({})
+  const registerDraft = useCallback((id, dirty) => setDrafts(previous => {
+    if (Boolean(previous[id]) === dirty) return previous
+    const next = { ...previous }
+    if (dirty) next[id] = true
+    else delete next[id]
+    return next
+  }), [])
+  const dirty = hasUnsavedChanges || Object.values(drafts).some(Boolean)
+  const historyIndex = useRef(window.history.state?.margemIndex || 0)
+  const ignorePop = useRef(false)
+  const allowPop = useRef(false)
   const [pendingLeaveAction, setPendingLeaveAction] = useState(null)
 
   const { group: activeGroup, item: activeItem } = findActive(activeSection)
@@ -113,9 +132,8 @@ export default function App() {
     return data
   }
 
-  // Ações que tiram o usuário da tela atual passam por aqui para não perder alterações não salvas
   const guardLeave = (action) => {
-    if (hasUnsavedChanges) {
+    if (dirty) {
       setPendingLeaveAction(() => action)
       return
     }
@@ -124,8 +142,53 @@ export default function App() {
 
   const navigateTo = (sectionKey) => {
     if (sectionKey === activeSection) return
-    guardLeave(() => setActiveSection(sectionKey))
+    guardLeave(() => {
+      historyIndex.current += 1
+      window.history.pushState({ margemIndex: historyIndex.current }, '', `#${sectionKey}`)
+      setActiveSection(sectionKey)
+    })
   }
+
+  useEffect(() => {
+    window.history.replaceState({ margemIndex: historyIndex.current }, '', `#${readSection()}`)
+  }, [])
+
+  useEffect(() => {
+    const onPop = event => {
+      if (ignorePop.current) { ignorePop.current = false; return }
+      const nextIndex = event.state?.margemIndex ?? historyIndex.current + 1
+      const delta = nextIndex - historyIndex.current
+      const nextSection = readSection()
+      if (dirty && !allowPop.current) {
+        if (delta) { ignorePop.current = true; window.history.go(-delta) }
+        else window.history.replaceState({ margemIndex: historyIndex.current }, '', `#${activeSection}`)
+        setPendingLeaveAction(() => () => {
+          if (delta) { allowPop.current = true; window.history.go(delta) }
+          else setActiveSection(nextSection)
+        })
+        return
+      }
+      allowPop.current = false
+      historyIndex.current = nextIndex
+      setActiveSection(nextSection)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [dirty, activeSection])
+
+  useEffect(() => {
+    if (!dirty) return undefined
+    const beforeUnload = event => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', beforeUnload)
+    return () => window.removeEventListener('beforeunload', beforeUnload)
+  }, [dirty])
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (!document.querySelector('[role="dialog"], [role="alertdialog"]')) document.getElementById('main-content')?.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [activeSection])
 
   const handleLogout = () => guardLeave(logout)
 
@@ -168,13 +231,14 @@ export default function App() {
 
   const renderAuthenticated = () => (
     <div className="min-h-screen flex bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50/30 antialiased">
+      <a href="#main-content" onClick={event => { event.preventDefault(); const main = document.getElementById('main-content'); main?.focus(); main?.scrollIntoView() }} className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-xl focus:bg-white focus:p-3 focus:text-indigo-700 focus:shadow-lg">Ir para o conteúdo</a>
       <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:sticky lg:top-0 lg:h-screen shrink-0 border-r border-slate-200 bg-white/80 backdrop-blur">
         <div className="px-6 py-6 border-b border-slate-100">
           <Brand />
           <p className="text-xs text-slate-500 font-medium mt-2">Gestão Inteligente para MEI</p>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-7">
+        <nav aria-label="Menu principal" className="flex-1 overflow-y-auto px-4 py-6 space-y-7">
           {NAV_GROUPS.map((group) => (
             <div key={group.key} className="space-y-1.5">
               <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
@@ -184,6 +248,7 @@ export default function App() {
                 <button
                   key={key}
                   type="button"
+                  aria-current={activeSection === key ? 'page' : undefined}
                   onClick={() => navigateTo(key)}
                   className={`w-full ${navItemClass(activeSection === key)}`}
                 >
@@ -224,6 +289,7 @@ export default function App() {
               type="button"
               onClick={handleLogout}
               title="Sair"
+              aria-label="Sair"
               className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
             >
               <LogOut className="w-5 h-5" />
@@ -241,7 +307,8 @@ export default function App() {
                     <button
                       key={key}
                       type="button"
-                      onClick={() => navigateTo(key)}
+                      aria-current={activeSection === key ? 'page' : undefined}
+                  onClick={() => navigateTo(key)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                         activeSection === key
                           ? 'bg-indigo-600 text-white shadow-sm'
@@ -266,8 +333,8 @@ export default function App() {
           <span className="text-xs font-semibold text-slate-700">{activeItem.label}</span>
         </div>
 
-        <main className="flex-1 w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-10">
-          <div className="w-full max-w-6xl mx-auto">{renderSection()}</div>
+        <main id="main-content" tabIndex={-1} aria-label={activeItem.label} className="outline-none flex-1 w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-10">
+          <div className="w-full max-w-6xl mx-auto"><SectionTour key={activeSection} section={activeSection}>{renderSection()}</SectionTour></div>
         </main>
 
         <footer className="w-full px-4 sm:px-6 lg:px-10 py-6 text-center text-xs text-slate-400">
@@ -339,7 +406,7 @@ export default function App() {
   }
 
   if (isAuthenticated && user) {
-    return renderAuthenticated()
+    return <DraftContext.Provider value={{ register: registerDraft, guard: guardLeave }}>{renderAuthenticated()}</DraftContext.Provider>
   }
 
   return (

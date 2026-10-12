@@ -1,3 +1,4 @@
+import useDraft from '../hooks/useDraft'
 import { useEffect, useState } from 'react'
 import {
   AlertCircle,
@@ -23,6 +24,8 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
     variableCostPercent: initialCategory?.variableCostPercent != null ? String(initialCategory.variableCostPercent) : '',
     parentId: initialCategory?.parentId || ''
   })
+
+  const { dirty, changes, guard } = useDraft(formData)
 
   const [categories, setCategories] = useState([])
   const [errors, setErrors] = useState({})
@@ -166,7 +169,7 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
         </div>
         <button
           type="button"
-          onClick={onCancel}
+          onClick={() => guard(onCancel)}
           className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
         >
           <X className="w-5 h-5" />
@@ -190,6 +193,7 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
       )}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-left">
+        {dirty && <p role="status" className="text-sm text-amber-700">{changes} {changes === 1 ? 'alteração não salva' : 'alterações não salvas'}</p>}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do padrão *</label>
@@ -349,7 +353,7 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={() => guard(onCancel)}
             disabled={loading}
             className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium transition cursor-pointer"
           >
@@ -357,7 +361,7 @@ export default function CategoryForm({ initialCategory, onCancel, onSaved }) {
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !dirty}
             className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-60"
           >
             {loading ? (
