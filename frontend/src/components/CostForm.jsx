@@ -1,9 +1,6 @@
 import useDraft from '../hooks/useDraft'
 import { useState } from 'react'
 import {
-  XCircle,
-  AlertCircle,
-  Loader2,
   Save,
   ArrowLeft,
   Receipt,
@@ -13,6 +10,7 @@ import {
   Package
 } from 'lucide-react'
 import { maskCurrency, unmaskCurrency, currencyToDigits } from '../utils/formatters'
+import { Button, Card, Field, Input, Notice, Select } from './ui'
 
 const KIND_LABELS = {
   fixed: {
@@ -146,29 +144,10 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
     }
   }
 
-  const inputClass = (field) =>
-    `w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50/50 ${
-      touched[field] && errors[field]
-        ? 'border-rose-400 focus:ring-rose-200 focus:border-rose-500'
-        : 'border-slate-200 focus:ring-indigo-100 focus:border-indigo-500'
-    }`
-
-  const fieldIcon = (Icon) => (
-    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-      <Icon className="w-5 h-5" />
-    </div>
-  )
-
-  const fieldError = (field) =>
-    touched[field] && errors[field] ? (
-      <p className="text-xs text-rose-600 mt-1.5 flex items-center gap-1">
-        <XCircle className="w-3.5 h-3.5 shrink-0" />
-        {errors[field]}
-      </p>
-    ) : null
+  const fieldError = (field) => (touched[field] && errors[field]) || undefined
 
   return (
-    <div className="w-full bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-slate-100">
+    <Card padding="lg" className="w-full">
       <div className="text-center mb-6">
         <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
           <Receipt className="w-7 h-7" />
@@ -180,191 +159,132 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
       </div>
 
       {serverError && (
-        <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
-          <div className="text-left">
-            <p className="font-semibold text-sm">{serverError.message}</p>
-            {serverError.details?.length > 0 && (
-              <ul className="mt-1.5 list-disc list-inside text-xs text-rose-700 space-y-1">
-                {serverError.details.map((detail, index) => (
-                  <li key={index}>{detail}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
+        <Notice tone="rose" title={serverError.message} className="mb-6 text-left">
+          {serverError.details?.length > 0 && (
+            <ul className="mt-1.5 list-disc list-inside text-xs text-rose-700 space-y-1">
+              {serverError.details.map((detail, index) => (
+                <li key={index}>{detail}</li>
+              ))}
+            </ul>
+          )}
+        </Notice>
       )}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-left">
         {dirty && <p role="status" className="text-sm text-amber-700">{changes} {changes === 1 ? 'alteração não salva' : 'alterações não salvas'}</p>}
-        <div>
-          <label htmlFor="cost-name" className="block text-sm font-medium text-slate-700 mb-1.5">
-            Nome
-          </label>
-          <div className="relative">
-            {fieldIcon(Receipt)}
-            <input
-              id="cost-name"
-              type="text"
-              value={name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              onBlur={(e) => handleBlur('name', e.target.value)}
-              placeholder={kind === 'fixed' ? 'ex: Aluguel do ponto' : 'ex: Matéria-prima (tecido)'}
-              className={inputClass('name')}
-            />
-          </div>
-          {fieldError('name')}
-        </div>
+        <Field label="Nome" error={fieldError('name')}>
+          <Input
+            id="cost-name"
+            type="text"
+            Icon={Receipt}
+            value={name}
+            onChange={(e) => handleChange('name', e.target.value)}
+            onBlur={(e) => handleBlur('name', e.target.value)}
+            placeholder={kind === 'fixed' ? 'ex: Aluguel do ponto' : 'ex: Matéria-prima (tecido)'}
+          />
+        </Field>
 
-        <div>
-          <label htmlFor="cost-category" className="block text-sm font-medium text-slate-700 mb-1.5">
-            Padrão de precificação
-          </label>
-          <div className="relative">
-            {fieldIcon(Tag)}
-            <select
-              id="cost-category"
-              value={category}
-              onChange={(e) => handleChange('category', e.target.value)}
-              onBlur={(e) => handleBlur('category', e.target.value)}
-              className={`${inputClass('category')} appearance-none`}
-            >
-              <option value="">Selecione o padrão de precificação...</option>
-              {categories.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          {fieldError('category')}
-        </div>
+        <Field label="Padrão de precificação" error={fieldError('category')}>
+          <Select
+            id="cost-category"
+            Icon={Tag}
+            value={category}
+            onChange={(e) => handleChange('category', e.target.value)}
+            onBlur={(e) => handleBlur('category', e.target.value)}
+          >
+            <option value="">Selecione o padrão de precificação...</option>
+            {categories.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
         {isVariable && (products.length > 0 || missingProduct) && (
-          <div>
-            <label htmlFor="cost-product" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Produto associado (opcional)
-            </label>
-            <div className="relative">
-              {fieldIcon(Package)}
-              <select
-                id="cost-product"
-                value={productId}
-                onChange={(e) => handleChange('product', e.target.value)}
-                className={`${inputClass('product')} appearance-none`}
-              >
-                <option value="">Nenhum (custo geral)</option>
-                {missingProduct && (
-                  <option value={missingProduct.id}>
-                    {missingProduct.name || 'Produto vinculado'} (indisponível)
-                  </option>
-                )}
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name} ({product.type === 'PRODUTO' ? 'produto' : 'serviço'})
-                  </option>
-                ))}
-              </select>
-            </div>
-            {missingProduct ? (
-              <p className="text-xs text-amber-600 mt-1.5">
-                O produto vinculado foi excluído. Selecione "Nenhum" ou outro produto para salvar.
-              </p>
-            ) : (
-              <p className="text-xs text-slate-400 mt-1.5">
-                Ao vincular, o valor soma no custo direto unitário do produto.
-              </p>
-            )}
-          </div>
+          <Field
+            label="Produto associado (opcional)"
+            hint={
+              missingProduct ? (
+                <span className="text-amber-600">
+                  O produto vinculado foi excluído. Selecione "Nenhum" ou outro produto para salvar.
+                </span>
+              ) : (
+                'Ao vincular, o valor soma no custo direto unitário do produto.'
+              )
+            }
+          >
+            <Select
+              id="cost-product"
+              Icon={Package}
+              value={productId}
+              onChange={(e) => handleChange('product', e.target.value)}
+            >
+              <option value="">Nenhum (custo geral)</option>
+              {missingProduct && (
+                <option value={missingProduct.id}>
+                  {missingProduct.name || 'Produto vinculado'} (indisponível)
+                </option>
+              )}
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name} ({product.type === 'PRODUTO' ? 'produto' : 'serviço'})
+                </option>
+              ))}
+            </Select>
+          </Field>
         )}
 
-        <div>
-          <label htmlFor="cost-amount" className="block text-sm font-medium text-slate-700 mb-1.5">
-            {labels.amountLabel}
-          </label>
-          <div className="relative">
-            {fieldIcon(Receipt)}
-            <input
-              id="cost-amount"
-              type="text"
-              inputMode="numeric"
-              value={maskCurrency(amountDigits)}
-              onChange={(e) => handleChange('amount', e.target.value)}
-              onBlur={(e) => handleBlur('amount', e.target.value)}
-              placeholder="0,00"
-              className={inputClass('amount')}
-            />
-          </div>
-          {fieldError('amount')}
-        </div>
+        <Field label={labels.amountLabel} error={fieldError('amount')}>
+          <Input
+            id="cost-amount"
+            type="text"
+            inputMode="numeric"
+            Icon={Receipt}
+            value={maskCurrency(amountDigits)}
+            onChange={(e) => handleChange('amount', e.target.value)}
+            onBlur={(e) => handleBlur('amount', e.target.value)}
+            placeholder="0,00"
+          />
+        </Field>
 
         {kind === 'fixed' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="cost-dueDate" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Vencimento (opcional)
-              </label>
-              <div className="relative">
-                {fieldIcon(CalendarDays)}
-                <input
-                  id="cost-dueDate"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => handleChange('dueDate', e.target.value)}
-                  onBlur={(e) => handleBlur('dueDate', e.target.value)}
-                  className={inputClass('dueDate')}
-                />
-              </div>
-              {fieldError('dueDate')}
-            </div>
+            <Field label="Vencimento (opcional)" error={fieldError('dueDate')}>
+              <Input
+                id="cost-dueDate"
+                type="date"
+                Icon={CalendarDays}
+                value={dueDate}
+                onChange={(e) => handleChange('dueDate', e.target.value)}
+                onBlur={(e) => handleBlur('dueDate', e.target.value)}
+              />
+            </Field>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Recorrência</label>
-              <button
-                type="button"
+              <p className="mb-1.5 block text-sm font-medium text-slate-700">Recorrência</p>
+              <Button
+                variant={recurring ? 'soft' : 'secondary'}
+                Icon={Repeat}
+                fullWidth
+                aria-pressed={recurring}
                 onClick={() => setRecurring(!recurring)}
-                className={`w-full py-2.5 px-4 rounded-xl border text-sm font-medium transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  recurring
-                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                    : 'bg-slate-50 border-slate-200 text-slate-500'
-                }`}
               >
-                <Repeat className="w-4 h-4" />
                 {recurring ? 'Recorrente mensal' : 'Eventual (não recorrente)'}
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => guard(onCancel)}
-            disabled={loading}
-            className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Cancelar</span>
-          </button>
-          <button
-            type="submit"
-            disabled={loading || !dirty}
-            className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Salvando...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Salvar</span>
-              </>
-            )}
-          </button>
+        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
+          <Button variant="secondary" Icon={ArrowLeft} className="w-full sm:flex-1" onClick={() => guard(onCancel)} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button type="submit" Icon={Save} loading={loading} disabled={!dirty} className="w-full sm:flex-1">
+            {loading ? 'Salvando...' : 'Salvar'}
+          </Button>
         </div>
       </form>
-    </div>
+    </Card>
   )
 }

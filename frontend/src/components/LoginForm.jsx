@@ -4,10 +4,9 @@ import {
   Lock,
   Eye,
   EyeOff,
-  AlertCircle,
-  Loader2,
   LogIn
 } from 'lucide-react'
+import { Button, Card, Field, IconButton, Input, Notice } from './ui'
 import { validateCnpj, validateEmail } from '../utils/validators'
 
 export default function LoginForm({ onLoginSuccess }) {
@@ -99,15 +98,10 @@ export default function LoginForm({ onLoginSuccess }) {
     }
   }
 
-  const inputClass = (field) =>
-    `w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50/50 ${
-      touched[field] && errors[field]
-        ? 'border-rose-400 focus:ring-rose-200 focus:border-rose-500'
-        : 'border-slate-200 focus:ring-indigo-100 focus:border-indigo-500'
-    }`
+  const fieldError = (field) => (touched[field] && errors[field]) || undefined
 
   return (
-    <div className="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl border border-slate-100 p-8 sm:p-10 transition-all">
+    <Card padding="lg" className="w-full max-w-md mx-auto">
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 mb-4 shadow-sm">
           <LogIn className="w-7 h-7" />
@@ -121,100 +115,57 @@ export default function LoginForm({ onLoginSuccess }) {
       </div>
 
       {serverError && (
-        <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3 animate-in fade-in">
-          <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
-          <div className="text-left">
-            <p className="font-semibold text-sm">{serverError.message}</p>
-            {serverError.details && serverError.details.length > 0 && (
-              <ul className="mt-1.5 list-disc list-inside text-xs text-rose-700 space-y-1">
-                {serverError.details.map((detail, index) => (
-                  <li key={index}>{detail}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
+        <Notice tone="rose" title={serverError.message} className="mb-6 text-left">
+          {serverError.details && serverError.details.length > 0 && (
+            <ul className="mt-1.5 list-disc list-inside text-xs text-rose-700 space-y-1">
+              {serverError.details.map((detail, index) => (
+                <li key={index}>{detail}</li>
+              ))}
+            </ul>
+          )}
+        </Notice>
       )}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5 text-left">
-        <div>
-          <label htmlFor="identifier" className="block text-sm font-medium text-slate-700 mb-1.5">
-            E-mail ou CNPJ
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Fingerprint className="w-5 h-5" />
-            </div>
-            <input
-              id="identifier"
-              name="identifier"
-              type="text"
-              autoComplete="username"
-              value={identifier}
-              onChange={(e) => handleChange('identifier', e.target.value)}
-              onBlur={(e) => handleBlur('identifier', e.target.value)}
-              placeholder="seu.email@exemplo.com ou 00.000.000/0000-00"
-              className={inputClass('identifier')}
-            />
-          </div>
-          {touched.identifier && errors.identifier && (
-            <p className="text-xs text-rose-600 mt-1.5 flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {errors.identifier}
-            </p>
-          )}
-        </div>
+        <Field label="E-mail ou CNPJ" error={fieldError('identifier')}>
+          <Input
+            id="identifier"
+            name="identifier"
+            type="text"
+            autoComplete="username"
+            Icon={Fingerprint}
+            value={identifier}
+            onChange={(e) => handleChange('identifier', e.target.value)}
+            onBlur={(e) => handleBlur('identifier', e.target.value)}
+            placeholder="seu.email@exemplo.com ou 00.000.000/0000-00"
+          />
+        </Field>
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1.5">
-            Senha
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Lock className="w-5 h-5" />
-            </div>
-            <input
-              id="password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => handleChange('password', e.target.value)}
-              onBlur={(e) => handleBlur('password', e.target.value)}
-              placeholder="••••••••••••"
-              className={`${inputClass('password')} pr-11`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-          {touched.password && errors.password && (
-            <p className="text-xs text-rose-600 mt-1.5 flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {errors.password}
-            </p>
-          )}
-        </div>
+        <Field label="Senha" error={fieldError('password')}>
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            Icon={Lock}
+            action={
+              <IconButton
+                label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                Icon={showPassword ? EyeOff : Eye}
+                onClick={() => setShowPassword(!showPassword)}
+              />
+            }
+            value={password}
+            onChange={(e) => handleChange('password', e.target.value)}
+            onBlur={(e) => handleBlur('password', e.target.value)}
+            placeholder="••••••••••••"
+          />
+        </Field>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full mt-2 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-md hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Entrando...</span>
-            </>
-          ) : (
-            <span>Entrar</span>
-          )}
-        </button>
+        <Button type="submit" fullWidth loading={loading} className="mt-2">
+          {loading ? 'Entrando...' : 'Entrar'}
+        </Button>
       </form>
-    </div>
+    </Card>
   )
 }

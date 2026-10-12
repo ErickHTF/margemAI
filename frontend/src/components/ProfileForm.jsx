@@ -4,14 +4,12 @@ import {
   User,
   Briefcase,
   Wallet,
-  XCircle,
-  AlertCircle,
-  Loader2,
   Save,
   ArrowLeft
 } from 'lucide-react'
 import profileService from '../services/profileService'
 import PageHeader from './PageHeader'
+import { Button, Card, Field, Input, Notice, Select } from './ui'
 import { MEI_SEGMENTS } from '../constants/segments'
 import { validateName } from '../utils/validators'
 import { maskCurrency, unmaskCurrency, currencyToDigits } from '../utils/formatters'
@@ -118,26 +116,7 @@ export default function ProfileForm({ initialProfile, segments = MEI_SEGMENTS, o
     }
   }
 
-  const inputClass = (field) =>
-    `w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50/50 ${
-      touched[field] && errors[field]
-        ? 'border-rose-400 focus:ring-rose-200 focus:border-rose-500'
-        : 'border-slate-200 focus:ring-indigo-100 focus:border-indigo-500'
-    }`
-
-  const fieldIcon = (field, Icon) => (
-    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-      <Icon className="w-5 h-5" />
-    </div>
-  )
-
-  const fieldError = (field) =>
-    touched[field] && errors[field] ? (
-      <p className="text-xs text-rose-600 mt-1.5 flex items-center gap-1">
-        <XCircle className="w-3.5 h-3.5 shrink-0" />
-        {errors[field]}
-      </p>
-    ) : null
+  const fieldError = (field) => (touched[field] && errors[field]) || undefined
 
   return (
     <div className="w-full space-y-6">
@@ -147,127 +126,86 @@ export default function ProfileForm({ initialProfile, segments = MEI_SEGMENTS, o
         description="Mantenha seus dados e o teto anual atualizados para calibrar seus relatórios."
       />
 
-      <div className="w-full max-w-2xl bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+      <Card padding="lg" className="w-full max-w-2xl">
         <h2 className="text-base font-bold text-slate-900 mb-5">Editar dados cadastrais</h2>
 
         {serverError && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3 animate-in fade-in">
-            <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
-            <div className="text-left">
-              <p className="font-semibold text-sm">{serverError.message}</p>
-              {serverError.details && serverError.details.length > 0 && (
-                <ul className="mt-1.5 list-disc list-inside text-xs text-rose-700 space-y-1">
-                  {serverError.details.map((detail, index) => (
-                    <li key={index}>{detail}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+          <Notice tone="rose" title={serverError.message} className="mb-6 text-left">
+            {serverError.details && serverError.details.length > 0 && (
+              <ul className="mt-1.5 list-disc list-inside text-xs text-rose-700 space-y-1">
+                {serverError.details.map((detail, index) => (
+                  <li key={index}>{detail}</li>
+                ))}
+              </ul>
+            )}
+          </Notice>
         )}
 
         <form data-tour="profile-form" onSubmit={handleSubmit} noValidate className="space-y-5 text-left">
-        {dirty && <p role="status" className="text-sm text-amber-700">{changes} {changes === 1 ? 'alteração não salva' : 'alterações não salvas'}</p>}
-          <div>
-            <label htmlFor="profile-name" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Nome Completo
-            </label>
-            <div className="relative">
-              {fieldIcon('name', User)}
-              <input
-                id="profile-name"
-                type="text"
-                value={name}
-                onChange={handleNameChange}
-                onBlur={(e) => handleBlur('name', e.target.value)}
-                placeholder="ex: Maria dos Santos"
-                className={inputClass('name')}
-              />
-            </div>
-            {fieldError('name')}
-          </div>
+          {dirty && <p role="status" className="text-sm text-amber-700">{changes} {changes === 1 ? 'alteração não salva' : 'alterações não salvas'}</p>}
+          <Field label="Nome Completo" error={fieldError('name')}>
+            <Input
+              id="profile-name"
+              type="text"
+              Icon={User}
+              value={name}
+              onChange={handleNameChange}
+              onBlur={(e) => handleBlur('name', e.target.value)}
+              placeholder="ex: Maria dos Santos"
+            />
+          </Field>
 
-          <div>
-            <label htmlFor="profile-segment" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Segmento de Atuação
-            </label>
-            <div className="relative">
-              {fieldIcon('segment', Briefcase)}
-              <select
-                id="profile-segment"
-                value={segment}
-                onChange={handleSegmentChange}
-                onBlur={(e) => handleBlur('segment', e.target.value)}
-                className={`${inputClass('segment')} pr-8 appearance-none`}
-              >
-                <option value="">Selecione o segmento...</option>
-                {segments.map((seg) => (
-                  <option key={seg.value} value={seg.value}>
-                    {seg.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {fieldError('segment')}
-          </div>
+          <Field label="Segmento de Atuação" error={fieldError('segment')}>
+            <Select
+              id="profile-segment"
+              Icon={Briefcase}
+              value={segment}
+              onChange={handleSegmentChange}
+              onBlur={(e) => handleBlur('segment', e.target.value)}
+            >
+              <option value="">Selecione o segmento...</option>
+              {segments.map((seg) => (
+                <option key={seg.value} value={seg.value}>
+                  {seg.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
-          <div>
-            <label
-              htmlFor="profile-customAnnualCap"
-              className="block text-sm font-medium text-slate-700 mb-1.5"
-            >
-              Teto Anual de Faturamento (R$)
-            </label>
-            <div className="relative">
-              {fieldIcon('customAnnualCap', Wallet)}
-              <input
-                id="profile-customAnnualCap"
-                type="text"
-                inputMode="numeric"
-                value={maskCurrency(capDigits)}
-                onChange={handleCapChange}
-                onBlur={(e) => handleBlur('customAnnualCap', e.target.value)}
-                placeholder="81.000,00"
-                className={inputClass('customAnnualCap')}
-              />
-            </div>
-            <p className="text-xs text-slate-400 mt-1.5">
-              O teto oficial do MEI é de R$ 81.000,00. Defina um valor personalizado para receber
-              alertas mais cedo.
-            </p>
-            {fieldError('customAnnualCap')}
-          </div>
+          <Field
+            label="Teto Anual de Faturamento (R$)"
+            error={fieldError('customAnnualCap')}
+            hint="O teto oficial do MEI é de R$ 81.000,00. Defina um valor personalizado para receber alertas mais cedo."
+          >
+            <Input
+              id="profile-customAnnualCap"
+              type="text"
+              inputMode="numeric"
+              Icon={Wallet}
+              value={maskCurrency(capDigits)}
+              onChange={handleCapChange}
+              onBlur={(e) => handleBlur('customAnnualCap', e.target.value)}
+              placeholder="81.000,00"
+            />
+          </Field>
 
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={() => guard(onCancel)}
-              disabled={loading}
-              className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+          <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row">
+            <Button variant="secondary" Icon={ArrowLeft} className="w-full sm:flex-1" onClick={() => guard(onCancel)} disabled={loading}>
+              Cancelar
+            </Button>
+            <Button
+              data-tour="profile-save"
+              type="submit"
+              Icon={Save}
+              loading={loading}
+              disabled={!dirty}
+              className="w-full sm:flex-1"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Cancelar</span>
-            </button>
-            <button
-              data-tour="profile-save" type="submit"
-              disabled={loading || !dirty}
-              className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-md hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Salvando...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  <span>Salvar Alterações</span>
-                </>
-              )}
-            </button>
+              {loading ? 'Salvando...' : 'Salvar Alterações'}
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   )
 }

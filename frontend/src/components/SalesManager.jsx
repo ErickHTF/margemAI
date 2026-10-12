@@ -11,13 +11,13 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
-  Loader2,
   Calendar,
   AlertCircle
 } from 'lucide-react'
 import useSales from '../hooks/useSales'
 import SalesForm from './SalesForm'
 import PageHeader from './PageHeader'
+import { Badge, Button, Card, EmptyState, IconButton, Notice, SegmentedControl } from './ui'
 import { formatCurrencyBRL } from '../utils/formatters'
 import { PAYMENT_METHODS } from '../constants/sales'
 
@@ -82,37 +82,24 @@ export default function SalesManager({ onNavigate }) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Cabeçalho */}
+    <div className="w-full space-y-6">
       <PageHeader
         Icon={ShoppingBag}
         title="Registro de Vendas"
         description="Lance vendas com agilidade e acompanhe seu faturamento bruto, taxas e lucro líquido real."
       >
-        <button
-          type="button"
+        <Button
           data-tour="sales-new"
+          Icon={showQuickForm ? ChevronUp : Plus}
           onClick={() => guard(() => setShowQuickForm(!showQuickForm))}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
         >
-          {showQuickForm ? (
-            <>
-              <ChevronUp className="w-4 h-4" />
-              Ocultar Formulário
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4" />
-              Nova Venda Rápida
-            </>
-          )}
-        </button>
+          {showQuickForm ? 'Ocultar Formulário' : 'Nova Venda Rápida'}
+        </Button>
       </PageHeader>
 
-      {operationError && <p role="alert" className="text-sm text-rose-700">{operationError}</p>}
-      {/* Cards de Métricas Consolidadas */}
+      {operationError && <Notice tone="rose" size="sm">{operationError}</Notice>}
       <div data-tour="sales-metrics" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <Card className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <TrendingUp className="w-6 h-6" />
           </div>
@@ -120,9 +107,9 @@ export default function SalesManager({ onNavigate }) {
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Faturamento Bruto</span>
             <p className="text-xl font-extrabold text-slate-900 mt-0.5">{formatCurrencyBRL(totalGross)}</p>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <Card className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
             <Percent className="w-6 h-6" />
           </div>
@@ -130,9 +117,9 @@ export default function SalesManager({ onNavigate }) {
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Taxas Retidas</span>
             <p className="text-xl font-extrabold text-rose-600 mt-0.5">− {formatCurrencyBRL(totalFees)}</p>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <Card className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <DollarSign className="w-6 h-6" />
           </div>
@@ -140,9 +127,9 @@ export default function SalesManager({ onNavigate }) {
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Líquido em Caixa</span>
             <p className="text-xl font-extrabold text-emerald-600 mt-0.5">{formatCurrencyBRL(totalNet)}</p>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <Card className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
             <ShoppingBag className="w-6 h-6" />
           </div>
@@ -150,73 +137,40 @@ export default function SalesManager({ onNavigate }) {
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Vendas Realizadas</span>
             <p className="text-xl font-extrabold text-slate-900 mt-0.5">{totalCount}</p>
           </div>
-        </div>
+        </Card>
       </div>
 
-      {/* Formulário de Registro Rápido */}
       {showQuickForm && (
         <div data-tour="sales-form" className="transition-all duration-300">
           <SalesForm onSaleCreated={recordSale} onNavigate={onNavigate} />
         </div>
       )}
 
-      {/* Histórico de Vendas */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        {/* Barra de Filtros */}
+      <Card padding="none" className="overflow-hidden">
         <div data-tour="sales-filters" className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-slate-500" />
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Filtrar por Pagamento:</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleFilterMethod('')}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                selectedMethod === ''
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Todos
-            </button>
-            {PAYMENT_METHODS.map((m) => (
-              <button
-                type="button"
-                key={m.key}
-                onClick={() => handleFilterMethod(m.key)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                  selectedMethod === m.key
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            label="Filtrar por forma de pagamento"
+            options={[{ value: '', label: 'Todos' }, ...PAYMENT_METHODS.map((m) => ({ value: m.key, label: m.label }))]}
+            value={selectedMethod}
+            onChange={handleFilterMethod}
+          />
         </div>
 
-        {/* Tabela de Vendas */}
         {loading ? (
-          <div className="py-16 flex flex-col items-center justify-center text-slate-500">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
-            <span className="text-sm font-medium">Carregando histórico de vendas...</span>
-          </div>
+          <EmptyState loading title="Carregando histórico de vendas..." />
         ) : error ? (
-          <div role="alert" className="p-8 text-center text-rose-600 flex flex-col items-center justify-center gap-2">
-            <AlertCircle className="w-8 h-8" />
-            <span className="text-sm font-semibold">{error}</span>
-          </div>
+          <EmptyState tone="rose" Icon={AlertCircle} title={error} />
         ) : salesList.length === 0 ? (
-          <div className="py-16 text-center text-slate-400 flex flex-col items-center justify-center">
-            <ShoppingBag className="w-12 h-12 text-slate-300 mb-3" />
-            <h3 className="text-base font-bold text-slate-700">Nenhuma venda registrada</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm">
-              Lance sua primeira venda no formulário acima para começar a controlar suas entradas e taxas da maquineta.
-            </p>
-          </div>
+          <EmptyState
+            Icon={ShoppingBag}
+            title="Nenhuma venda registrada"
+            description="Lance sua primeira venda no formulário acima para começar a controlar suas entradas e taxas da maquineta."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-600">
@@ -260,10 +214,10 @@ export default function SalesManager({ onNavigate }) {
                       {formatCurrencyBRL(sale.grossAmount)}
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                      <Badge tone="indigo">
                         {sale.paymentMethodDescription || sale.paymentMethod}
                         {sale.installments > 1 && ` (${sale.installments}x)`}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="py-3.5 px-4 text-right text-xs text-rose-600 font-medium">
                       − {formatCurrencyBRL(sale.feeAmount)}
@@ -275,31 +229,26 @@ export default function SalesManager({ onNavigate }) {
                     <td className="py-3.5 px-4 text-center">
                       {confirmDeleteId === sale.id ? (
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
+                          <Button
+                            variant="danger"
+                            size="sm"
                             disabled={deletingId === sale.id}
                             onClick={() => handleDelete(sale.id)}
-                            className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[11px] font-bold transition"
                           >
                             {deletingId === sale.id ? '...' : 'Sim'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteId(null)}
-                            className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[11px] font-medium transition"
-                          >
+                          </Button>
+                          <Button variant="secondary" size="sm" onClick={() => setConfirmDeleteId(null)}>
                             Não
-                          </button>
+                          </Button>
                         </div>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeleteId(sale.id)}
+                        <IconButton
+                          label={`Excluir venda ${sale.description}`}
                           title="Excluir venda"
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                          Icon={Trash2}
+                          tone="rose"
+                          onClick={() => setConfirmDeleteId(sale.id)}
+                        />
                       )}
                     </td>
                   </tr>
@@ -308,7 +257,7 @@ export default function SalesManager({ onNavigate }) {
             </table>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

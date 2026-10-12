@@ -4,7 +4,6 @@ import {
   TrendingDown,
   Scale,
   CalendarRange,
-  Loader2,
   AlertCircle,
   Info,
   Building2,
@@ -12,6 +11,7 @@ import {
   CreditCard
 } from 'lucide-react'
 import PageHeader from './PageHeader'
+import { Card, EmptyState, SegmentedControl } from './ui'
 import MeiCapIndicator from './MeiCapIndicator'
 import useMonthlyFlow from '../hooks/useMonthlyFlow'
 import useMeiCap from '../hooks/useMeiCap'
@@ -33,7 +33,7 @@ const shareHint = (value, totalExpenses) => {
 const balanceColor = (value) => (Number(value) < 0 ? 'text-rose-600' : 'text-emerald-600')
 
 const SummaryCard = ({ Icon, iconClass, label, value, valueClass = 'text-slate-900', hint }) => (
-  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+  <Card className="flex items-center gap-4">
     <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${iconClass}`}>
       <Icon className="w-6 h-6" />
     </div>
@@ -42,7 +42,7 @@ const SummaryCard = ({ Icon, iconClass, label, value, valueClass = 'text-slate-9
       <p className={`text-xl font-extrabold mt-0.5 truncate ${valueClass}`}>{value}</p>
       {hint && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{hint}</p>}
     </div>
-  </div>
+  </Card>
 )
 
 export default function MonthlyFlowDashboard() {
@@ -54,32 +54,23 @@ export default function MonthlyFlowDashboard() {
   const showChart = hasActivity(entries)
 
   return (
-    <div className="space-y-6">
-      {/* Cabeçalho */}
+    <div className="w-full space-y-6">
       <PageHeader
         Icon={BarChart3}
         title="Fluxo de Caixa Mensal"
         description="Compare receitas e despesas mês a mês e identifique a sazonalidade do seu negócio."
       >
-        <div data-tour="flow-period" className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl self-start sm:self-auto">
-          {PERIOD_OPTIONS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => changeMonths(option)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                months === option
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {option} meses
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          data-tour="flow-period"
+          size="md"
+          label="Período"
+          className="self-start sm:self-auto"
+          options={PERIOD_OPTIONS.map((option) => ({ value: option, label: `${option} meses` }))}
+          value={months}
+          onChange={changeMonths}
+        />
       </PageHeader>
 
-      {/* Teto anual MEI: independe do período escolhido e não bloqueia o restante da tela */}
       {meiCap && <MeiCapIndicator data={meiCap} />}
       {meiCapError && (
         <p className="flex items-start gap-2 text-xs text-amber-700">
@@ -89,18 +80,15 @@ export default function MonthlyFlowDashboard() {
       )}
 
       {loading ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm py-16 flex flex-col items-center justify-center text-slate-500">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
-          <span className="text-sm font-medium">Carregando histórico do fluxo de caixa...</span>
-        </div>
+        <Card padding="none">
+          <EmptyState loading title="Carregando histórico do fluxo de caixa..." />
+        </Card>
       ) : error ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center text-rose-600 flex flex-col items-center justify-center gap-2">
-          <AlertCircle className="w-8 h-8" />
-          <span className="text-sm font-semibold">{error}</span>
-        </div>
+        <Card padding="none">
+          <EmptyState tone="rose" Icon={AlertCircle} title={error} />
+        </Card>
       ) : (
         <>
-          {/* Cards de resumo do período */}
           <div data-tour="flow-summary" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <SummaryCard
               Icon={TrendingUp}
@@ -134,7 +122,6 @@ export default function MonthlyFlowDashboard() {
             />
           </div>
 
-          {/* Composição das despesas do período */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <SummaryCard
               Icon={Building2}
@@ -159,8 +146,7 @@ export default function MonthlyFlowDashboard() {
             />
           </div>
 
-          {/* Gráfico de barras */}
-          <div data-tour="flow-chart" className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+          <Card data-tour="flow-chart">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <h2 className="text-base font-bold text-slate-900">Receitas x Despesas por mês</h2>
               <div className="flex items-center gap-4 text-xs font-medium text-slate-600">
@@ -210,17 +196,16 @@ export default function MonthlyFlowDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="py-12 flex flex-col items-center justify-center text-center text-slate-500 gap-2">
-                <BarChart3 className="w-10 h-10 text-slate-300" />
-                <p className="text-sm font-medium">Nenhuma venda ou custo registrado neste período.</p>
-                <p className="text-xs">Registre vendas e custos para acompanhar a evolução do seu caixa.</p>
-              </div>
+              <EmptyState
+                Icon={BarChart3}
+                title="Nenhuma venda ou custo registrado neste período."
+                description="Registre vendas e custos para acompanhar a evolução do seu caixa."
+              />
             )}
-          </div>
+          </Card>
 
-          {/* Detalhamento mensal */}
           {showChart && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <Card padding="none" className="overflow-hidden">
               <div className="px-5 sm:px-6 py-4 border-b border-slate-100">
                 <h2 className="text-base font-bold text-slate-900">Detalhamento mensal</h2>
               </div>
@@ -257,7 +242,7 @@ export default function MonthlyFlowDashboard() {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Card>
           )}
 
           <p className="flex items-start gap-2 text-xs text-slate-500">

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { AlertTriangle } from 'lucide-react'
+import { Button } from './ui'
 
 export default function ConfirmDialog({
   open,
@@ -74,21 +75,12 @@ export default function ConfirmDialog({
         </div>
 
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 mt-6">
-          <button
-            ref={cancelRef}
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
-          >
+          <Button ref={cancelRef} variant="secondary" onClick={onCancel}>
             {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition cursor-pointer"
-          >
+          </Button>
+          <Button variant="danger" onClick={onConfirm}>
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

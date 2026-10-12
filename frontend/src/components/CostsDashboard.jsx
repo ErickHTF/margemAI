@@ -2,6 +2,7 @@ import useDraft from '../hooks/useDraft'
 import { useState, useEffect } from 'react'
 import { Package, Landmark, Wallet } from 'lucide-react'
 import PageHeader from './PageHeader'
+import { SegmentedControl } from './ui'
 import CostManager from './CostManager'
 import fixedCostService from '../services/fixedCostService'
 import variableCostService from '../services/variableCostService'
@@ -62,25 +63,14 @@ export default function CostsDashboard() {
         description="Registre despesas fixas e custos variáveis, vinculando matéria-prima e embalagem a cada produto."
       />
 
-      <div>
-        <div data-tour="costs-tabs" className="bg-white/70 backdrop-blur rounded-2xl p-1.5 border border-slate-200 grid grid-cols-2 gap-1 shadow-sm w-full sm:w-auto sm:inline-grid">
-          {tabs.map(({ key, label, Icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => guard(() => setActiveTab(key))}
-              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                activeTab === key
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <SegmentedControl
+        data-tour="costs-tabs"
+        size="md"
+        label="Tipo de custo"
+        options={tabs.map(({ key, label, Icon }) => ({ value: key, label, Icon }))}
+        value={activeTab}
+        onChange={(key) => guard(() => setActiveTab(key))}
+      />
 
       <div data-tour="costs-content">
       {activeTab === 'fixed' && (

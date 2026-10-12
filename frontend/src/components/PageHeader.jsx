@@ -1,8 +1,8 @@
 import { useContext } from 'react'
 import { CircleHelp } from 'lucide-react'
 import { TourContext } from './TourContext'
+import { Button } from './ui'
 
-// Cabeçalho padrão das telas: ícone + nome do módulo (com dica opcional), descrição abaixo e ações à direita
 export default function PageHeader({ Icon, title, description, tip, children }) {
   const showTour = useContext(TourContext)
   return (
@@ -18,7 +18,7 @@ export default function PageHeader({ Icon, title, description, tip, children }) 
         {description && <p className="text-sm text-slate-500 mt-1">{description}</p>}
       </div>
       {(children || showTour) && <div className="flex flex-wrap items-center gap-2.5">
-        {showTour && <button type="button" onClick={showTour} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 shrink-0"><CircleHelp className="h-4 w-4" />Como usar</button>}
+        {showTour && <Button variant="secondary" Icon={CircleHelp} onClick={showTour} className="shrink-0">Como usar</Button>}
         {children}
       </div>}
     </div>
