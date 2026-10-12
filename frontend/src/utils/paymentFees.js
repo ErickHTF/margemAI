@@ -1,4 +1,5 @@
 import { PAYMENT_METHODS } from '../constants/sales'
+import { add, divideByPowerOfTen, multiply, roundHalfUp, roundMoney, subtract, toDecimal, toNumber } from './decimal'
 
 // Fonte única para taxas de pagamento no frontend.
 // Os valores vêm da matriz configurada em Configurações › Taxas de Pagamento
@@ -8,7 +9,8 @@ import { PAYMENT_METHODS } from '../constants/sales'
 const INSTALLMENT_BASE_FEE = 4.5
 const INSTALLMENT_STEP_FEE = 1.0
 
-const roundHalfUp2 = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100
+const ZERO = { digits: 0n, scale: 2 }
+const money = (value) => roundHalfUp(toDecimal(value) || ZERO)
 
 const normalizeInstallments = (paymentMethod, installments) => {
   if (paymentMethod !== 'CREDITO_PARCELADO') return 1
@@ -19,7 +21,7 @@ const normalizeInstallments = (paymentMethod, installments) => {
 export const getDefaultFeePercent = (paymentMethod, installments = 1) => {
   if (paymentMethod === 'CREDITO_PARCELADO') {
     const inst = normalizeInstallments(paymentMethod, installments)
-    return roundHalfUp2(INSTALLMENT_BASE_FEE + (inst - 1) * INSTALLMENT_STEP_FEE)
+    return roundMoney(INSTALLMENT_BASE_FEE + (inst - 1) * INSTALLMENT_STEP_FEE)
   }
   const found = PAYMENT_METHODS.find((m) => m.key === paymentMethod)
   return found ? found.defaultFee : 0
@@ -36,10 +38,10 @@ export const resolvePaymentFee = (matrix, paymentMethod, installments = 1) => {
     (c) => c.paymentMethod === paymentMethod && (c.installments || 1) === inst
   )
 
-  if (config && config.isActive !== false) {
+  if (config && config.isActive === true) {
     return {
-      mdrFeePercent: roundHalfUp2(config.mdrFeePercent || 0),
-      fixedFeeAmount: roundHalfUp2(config.fixedFeeAmount || 0),
+      mdrFeePercent: roundMoney(config.mdrFeePercent || 0),
+      fixedFeeAmount: roundMoney(config.fixedFeeAmount || 0),
       settlementDays: config.settlementDays ?? null,
       source: 'configured'
     }
@@ -58,22 +60,29 @@ export const resolvePaymentFee = (matrix, paymentMethod, installments = 1) => {
  * Taxa personalizada (avulsa) substitui o percentual e não aplica tarifa fixa.
  */
 export const calculateSaleFee = ({ quantity, unitPrice, fee, customFeePercent = null }) => {
-  const qty = parseFloat(quantity) || 0
-  const price = parseFloat(unitPrice) || 0
-  const gross = roundHalfUp2(qty * price)
+  const qty = toDecimal(quantity) || ZERO
+  const price = toDecimal(unitPrice) || ZERO
+  const gross = roundHalfUp(multiply(qty, price))
 
-  if (gross <= 0) {
+  if (gross.digits <= 0n) {
     return { gross: 0, feePercent: 0, fixedFee: 0, feeAmount: 0, netAmount: 0 }
   }
 
-  const hasCustomFee = customFeePercent !== null && customFeePercent !== '' && !Number.isNaN(Number(customFeePercent))
-  const feePercent = hasCustomFee ? roundHalfUp2(customFeePercent) : roundHalfUp2(fee?.mdrFeePercent || 0)
-  const fixedFee = hasCustomFee ? 0 : roundHalfUp2(fee?.fixedFeeAmount || 0)
+  const hasCustomFee = customFeePercent !== null && customFeePercent !== '' && toDecimal(customFeePercent) !== null
+  const feePercent = money(hasCustomFee ? customFeePercent : fee?.mdrFeePercent)
+  const fixedFee = hasCustomFee ? ZERO : money(fee?.fixedFeeAmount)
 
-  const feeAmount = roundHalfUp2(roundHalfUp2((gross * feePercent) / 100) + fixedFee)
-  const netAmount = roundHalfUp2(gross - feeAmount)
+  const percentageFee = roundHalfUp(divideByPowerOfTen(multiply(gross, feePercent), 2))
+  const feeAmount = roundHalfUp(add(percentageFee, fixedFee))
+  const netAmount = roundHalfUp(subtract(gross, feeAmount))
 
-  return { gross, feePercent, fixedFee, feeAmount, netAmount }
+  return {
+    gross: toNumber(gross),
+    feePercent: toNumber(feePercent),
+    fixedFee: toNumber(fixedFee),
+    feeAmount: toNumber(feeAmount),
+    netAmount: toNumber(netAmount)
+  }
 }
 
 export const formatFeePercent = (value) =>
