@@ -177,7 +177,8 @@ export default function App() {
       setReturnSection({ owner: userKey, section: activeSection })
       changeSection(sectionKey)
     }
-    if (activeSection === 'sales' && !hasUnsavedChanges) navigate()
+    // Na tela de Vendas o rascunho fica guardado no App: dá para sair e voltar sem perder nada.
+    if (activeSection === 'sales') navigate()
     else guardLeave(navigate)
   }
 
@@ -188,7 +189,7 @@ export default function App() {
       setReturnSection(null)
       logout()
     }
-    if (currentDraft && !hasUnsavedChanges) setPendingLeaveAction(() => leave)
+    if (currentDraft) setPendingLeaveAction(() => leave)
     else guardLeave(leave)
   }
   useEffect(() => {
