@@ -215,6 +215,7 @@ cmd_start() {
   fi
   run git switch -c "$branch" "origin/$base"
   run git config "branch.$branch.card-issue" "$issue"
+  run git config "branch.$branch.card-base" "$base"
   run gh issue edit "$issue" --add-assignee @me >/dev/null
   move_card "$issue" "In Progress"
   echo "✓ branch $branch criada a partir de origin/$base (card #$issue em In Progress)"
@@ -244,14 +245,20 @@ cmd_pr() {
   [ -n "$body_file" ] || die "informe --body-file (modelo de corpo no AGENTS.md › Pull requests)"
   require_gh
 
-  local branch issue title body
+  local branch issue base card range subjects title body
   branch="$(git symbolic-ref --short HEAD)"
   issue="$(git config --get "branch.$branch.card-issue" || true)"
-  title="$(git log --no-merges --reverse --format=%s "origin/$BASE_BRANCH..HEAD" | grep -E '^(feat|fix)' | head -n1 || true)"
-  [ -n "$title" ] || title="$(git log --no-merges --reverse --format=%s "origin/$BASE_BRANCH..HEAD" | head -n1)"
-  [ -n "$title" ] || die "nenhum commit novo em relação a origin/$BASE_BRANCH"
+  base="$(git config --get "branch.$branch.card-base" || echo "$BASE_BRANCH")"
+  card="$(card_id_from_branch "$branch")"
+  run git fetch -q origin "$base"
+  range="origin/$base..HEAD"
+  subjects="$(git log --no-merges --reverse --format=%s "$range")"
+  [ -n "$subjects" ] || die "nenhum commit novo em relação a origin/$base"
+  title="$(printf '%s\n' "$subjects" | grep -F "[$card]" | grep -E '^(feat|fix)' | head -n1 || true)"
+  [ -n "$title" ] || title="$(printf '%s\n' "$subjects" | grep -F "[$card]" | head -n1 || true)"
+  [ -n "$title" ] || title="$(printf '%s\n' "$subjects" | head -n1)"
 
-  "$root/scripts/lint-commit-msg.sh" --range "origin/$BASE_BRANCH..HEAD"
+  "$root/scripts/lint-commit-msg.sh" --range "$range"
 
   body="$(mktemp)"
   cp "$body_file" "$body"
