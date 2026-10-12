@@ -1,5 +1,5 @@
 import useDraft from '../hooks/useDraft'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Banknote,
   QrCode,
@@ -14,31 +14,54 @@ import {
   ArrowRight,
   Info
 } from 'lucide-react'
+import { EMPTY_SALE_DRAFT, hasSaleDraft, similarSaleDraft } from '../utils/saleDraft'
 import productService from '../services/productService'
 import { PAYMENT_METHODS } from '../constants/sales'
 import usePaymentFees from '../hooks/usePaymentFees'
 import { calculateSaleFee, formatFeePercent } from '../utils/paymentFees'
 import { formatCurrencyBRL } from '../utils/formatters'
 
-export default function SalesForm({ onSaleCreated, onNavigate }) {
+export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftChange, onBusyChange }) {
+  const [initialProductId] = useState(draft?.selectedProductId)
   const [products, setProducts] = useState([])
-  const [loadingProducts, setLoadingProducts] = useState(false)
-  const [selectedProductId, setSelectedProductId] = useState('')
-  const [customDescription, setCustomDescription] = useState('')
-  const [isCustomItem, setIsCustomItem] = useState(false)
-  const [quantity, setQuantity] = useState(1)
-  const [unitPrice, setUnitPrice] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('PIX')
-  const [installments, setInstallments] = useState(1)
-  const [customFee, setCustomFee] = useState('')
-  const [showCustomFee, setShowCustomFee] = useState(false)
-  const [notes, setNotes] = useState('')
+  const [productsError, setProductsError] = useState(null)
+  const [lastSale, setLastSale] = useState(null)
+  const [feesVersion, setFeesVersion] = useState(0)
+  const submittingRef = useRef(false)
+  const [loadingProducts, setLoadingProducts] = useState(true)
+  const [selectedProductId, setSelectedProductId] = useState(() => draft?.selectedProductId ?? EMPTY_SALE_DRAFT.selectedProductId)
+  const [customDescription, setCustomDescription] = useState(() => draft?.customDescription ?? EMPTY_SALE_DRAFT.customDescription)
+  const [isCustomItem, setIsCustomItem] = useState(() => draft?.isCustomItem ?? EMPTY_SALE_DRAFT.isCustomItem)
+  const [quantity, setQuantity] = useState(() => draft?.quantity ?? EMPTY_SALE_DRAFT.quantity)
+  const [unitPrice, setUnitPrice] = useState(() => draft?.unitPrice ?? EMPTY_SALE_DRAFT.unitPrice)
+  const [paymentMethod, setPaymentMethod] = useState(() => draft?.paymentMethod ?? EMPTY_SALE_DRAFT.paymentMethod)
+  const [installments, setInstallments] = useState(() => draft?.installments ?? EMPTY_SALE_DRAFT.installments)
+  const [customFee, setCustomFee] = useState(() => draft?.customFee ?? EMPTY_SALE_DRAFT.customFee)
+  const [showCustomFee, setShowCustomFee] = useState(() => draft?.showCustomFee ?? EMPTY_SALE_DRAFT.showCustomFee)
+  const [notes, setNotes] = useState(() => draft?.notes ?? EMPTY_SALE_DRAFT.notes)
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState(null)
-  const draft = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes }
-  const { markSaved } = useDraft(draft)
+  const { getFee, loading: loadingFees, error: feesError } = usePaymentFees(feesVersion)
 
-  const { getFee, error: feesError } = usePaymentFees()
+  useEffect(() => {
+    const value = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes }
+    onDraftChange?.(hasSaleDraft(value) ? value : null)
+  }, [selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes, onDraftChange])
+
+  const applyDraft = (value) => {
+    setSelectedProductId(value.selectedProductId)
+    setCustomDescription(value.customDescription)
+    setIsCustomItem(value.isCustomItem)
+    setQuantity(value.quantity)
+    setUnitPrice(value.unitPrice)
+    setPaymentMethod(value.paymentMethod)
+    setInstallments(value.installments)
+    setCustomFee(value.customFee)
+    setShowCustomFee(value.showCustomFee)
+    setNotes(value.notes)
+  }
+  const formDraft = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes }
+  useDraft(formDraft, EMPTY_SALE_DRAFT)
 
   useEffect(() => {
     let cancelled = false
@@ -46,11 +69,20 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
       setLoadingProducts(true)
       try {
         const data = await productService.getProducts({ size: 100, active: true })
-        if (!cancelled) {
-          setProducts(data.content || [])
+        const catalog = data.content || []
+        if (initialProductId && !catalog.some((p) => String(p.id) === String(initialProductId))) {
+          try {
+            const product = await productService.getProduct(initialProductId)
+            if (product.active) catalog.push(product)
+          } catch (err) {
+            if (err.response?.status !== 404) throw err
+          }
         }
-      } catch {
-        // Ignora ou trata silenciosamente caso não consiga listar
+        if (!cancelled) {
+          setProducts(catalog)
+        }
+      } catch (err) {
+        if (!cancelled) setProductsError(err.response?.data?.message || 'Não foi possível carregar o catálogo. Tente abrir Vendas novamente ou registre um item avulso.')
       } finally {
         if (!cancelled) setLoadingProducts(false)
       }
@@ -59,7 +91,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [initialProductId])
 
   const handleProductSelect = (prodId) => {
     setSelectedProductId(prodId)
@@ -67,7 +99,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
       setUnitPrice('')
       return
     }
-    const found = products.find((p) => p.id === prodId)
+    const found = products.find((p) => String(p.id) === String(prodId))
     if (found) {
       setUnitPrice(String(found.sellingPrice || ''))
       setCustomDescription(found.name)
@@ -99,10 +131,16 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (submittingRef.current || loadingProducts || loadingFees) return
     setFeedback(null)
 
     if (!isCustomItem && !selectedProductId) {
       setFeedback({ type: 'error', message: 'Selecione um produto do catálogo ou marque "Item Avulso".' })
+      return
+    }
+
+    if (!isCustomItem && !products.some((p) => String(p.id) === String(selectedProductId))) {
+      setFeedback({ type: 'error', message: 'Este produto não está disponível no catálogo ativo. Selecione outro produto ou use um item avulso.' })
       return
     }
 
@@ -116,11 +154,13 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
       return
     }
 
+    submittingRef.current = true
+    onBusyChange?.(true)
     setSubmitting(true)
 
     const payload = {
       productId: isCustomItem ? null : selectedProductId,
-      description: isCustomItem ? customDescription.trim() : (products.find(p => p.id === selectedProductId)?.name || customDescription.trim()),
+      description: isCustomItem ? customDescription.trim() : (products.find(p => String(p.id) === String(selectedProductId))?.name || customDescription.trim()),
       quantity: Number(quantity),
       unitPrice: effectivePrice,
       paymentMethod,
@@ -131,22 +171,47 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
 
     try {
       await onSaleCreated(payload)
-      setFeedback({ type: 'success', message: 'Venda registrada com sucesso!' })
-      markSaved({ ...draft, selectedProductId: isCustomItem ? selectedProductId : '', customDescription: '', unitPrice: '', quantity: 1, notes: '', customFee: '', showCustomFee: false })
-      // Reset form para nova venda rápida
-      if (!isCustomItem) {
-        setSelectedProductId('')
-      }
-      setCustomDescription('')
-      setUnitPrice('')
-      setQuantity(1)
-      setNotes('')
-      setCustomFee('')
-      setShowCustomFee(false)
+      setFeedback({ type: 'success', message: 'Venda lançada com sucesso no caixa!' })
+      setLastSale(payload)
+      applyDraft(EMPTY_SALE_DRAFT)
     } catch (err) {
       setFeedback({ type: 'error', message: err.message || 'Erro ao registrar venda.' })
     } finally {
+      submittingRef.current = false
+      onBusyChange?.(false)
       setSubmitting(false)
+    }
+  }
+
+  const repeatSale = async () => {
+    if (submittingRef.current || loadingProducts) return
+    setLoadingProducts(true)
+    setFeedback(null)
+    try {
+      const data = await productService.getProducts({ size: 100, active: true })
+      const catalog = data.content || []
+      if (lastSale.productId && !catalog.some((p) => String(p.id) === String(lastSale.productId))) {
+        try {
+          const product = await productService.getProduct(lastSale.productId)
+          if (product.active) catalog.push(product)
+        } catch (err) {
+          if (err.response?.status !== 404) throw err
+        }
+      }
+      setProducts(catalog)
+      setProductsError(null)
+      const next = similarSaleDraft(lastSale)
+      if (next.selectedProductId && !catalog.some((p) => String(p.id) === String(next.selectedProductId))) {
+        next.selectedProductId = ''
+        setFeedback({ type: 'error', message: 'O produto anterior não está disponível. Selecione outro produto ou use um item avulso antes de confirmar.' })
+      }
+      applyDraft(next)
+      setFeesVersion((version) => version + 1)
+    } catch (err) {
+      setProductsError(err.response?.data?.message || 'Não foi possível conferir o catálogo. Tente novamente antes de repetir a venda.')
+      setFeedback({ type: 'error', message: 'Não foi possível preparar a venda semelhante. Seus dados atuais foram mantidos.' })
+    } finally {
+      setLoadingProducts(false)
     }
   }
 
@@ -168,7 +233,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+    <div id="sale-form" className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
       <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -211,7 +276,15 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
         </div>
       )}
 
+      {lastSale && !hasSaleDraft({ selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes }) && (
+        <div className="mb-4 text-sm text-slate-600">
+          <button type="button" className="font-semibold text-indigo-700 underline" disabled={submitting || loadingProducts} onClick={repeatSale}>Registrar outra venda semelhante</button>
+          <p>Reaproveita item, preço e pagamento. Quantidade volta a 1; observações e taxa avulsa são apagadas. Revise e confirme o novo registro.</p>
+        </div>
+      )}
+      <p className="mb-4 text-xs text-slate-500">Seu rascunho é mantido apenas nesta sessão ao visitar outros módulos. Recarregar a página ou sair apaga os dados.</p>
       <form onSubmit={handleSubmit} className="space-y-6">
+        <fieldset disabled={submitting} aria-busy={submitting} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
           {/* Seleção do Produto ou Descrição do Item */}
           <div className="md:col-span-7">
@@ -243,6 +316,12 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
             )}
           </div>
 
+          {!isCustomItem && !loadingProducts && (
+            <div className="md:col-span-12 text-sm">
+              {productsError ? <p role="alert" className="text-rose-700">{productsError}</p> : products.length === 0 ? <p className="text-slate-600">Seu catálogo ainda não tem produtos ativos. Cadastre um produto ou use um item avulso.</p> : null}
+              {onNavigate && <button type="button" onClick={() => onNavigate('products')} className="mt-1 font-semibold text-indigo-700 underline">{products.length === 0 && !productsError ? 'Cadastrar produto no catálogo' : 'Abrir catálogo para conferir produtos'}</button>}
+            </div>
+          )}
           {/* Quantidade com Controles + / - */}
           <div className="md:col-span-2">
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
@@ -296,6 +375,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
           {feesError && (
             <p role="status" className="mb-2 text-[11px] font-medium text-amber-700">{feesError}</p>
           )}
+          {onNavigate && <button type="button" onClick={() => onNavigate('payment-methods')} className="mb-2 text-xs font-semibold text-indigo-700 underline">Conferir taxas configuradas e voltar à venda</button>}
           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
             Forma de Pagamento
           </label>
@@ -447,7 +527,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={submitting || calculation.gross <= 0}
+            disabled={submitting || loadingProducts || loadingFees || calculation.gross <= 0}
             className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
           >
             {submitting ? (
@@ -463,6 +543,7 @@ export default function SalesForm({ onSaleCreated, onNavigate }) {
             )}
           </button>
         </div>
+        </fieldset>
       </form>
     </div>
   )

@@ -1,3 +1,4 @@
+import EmptyState, { EmptyStateAction } from './EmptyState'
 import useDraft from '../hooks/useDraft'
 import { useState, useEffect, useRef } from 'react'
 import {
@@ -7,7 +8,6 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
-  Receipt,
   Wallet,
   CalendarDays,
   Repeat,
@@ -144,6 +144,15 @@ export default function CostManager({ kind, service, categories, products = [] }
     setShowForm(false)
     setEditingCost(null)
     reload()
+  }
+
+  const hasFilters = Boolean(selectedCategory || selectedProduct || referenceMonth)
+  const clearFilters = () => {
+    if (!hasFilters) return
+    setLoading(true)
+    setSelectedCategory('')
+    setSelectedProduct('')
+    setReferenceMonth('')
   }
 
   const monthlyFixedTotal = costs
@@ -283,11 +292,7 @@ export default function CostManager({ kind, service, categories, products = [] }
           </button>
           <button
             type="button"
-            onClick={() => {
-              handleCategoryChange('')
-              handleMonthChange('')
-              if (isVariable) handleProductChange('')
-            }}
+            onClick={clearFilters}
             className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium transition-all cursor-pointer"
           >
             Limpar filtros
@@ -313,10 +318,19 @@ export default function CostManager({ kind, service, categories, products = [] }
           </button>
         </div>
       ) : costs.length === 0 ? (
-        <div className="p-10 text-center">
-          <Receipt className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">{meta.emptyMessage}</p>
-        </div>
+        <EmptyState
+          Icon={Wallet}
+          title={hasFilters ? 'Nenhum custo para os filtros selecionados' : meta.emptyMessage}
+          description={hasFilters
+            ? 'Limpe os filtros para consultar os demais custos cadastrados.'
+            : isVariable
+              ? 'Cadastre os custos por produto ou serviço para compor seus preços de venda.'
+              : 'Cadastre as despesas do negócio para acompanhar seu resultado no fluxo de caixa.'}
+        >
+          <EmptyStateAction onClick={hasFilters ? clearFilters : () => guard(handleNew)}>
+            {hasFilters ? 'Limpar filtros' : isVariable ? 'Cadastrar primeiro custo variável' : 'Cadastrar primeiro custo fixo'}
+          </EmptyStateAction>
+        </EmptyState>
       ) : (
         <ul className="divide-y divide-slate-100">
           {costs.map((cost) => (

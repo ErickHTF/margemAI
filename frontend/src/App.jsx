@@ -123,6 +123,25 @@ export default function App() {
   const ignorePop = useRef(false)
   const allowPop = useRef(false)
   const [pendingLeaveAction, setPendingLeaveAction] = useState(null)
+  const [saleBusy, setSaleBusy] = useState(false)
+  const [saleDraft, setSaleDraft] = useState(null)
+  const [returnSection, setReturnSection] = useState(null)
+  const userKey = user?.id || user?.email
+  const [previousUserKey, setPreviousUserKey] = useState(userKey)
+  if (previousUserKey !== userKey) {
+    setPreviousUserKey(userKey)
+    setSaleDraft(null)
+    setReturnSection(null)
+  }
+  const currentDraft = saleDraft && saleDraft.owner === userKey ? saleDraft.value : null
+  const saveSaleDraft = useCallback((value) => setSaleDraft({ owner: userKey, value }), [userKey])
+
+  useEffect(() => {
+    if (!currentDraft) return
+    const warn = (event) => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [currentDraft])
 
   const { group: activeGroup, item: activeItem } = findActive(activeSection)
 
@@ -133,6 +152,7 @@ export default function App() {
   }
 
   const guardLeave = (action) => {
+    if (saleBusy) return
     if (dirty) {
       setPendingLeaveAction(() => action)
       return
@@ -140,15 +160,37 @@ export default function App() {
     action()
   }
 
-  const navigateTo = (sectionKey) => {
-    if (sectionKey === activeSection) return
-    guardLeave(() => {
-      historyIndex.current += 1
-      window.history.pushState({ margemIndex: historyIndex.current }, '', `#${sectionKey}`)
-      setActiveSection(sectionKey)
-    })
+  const changeSection = (sectionKey) => {
+    historyIndex.current += 1
+    window.history.pushState({ margemIndex: historyIndex.current }, '', `#${sectionKey}`)
+    setActiveSection(sectionKey)
   }
 
+  const navigateTo = (sectionKey) => {
+    if (sectionKey === activeSection) return
+    guardLeave(() => changeSection(sectionKey))
+  }
+
+  const navigateContext = (sectionKey) => {
+    if (saleBusy) return
+    const navigate = () => {
+      setReturnSection({ owner: userKey, section: activeSection })
+      changeSection(sectionKey)
+    }
+    if (activeSection === 'sales' && !hasUnsavedChanges) navigate()
+    else guardLeave(navigate)
+  }
+
+  const handleLogout = () => {
+    if (saleBusy) return
+    const leave = () => {
+      setSaleDraft(null)
+      setReturnSection(null)
+      logout()
+    }
+    if (currentDraft && !hasUnsavedChanges) setPendingLeaveAction(() => leave)
+    else guardLeave(leave)
+  }
   useEffect(() => {
     window.history.replaceState({ margemIndex: historyIndex.current }, '', `#${readSection()}`)
   }, [])
@@ -190,7 +232,6 @@ export default function App() {
     return () => cancelAnimationFrame(frame)
   }, [activeSection])
 
-  const handleLogout = () => guardLeave(logout)
 
   const confirmLeave = () => {
     const action = pendingLeaveAction
@@ -215,15 +256,15 @@ export default function App() {
       case 'accounts':
         return <BusinessAccounts onDirtyChange={setHasUnsavedChanges} />
       case 'sales':
-        return <SalesManager onNavigate={navigateTo} />
+        return <SalesManager key={userKey} onNavigate={navigateContext} draft={currentDraft} onDraftChange={saveSaleDraft} onBusyChange={setSaleBusy} />
       case 'cashflow':
-        return <MonthlyFlowDashboard />
+        return <MonthlyFlowDashboard onNavigate={navigateContext} />
       case 'payment-methods':
         return <PaymentMethodSettings onDirtyChange={setHasUnsavedChanges} />
       case 'costs':
         return <CostsDashboard />
       case 'pricing':
-        return <PricingCalculator />
+        return <PricingCalculator onNavigate={navigateContext} />
       default:
         return <ProfilePanel user={user} onUserUpdate={updateUser} />
     }
@@ -333,8 +374,18 @@ export default function App() {
           <span className="text-xs font-semibold text-slate-700">{activeItem.label}</span>
         </div>
 
-        <main id="main-content" tabIndex={-1} aria-label={activeItem.label} className="outline-none flex-1 w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-10">
-          <div className="w-full max-w-6xl mx-auto"><SectionTour key={activeSection} section={activeSection}>{renderSection()}</SectionTour></div>
+        <main id="main-content" tabIndex={-1} aria-label={activeItem.label} className="flex-1 w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-10">
+          <div className="w-full max-w-6xl mx-auto">
+            {returnSection?.owner === userKey && returnSection.section !== activeSection && (
+              <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+                <p>Você abriu este módulo para continuar uma tarefa. {currentDraft && 'O rascunho da venda está mantido apenas nesta sessão; recarregar ou sair apaga os dados.'}</p>
+                <button type="button" className="mt-2 font-semibold underline" onClick={() => guardLeave(() => { changeSection(returnSection.section); setReturnSection(null) })}>
+                  Voltar para {findActive(returnSection.section).item.label}
+                </button>
+              </div>
+            )}
+            <SectionTour key={activeSection} section={activeSection}>{renderSection()}</SectionTour>
+          </div>
         </main>
 
         <footer className="w-full px-4 sm:px-6 lg:px-10 py-6 text-center text-xs text-slate-400">

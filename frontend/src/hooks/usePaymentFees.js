@@ -4,9 +4,10 @@ import { resolvePaymentFee } from '../utils/paymentFees'
 
 // Padrão do projeto: toda tela que exibe ou calcula taxa de pagamento usa este hook,
 // nunca valores fixos. Se a matriz falhar ao carregar, getFee cai nos padrões recomendados.
-export function usePaymentFees() {
+export function usePaymentFees(refreshKey = 0) {
   const [matrix, setMatrix] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loadedKey, setLoadedKey] = useState(null)
+  const loading = loadedKey !== refreshKey
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -21,13 +22,14 @@ export function usePaymentFees() {
         }
       } catch (err) {
         if (!cancelled) {
+          setMatrix([])
           const msg =
             err.response?.data?.message ||
             'Não foi possível carregar suas taxas configuradas. Usando as taxas recomendadas.'
           setError(msg)
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setLoadedKey(refreshKey)
       }
     }
 
@@ -35,7 +37,7 @@ export function usePaymentFees() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshKey])
 
   const getFee = useCallback(
     (paymentMethod, installments = 1) => resolvePaymentFee(matrix, paymentMethod, installments),

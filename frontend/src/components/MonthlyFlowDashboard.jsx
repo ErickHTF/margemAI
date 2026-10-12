@@ -1,3 +1,4 @@
+import EmptyState, { EmptyStateAction } from './EmptyState'
 import {
   BarChart3,
   TrendingUp,
@@ -45,7 +46,7 @@ const SummaryCard = ({ Icon, iconClass, label, value, valueClass = 'text-slate-9
   </div>
 )
 
-export default function MonthlyFlowDashboard() {
+export default function MonthlyFlowDashboard({ onNavigate }) {
   const { flowData, months, changeMonths, loading, error } = useMonthlyFlow()
   const { meiCap, error: meiCapError } = useMeiCap()
 
@@ -210,11 +211,23 @@ export default function MonthlyFlowDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="py-12 flex flex-col items-center justify-center text-center text-slate-500 gap-2">
-                <BarChart3 className="w-10 h-10 text-slate-300" />
-                <p className="text-sm font-medium">Nenhuma venda ou custo registrado neste período.</p>
-                <p className="text-xs">Registre vendas e custos para acompanhar a evolução do seu caixa.</p>
-              </div>
+              <EmptyState
+                Icon={BarChart3}
+                title="Nenhuma movimentação neste período"
+                description={`Não há receitas ou despesas de ${formatMonthLabel(flowData?.startMonth)} a ${formatMonthLabel(flowData?.endMonth)}. Consulte outro período ou registre uma movimentação.`}
+              >
+                {months < Math.max(...PERIOD_OPTIONS) && (
+                  <EmptyStateAction onClick={() => changeMonths(Math.max(...PERIOD_OPTIONS))} secondary>
+                    Consultar {Math.max(...PERIOD_OPTIONS)} meses
+                  </EmptyStateAction>
+                )}
+                {onNavigate && (
+                  <>
+                    <EmptyStateAction onClick={() => onNavigate('sales')}>Registrar venda</EmptyStateAction>
+                    <EmptyStateAction onClick={() => onNavigate('costs')} secondary>Cadastrar custos</EmptyStateAction>
+                  </>
+                )}
+              </EmptyState>
             )}
           </div>
 

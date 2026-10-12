@@ -1,3 +1,4 @@
+import EmptyState, { EmptyStateAction } from './EmptyState'
 import useDraft from '../hooks/useDraft'
 import PageHeader from './PageHeader'
 import { useState, useEffect, useRef } from 'react'
@@ -170,7 +171,7 @@ export default function CategoryManager() {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setLoading(true); setSearchTerm(e.target.value) }}
                 data-tour="categories-search"
                 placeholder="Buscar por nome do padrão..."
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
@@ -186,7 +187,10 @@ export default function CategoryManager() {
                 <button
                   key={option.key}
                   type="button"
-                  onClick={() => setSelectedType(option.key)}
+                  onClick={() => {
+                    if (selectedType !== option.key) setLoading(true)
+                    setSelectedType(option.key)
+                  }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                     selectedType === option.key
                       ? 'bg-white text-indigo-600 shadow-sm'
@@ -228,21 +232,23 @@ export default function CategoryManager() {
             </button>
           </div>
         ) : categories.length === 0 ? (
-          <div className="p-12 text-center">
-            <Tags className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-base font-semibold text-slate-700 mb-1">Nenhum padrão cadastrado</p>
-            <p className="text-xs text-slate-500 mb-4">
-              Crie um padrão para aplicar a mesma margem, impostos e taxas a vários produtos e serviços.
-            </p>
-            <button
-              type="button"
-              onClick={() => guard(handleNew)}
-              className="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-indigo-600 text-white text-xs font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Criar primeiro padrão
-            </button>
-          </div>
+          <EmptyState
+            Icon={Tags}
+            title={selectedType || searchTerm.trim() ? 'Nenhum resultado para os filtros selecionados' : 'Nenhum padrão cadastrado'}
+            description={selectedType || searchTerm.trim()
+              ? 'Altere a busca ou limpe os filtros para ver os registros disponíveis.'
+              : 'Crie um padrão para aplicar a mesma margem, impostos e taxas a vários produtos e serviços.'}
+          >
+            {selectedType || searchTerm.trim() ? (
+              <EmptyStateAction onClick={() => {
+                setLoading(true)
+                setSelectedType('')
+                setSearchTerm('')
+              }}>Limpar filtros</EmptyStateAction>
+            ) : (
+              <EmptyStateAction onClick={() => guard(handleNew)}>Criar primeiro padrão</EmptyStateAction>
+            )}
+          </EmptyState>
         ) : (
           <div className="divide-y divide-slate-100">
             {categories.map((category) => (
