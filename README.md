@@ -9,9 +9,7 @@ O Margem.AI ajuda o microempreendedor sem formação financeira a responder, ant
 ## Navegação Rápida e Documentação
 
 * [**Guia de Deploy e Releases (Homologação & Produção)**](DEPLOY.md)
-* [**Padrões de Arquitetura Backend (Java 21 / Spring Boot 3.4)**](backend/STANDARDS.md)
-* [**Padrões de Arquitetura Frontend (React 19 / Vite / Tailwind)**](frontend/STANDARDS.md)
-* [**Guia de fluxo de trabalho e padrões para implementar cards**](AGENTS.md)
+* [**Padrões de código, UI e fluxo de trabalho (cards, branches, commits e PRs)**](AGENTS.md)
 * [**Contrato da API (OpenAPI 3)**](backend/src/main/resources/openapi.yaml)
 * [**Quadro Kanban no GitHub Projects**](https://github.com/users/ErickHTF/projects/2/views/2)
 
@@ -140,13 +138,13 @@ Recursos principais (todos sob `/v1`; exceto `auth`, `segments` e `actuator`, ex
 │   ├── src/main/resources/       # application*.properties e openapi.yaml
 │   ├── src/test/                 # Testes de controller (MockMvc) e de serviço (Mockito)
 │   ├── docker-compose.yml        # PostgreSQL para desenvolvimento
-│   ├── margem.md                 # Relatório científico do projeto (conversão do PDF)
-│   └── STANDARDS.md
+│   └── margem.md                 # Relatório científico do projeto (conversão do PDF)
 ├── frontend/                     # SPA React + Vite
 │   ├── src/{components,hooks,services,utils,constants,data,security}/
-│   ├── nginx.conf                # Servidor e proxy reverso usados na imagem Docker
-│   └── STANDARDS.md
+│   └── nginx.conf                # Servidor e proxy reverso usados na imagem Docker
 ├── .github/workflows/            # CI, releases e rollback
+├── scripts/                      # check.sh, setup.sh e card (fluxo de cards, branches e commits)
+├── shared/fixtures/              # Casos de teste compartilhados entre backend e frontend
 ├── docker-compose.yml            # Stack completa: db + backend + frontend
 ├── AGENTS.md                     # Fluxo de trabalho e padrões de código/UI
 └── DEPLOY.md
@@ -156,7 +154,7 @@ Recursos principais (todos sob `/v1`; exceto `auth`, `segments` e `actuator`, ex
 
 ## Fluxo de trabalho
 
-A branch de integração é a `develop`: cada card do quadro gera uma branch (`feature/us-xx-...`, `fix/...`, `test/...`) e um Pull Request para a `develop`, com commits no padrão Conventional Commits em português. Detalhes em [AGENTS.md](AGENTS.md).
+A branch de integração é a `develop`: cada card do quadro gera uma branch (`feature/us-xx-...`, `fix/...`, `test/...`) e um Pull Request para a `develop`, com commits no padrão Conventional Commits em português. Use `scripts/card` para criar cards, branches e PRs no padrão; detalhes em [AGENTS.md](AGENTS.md).
 
 ---
 
