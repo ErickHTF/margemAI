@@ -25,6 +25,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -217,13 +218,13 @@ class SaleServiceTest {
                 .build();
 
         List<Sale> sales = List.of(sale1, sale2);
-        Page<Sale> page = new PageImpl<>(sales);
+        Page<Sale> page = new PageImpl<>(List.of(sale1), PageRequest.of(0, 1), 2);
 
         when(saleRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
         when(saleRepository.findAll(any(Specification.class))).thenReturn(sales);
 
         // Act
-        SaleSummaryResponse summary = saleService.findAll(userId, null, null, null, null, 0, 20);
+        SaleSummaryResponse summary = saleService.findAll(userId, null, null, null, null, 0, 1);
 
         // Assert
         assertNotNull(summary);
@@ -231,7 +232,8 @@ class SaleServiceTest {
         assertEquals(new BigDecimal("200.00"), summary.getTotalGrossRevenue());
         assertEquals(new BigDecimal("1.50"), summary.getTotalFeeAmount());
         assertEquals(new BigDecimal("198.50"), summary.getTotalNetRevenue());
-        assertEquals(2, summary.getSales().getContent().size());
+        assertEquals(1, summary.getSales().getContent().size());
+        assertEquals(2, summary.getSales().getTotalElements());
     }
 
     @Test

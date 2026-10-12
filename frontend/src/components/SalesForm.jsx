@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import useDraft from '../hooks/useDraft'
+import { useState, useEffect, useRef } from 'react'
 import {
   Banknote,
   QrCode,
@@ -7,57 +8,60 @@ import {
   ShoppingBag,
   Plus,
   Minus,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
   ArrowRight,
   Info
 } from 'lucide-react'
+import { EMPTY_SALE_DRAFT, hasSaleDraft, similarSaleDraft } from '../utils/saleDraft'
 import productService from '../services/productService'
 import { PAYMENT_METHODS } from '../constants/sales'
 import usePaymentFees from '../hooks/usePaymentFees'
 import { calculateSaleFee, formatFeePercent } from '../utils/paymentFees'
 import { formatCurrencyBRL } from '../utils/formatters'
+import { Button, Card, Field, IconButton, Input, Notice, Select } from './ui'
 
-export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) {
+export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftChange, onBusyChange }) {
+  const [initialProductId] = useState(draft?.selectedProductId)
   const [products, setProducts] = useState([])
-  const [loadingProducts, setLoadingProducts] = useState(false)
-  const [selectedProductId, setSelectedProductId] = useState('')
-  const [customDescription, setCustomDescription] = useState('')
-  const [isCustomItem, setIsCustomItem] = useState(false)
-  const [quantity, setQuantity] = useState(1)
-  const [unitCost, setUnitCost] = useState('')
-  const [unitPrice, setUnitPrice] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('PIX')
-  const [installments, setInstallments] = useState(1)
-  const [customFee, setCustomFee] = useState('')
-  const [showCustomFee, setShowCustomFee] = useState(false)
-  const [notes, setNotes] = useState('')
+  const [productsError, setProductsError] = useState(null)
+  const [lastSale, setLastSale] = useState(null)
+  const [feesVersion, setFeesVersion] = useState(0)
+  const submittingRef = useRef(false)
+  const [loadingProducts, setLoadingProducts] = useState(true)
+  const [selectedProductId, setSelectedProductId] = useState(() => draft?.selectedProductId ?? EMPTY_SALE_DRAFT.selectedProductId)
+  const [customDescription, setCustomDescription] = useState(() => draft?.customDescription ?? EMPTY_SALE_DRAFT.customDescription)
+  const [isCustomItem, setIsCustomItem] = useState(() => draft?.isCustomItem ?? EMPTY_SALE_DRAFT.isCustomItem)
+  const [quantity, setQuantity] = useState(() => draft?.quantity ?? EMPTY_SALE_DRAFT.quantity)
+  const [unitPrice, setUnitPrice] = useState(() => draft?.unitPrice ?? EMPTY_SALE_DRAFT.unitPrice)
+  const [unitCost, setUnitCost] = useState(() => draft?.unitCost ?? EMPTY_SALE_DRAFT.unitCost)
+  const [paymentMethod, setPaymentMethod] = useState(() => draft?.paymentMethod ?? EMPTY_SALE_DRAFT.paymentMethod)
+  const [installments, setInstallments] = useState(() => draft?.installments ?? EMPTY_SALE_DRAFT.installments)
+  const [customFee, setCustomFee] = useState(() => draft?.customFee ?? EMPTY_SALE_DRAFT.customFee)
+  const [showCustomFee, setShowCustomFee] = useState(() => draft?.showCustomFee ?? EMPTY_SALE_DRAFT.showCustomFee)
+  const [notes, setNotes] = useState(() => draft?.notes ?? EMPTY_SALE_DRAFT.notes)
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState(null)
-  const { getFee, error: feesError } = usePaymentFees()
-
-  const unsavedCount = [
-    selectedProductId, customDescription, unitPrice, unitCost, notes,
-    quantity !== 1, paymentMethod !== 'PIX', showCustomFee, customFee
-  ].filter(Boolean).length
-  const hasUnsavedChanges = unsavedCount > 0
+  const { getFee, loading: loadingFees, error: feesError } = usePaymentFees(feesVersion)
 
   useEffect(() => {
-    onDirtyChange?.(hasUnsavedChanges)
-  }, [hasUnsavedChanges, onDirtyChange])
+    const value = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, unitCost, paymentMethod, installments, customFee, showCustomFee, notes }
+    onDraftChange?.(hasSaleDraft(value) ? value : null)
+  }, [selectedProductId, customDescription, isCustomItem, quantity, unitPrice, unitCost, paymentMethod, installments, customFee, showCustomFee, notes, onDraftChange])
 
-  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
-
-  useEffect(() => {
-    if (!hasUnsavedChanges) return undefined
-    const handleBeforeUnload = (event) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [hasUnsavedChanges])
+  const applyDraft = (value) => {
+    setSelectedProductId(value.selectedProductId)
+    setCustomDescription(value.customDescription)
+    setIsCustomItem(value.isCustomItem)
+    setQuantity(value.quantity)
+    setUnitPrice(value.unitPrice)
+    setUnitCost(value.unitCost)
+    setPaymentMethod(value.paymentMethod)
+    setInstallments(value.installments)
+    setCustomFee(value.customFee)
+    setShowCustomFee(value.showCustomFee)
+    setNotes(value.notes)
+  }
+  const formDraft = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, unitCost, paymentMethod, installments, customFee, showCustomFee, notes }
+  useDraft(formDraft, EMPTY_SALE_DRAFT)
 
   useEffect(() => {
     let cancelled = false
@@ -65,11 +69,20 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
       setLoadingProducts(true)
       try {
         const data = await productService.getProducts({ size: 100, active: true })
-        if (!cancelled) {
-          setProducts(data.content || [])
+        const catalog = data.content || []
+        if (initialProductId && !catalog.some((p) => String(p.id) === String(initialProductId))) {
+          try {
+            const product = await productService.getProduct(initialProductId)
+            if (product.active) catalog.push(product)
+          } catch (err) {
+            if (err.response?.status !== 404) throw err
+          }
         }
-      } catch {
-        // Ignora ou trata silenciosamente caso não consiga listar
+        if (!cancelled) {
+          setProducts(catalog)
+        }
+      } catch (err) {
+        if (!cancelled) setProductsError(err.response?.data?.message || 'Não foi possível carregar o catálogo. Tente abrir Vendas novamente ou registre um item avulso.')
       } finally {
         if (!cancelled) setLoadingProducts(false)
       }
@@ -78,7 +91,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [initialProductId])
 
   const handleProductSelect = (prodId) => {
     setUnitCost('')
@@ -87,14 +100,13 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
       setUnitPrice('')
       return
     }
-    const found = products.find((p) => p.id === prodId)
+    const found = products.find((p) => String(p.id) === String(prodId))
     if (found) {
       setUnitPrice(String(found.sellingPrice || ''))
       setCustomDescription(found.name)
     }
   }
 
-  // Cálculo derivado inline durante o render (em conformidade estrita com o padrão da Skill React)
   const effectivePrice = parseFloat(unitPrice) || 0
   const calculation = calculateSaleFee({
     quantity,
@@ -119,10 +131,16 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (submittingRef.current || loadingProducts || loadingFees) return
     setFeedback(null)
 
     if (!isCustomItem && !selectedProductId) {
       setFeedback({ type: 'error', message: 'Selecione um produto do catálogo ou marque "Item Avulso".' })
+      return
+    }
+
+    if (!isCustomItem && !products.some((p) => String(p.id) === String(selectedProductId))) {
+      setFeedback({ type: 'error', message: 'Este produto não está disponível no catálogo ativo. Selecione outro produto ou use um item avulso.' })
       return
     }
 
@@ -136,11 +154,13 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
       return
     }
 
+    submittingRef.current = true
+    onBusyChange?.(true)
     setSubmitting(true)
 
     const payload = {
       productId: isCustomItem ? null : selectedProductId,
-      description: isCustomItem ? customDescription.trim() : (products.find(p => p.id === selectedProductId)?.name || customDescription.trim()),
+      description: isCustomItem ? customDescription.trim() : (products.find(p => String(p.id) === String(selectedProductId))?.name || customDescription.trim()),
       quantity: Number(quantity),
       unitPrice: effectivePrice,
       unitCost: unitCost === '' ? null : Number(unitCost),
@@ -152,24 +172,47 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
 
     try {
       await onSaleCreated(payload)
-      setFeedback({ type: 'success', message: 'Venda lançada com sucesso no caixa!' })
-      // Reset form para nova venda rápida
-      if (!isCustomItem) {
-        setSelectedProductId('')
-      }
-      setCustomDescription('')
-      setUnitPrice('')
-      setUnitCost('')
-      setQuantity(1)
-      setNotes('')
-      setCustomFee('')
-      setShowCustomFee(false)
-      setPaymentMethod('PIX')
-      setInstallments(1)
+      setFeedback({ type: 'success', message: 'Venda registrada com sucesso!' })
+      setLastSale(payload)
+      applyDraft(EMPTY_SALE_DRAFT)
     } catch (err) {
       setFeedback({ type: 'error', message: err.message || 'Erro ao registrar venda.' })
     } finally {
+      submittingRef.current = false
+      onBusyChange?.(false)
       setSubmitting(false)
+    }
+  }
+
+  const repeatSale = async () => {
+    if (submittingRef.current || loadingProducts) return
+    setLoadingProducts(true)
+    setFeedback(null)
+    try {
+      const data = await productService.getProducts({ size: 100, active: true })
+      const catalog = data.content || []
+      if (lastSale.productId && !catalog.some((p) => String(p.id) === String(lastSale.productId))) {
+        try {
+          const product = await productService.getProduct(lastSale.productId)
+          if (product.active) catalog.push(product)
+        } catch (err) {
+          if (err.response?.status !== 404) throw err
+        }
+      }
+      setProducts(catalog)
+      setProductsError(null)
+      const next = similarSaleDraft(lastSale)
+      if (next.selectedProductId && !catalog.some((p) => String(p.id) === String(next.selectedProductId))) {
+        next.selectedProductId = ''
+        setFeedback({ type: 'error', message: 'O produto anterior não está disponível. Selecione outro produto ou use um item avulso antes de confirmar.' })
+      }
+      applyDraft(next)
+      setFeesVersion((version) => version + 1)
+    } catch (err) {
+      setProductsError(err.response?.data?.message || 'Não foi possível conferir o catálogo. Tente novamente antes de repetir a venda.')
+      setFeedback({ type: 'error', message: 'Não foi possível preparar a venda semelhante. Seus dados atuais foram mantidos.' })
+    } finally {
+      setLoadingProducts(false)
     }
   }
 
@@ -191,7 +234,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+    <Card id="sale-form">
       <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -199,63 +242,50 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
             Lançamento Rápido de Venda
           </h2>
         </div>
-        <button
-          type="button"
+        <Button
+          variant={isCustomItem ? 'soft' : 'secondary'}
+          size="sm"
+          aria-pressed={isCustomItem}
           onClick={() => {
             setUnitCost('')
             setIsCustomItem(!isCustomItem)
             setSelectedProductId('')
             setUnitPrice('')
           }}
-          className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all ${
-            isCustomItem
-              ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
         >
           {isCustomItem ? '← Usar Catálogo' : '+ Item Avulso / Serviço'}
-        </button>
+        </Button>
       </div>
 
       {feedback && (
-        <div
-          className={`mb-6 p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${
-            feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
-          }`}
-        >
-          {feedback.type === 'success' ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-          )}
-          <span>{feedback.message}</span>
-        </div>
+        <Notice tone={feedback.type === 'success' ? 'emerald' : 'rose'} className="mb-6 font-medium">
+          {feedback.message}
+        </Notice>
       )}
 
-      {hasUnsavedChanges && <p className="mb-4 text-xs text-amber-700">{unsavedCount} alterações não salvas</p>}
+      {lastSale && !hasSaleDraft(formDraft) && (
+        <div className="mb-4 text-sm text-slate-600">
+          <button type="button" className="font-semibold text-indigo-700 underline" disabled={submitting || loadingProducts} onClick={repeatSale}>Registrar outra venda semelhante</button>
+          <p>Reaproveita item, preço e pagamento. Quantidade volta a 1; observações e taxa avulsa são apagadas. Revise e confirme o novo registro.</p>
+        </div>
+      )}
+      <p className="mb-4 text-xs text-slate-500">Seu rascunho é mantido apenas nesta sessão ao visitar outros módulos. Recarregar a página ou sair apaga os dados.</p>
       <form onSubmit={handleSubmit} className="space-y-6">
+        <fieldset disabled={submitting} aria-busy={submitting} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          {/* Seleção do Produto ou Descrição do Item */}
-          <div className="md:col-span-7">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              {isCustomItem ? 'Descrição do Item / Serviço' : 'Produto do Catálogo'}
-            </label>
+          <Field size="sm" label={isCustomItem ? 'Descrição do Item / Serviço' : 'Produto do Catálogo'} className="md:col-span-7">
             {isCustomItem ? (
-              <input
+              <Input
                 type="text"
                 value={customDescription}
                 onChange={(e) => setCustomDescription(e.target.value)}
                 placeholder="Ex: Consultoria rápida, Bolo personalizado..."
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
               />
             ) : (
-              <select
+              <Select
                 value={selectedProductId}
                 onChange={(e) => handleProductSelect(e.target.value)}
                 disabled={loadingProducts}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition disabled:opacity-50"
               >
                 <option value="">Selecione um produto cadastrado...</option>
                 {products.map((p) => (
@@ -263,96 +293,90 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
                     {p.name} — {formatCurrencyBRL(p.sellingPrice)}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
-          </div>
+          </Field>
 
-          {/* Quantidade com Controles + / - */}
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Quantidade
-            </label>
-            <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => handleQuantityChange(-1)}
-                className="p-2.5 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <input
+          {!isCustomItem && !loadingProducts && (productsError || products.length === 0 || onNavigate) && (
+            <div className="md:col-span-12 space-y-1 text-sm">
+              {productsError
+                ? <Notice tone="rose" size="sm">{productsError}</Notice>
+                : products.length === 0 && <p className="text-slate-600">Seu catálogo ainda não tem produtos ativos. Cadastre um produto ou use um item avulso.</p>}
+              {onNavigate && (
+                <Button variant="link" size="sm" className="underline" onClick={() => onNavigate('products')}>
+                  {products.length === 0 && !productsError ? 'Cadastrar produto no catálogo' : 'Abrir catálogo para conferir produtos'}
+                </Button>
+              )}
+            </div>
+          )}
+          <Field size="sm" label="Quantidade" htmlFor="sale-quantity" className="md:col-span-2">
+            <div className="flex items-center gap-1">
+              <IconButton label="Diminuir quantidade" Icon={Minus} onClick={() => handleQuantityChange(-1)} />
+              <Input
+                id="sale-quantity"
                 type="number"
                 min="0.01"
                 step="any"
+                className="w-full min-w-0 text-center"
                 value={quantity}
                 onChange={(e) => setQuantity(parseFloat(e.target.value) || 1)}
-                className="w-full text-center bg-transparent text-sm font-semibold text-slate-800 focus:outline-none"
               />
-              <button
-                type="button"
-                onClick={() => handleQuantityChange(1)}
-                className="p-2.5 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+              <IconButton label="Aumentar quantidade" Icon={Plus} onClick={() => handleQuantityChange(1)} />
             </div>
-          </div>
+          </Field>
 
-          {/* Preço Unitário */}
-          <div className="md:col-span-3">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Preço Unitário (R$)
-            </label>
-            <input
+          <Field size="sm" label="Preço Unitário (R$)" className="md:col-span-3">
+            <Input
               type="number"
               step="0.01"
               min="0.01"
               value={unitPrice}
               onChange={(e) => setUnitPrice(e.target.value)}
               placeholder="0,00"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
             />
-          </div>
+          </Field>
         </div>
 
-        <div>
-          <label htmlFor="sale-unit-cost" className="block text-xs font-semibold text-slate-600 mb-1.5">
-            Custo unitário da operação (R$)
-          </label>
-          <input
+        <Field
+          size="sm"
+          label="Custo unitário da operação (R$)"
+          hint={`${isCustomItem
+            ? 'Informe o custo do item avulso. Se deixar vazio, será registrado R$ 0,00.'
+            : 'Se deixar vazio, usa os custos vinculados ao produto; sem valor vinculado, usa o custo base manual.'} O custo fica guardado nesta venda e não muda quando o catálogo for alterado. Um valor informado aqui vale apenas para esta venda e substitui o custo do catálogo.`}
+        >
+          <Input
             id="sale-unit-cost"
             type="number"
+            inputMode="decimal"
             min="0"
             step="0.01"
+            prefix="R$"
             value={unitCost}
             onChange={(event) => setUnitCost(event.target.value)}
             placeholder={isCustomItem ? '0,00' : 'Usar custo do catálogo'}
-            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
-          <p className="mt-2 text-xs text-slate-600">
-            {isCustomItem
-              ? 'Informe o custo do item avulso. Se deixar vazio, será registrado R$ 0,00.'
-              : 'Se deixar vazio, usa os custos vinculados ao produto; sem valor vinculado, usa o custo base manual.'}
-            {' '}O custo fica guardado nesta venda e não muda quando o catálogo for alterado.
-            {' '}Um valor informado aqui vale apenas para esta venda e substitui o custo do catálogo.
-          </p>
-        </div>
+        </Field>
 
-        {/* Métodos de Pagamento */}
         <div>
           {feesError && (
-            <p className="mb-2 text-[11px] font-medium text-amber-700">{feesError}</p>
+            <p role="status" className="mb-2 text-[11px] font-medium text-amber-700">{feesError}</p>
           )}
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
+          {onNavigate && (
+            <Button variant="link" size="sm" className="mb-2 underline" onClick={() => onNavigate('payment-methods')}>
+              Conferir taxas configuradas e voltar à venda
+            </Button>
+          )}
+          <p id="sale-payment-method" className="block text-xs font-semibold text-slate-700 mb-2">
             Forma de Pagamento
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          </p>
+          <div role="group" aria-labelledby="sale-payment-method" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {PAYMENT_METHODS.map((method) => {
               const active = paymentMethod === method.key
               return (
                 <button
                   type="button"
                   key={method.key}
+                  aria-pressed={active}
                   onClick={() => {
                     setPaymentMethod(method.key)
                     if (method.key !== 'CREDITO_PARCELADO') {
@@ -361,7 +385,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
                       setInstallments(2)
                     }
                   }}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                     active
                       ? 'border-indigo-600 bg-indigo-50/70 text-indigo-900 shadow-sm ring-2 ring-indigo-500/20'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
@@ -378,93 +402,83 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
           </div>
         </div>
 
-        {/* Opções de Parcelamento para Crédito Parcelado */}
         {paymentMethod === 'CREDITO_PARCELADO' && (
-          <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl">
+          <Card tone="indigo" inset padding="sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="text-xs font-bold text-purple-900">Número de Parcelas</span>
-                <p className="text-[11px] text-purple-700">Taxas conforme Configurações › Taxas de Pagamento</p>
+                <label htmlFor="sale-installments" className="text-xs font-bold text-indigo-900">Número de Parcelas</label>
+                <p className="text-[11px] text-indigo-700">Taxas conforme Configurações › Taxas de Pagamento</p>
               </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={installments}
-                  onChange={(e) => setInstallments(parseInt(e.target.value, 10))}
-                  className="px-3 py-1.5 bg-white border border-purple-200 rounded-lg text-sm font-semibold text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                    <option key={n} value={n}>
-                      {n}x (Taxa: {describeFee(getFee('CREDITO_PARCELADO', n))})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                id="sale-installments"
+                size="sm"
+                className="w-auto"
+                value={installments}
+                onChange={(e) => setInstallments(parseInt(e.target.value, 10))}
+              >
+                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                  <option key={n} value={n}>
+                    {n}x (Taxa: {describeFee(getFee('CREDITO_PARCELADO', n))})
+                  </option>
+                ))}
+              </Select>
             </div>
-          </div>
+          </Card>
         )}
 
-        {/* Ajuste de Taxa Customizada (Opcional) */}
         <div>
-          <button
-            type="button"
-            onClick={() => setShowCustomFee(!showCustomFee)}
-            className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
-          >
+          <Button variant="link" size="sm" aria-expanded={showCustomFee} onClick={() => setShowCustomFee(!showCustomFee)}>
             {showCustomFee ? '− Voltar para a taxa configurada' : '+ Usar outra taxa só nesta venda'}
-          </button>
+          </Button>
           {showCustomFee && (
             <div className="mt-2 space-y-2">
               <div className="flex items-center gap-3">
-                <input
+                <Input
+                  size="sm"
+                  className="w-32"
                   type="number"
                   step="0.01"
                   min="0"
                   max="100"
+                  aria-label="Taxa avulsa desta venda (%)"
                   placeholder="Ex: 2.99"
                   value={customFee}
                   onChange={(e) => setCustomFee(e.target.value)}
-                  className="w-32 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <span className="text-xs text-slate-500">% retido pela adquirente</span>
               </div>
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-px" />
-                <p className="leading-relaxed">
+              <Notice tone="amber" size="sm" Icon={Info} role="note">
+                <p>
                   Esta taxa vale <strong>apenas para esta venda</strong>. Após o lançamento, as próximas vendas
                   voltam a usar a taxa configurada. Para alterar a taxa de forma permanente, acesse{' '}
                   {onNavigate ? (
-                    <button
-                      type="button"
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="underline underline-offset-2"
                       onClick={() => onNavigate('payment-methods')}
-                      className="font-semibold text-indigo-700 underline underline-offset-2 hover:text-indigo-900 cursor-pointer"
                     >
                       Configurações › Taxas de Pagamento
-                    </button>
+                    </Button>
                   ) : (
                     <strong>Configurações › Taxas de Pagamento</strong>
                   )}
                   .
                 </p>
-              </div>
+              </Notice>
             </div>
           )}
         </div>
 
-        {/* Observações Opcionais */}
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-            Observações / Notas (Opcional)
-          </label>
-          <input
+        <Field size="sm" label="Observações / Notas (Opcional)">
+          <Input
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Ex: Pagamento na entrega, cliente VIP..."
-            className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
           />
-        </div>
+        </Field>
 
-        {/* Painel de Cálculo em Tempo Real */}
         <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-md">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left divide-y sm:divide-y-0 sm:divide-x divide-slate-800">
             <div className="sm:pr-4">
@@ -490,27 +504,19 @@ export default function SalesForm({ onSaleCreated, onNavigate, onDirtyChange }) 
           </div>
         </div>
 
-        {/* Botão de Envio */}
         <div className="flex justify-end">
-          <button
+          <Button
             type="submit"
-            disabled={submitting || calculation.gross <= 0}
-            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+            loading={submitting}
+            TrailingIcon={ArrowRight}
+            className="w-full sm:w-auto"
+            disabled={loadingProducts || loadingFees || calculation.gross <= 0}
           >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Registrando Venda...
-              </>
-            ) : (
-              <>
-                Confirmar e Lançar Venda
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+            {submitting ? 'Registrando Venda...' : 'Confirmar e Lançar Venda'}
+          </Button>
         </div>
+        </fieldset>
       </form>
-    </div>
+    </Card>
   )
 }

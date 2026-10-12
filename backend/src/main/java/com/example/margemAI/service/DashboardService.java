@@ -7,6 +7,7 @@ import com.example.margemAI.model.FixedCost;
 import com.example.margemAI.model.Sale;
 import com.example.margemAI.repository.FixedCostRepository;
 import com.example.margemAI.repository.SaleRepository;
+import com.example.margemAI.util.Money;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -106,21 +107,17 @@ public class DashboardService {
                 .startMonth(start.toString())
                 .endMonth(end.toString())
                 .months(entries)
-                .totalRevenue(scale(totalRevenue))
-                .totalExpenses(scale(totalExpenses))
-                .totalFixedCosts(scale(totalFixedCosts))
-                .totalVariableCosts(scale(totalVariableCosts))
-                .totalPaymentFees(scale(totalPaymentFees))
-                .balance(scale(totalRevenue.subtract(totalExpenses)))
+                .totalRevenue(Money.round(totalRevenue))
+                .totalExpenses(Money.round(totalExpenses))
+                .totalFixedCosts(Money.round(totalFixedCosts))
+                .totalVariableCosts(Money.round(totalVariableCosts))
+                .totalPaymentFees(Money.round(totalPaymentFees))
+                .balance(Money.round(totalRevenue.subtract(totalExpenses)))
                 .averageRevenue(totalRevenue.divide(size, 2, RoundingMode.HALF_UP))
                 .averageExpenses(totalExpenses.divide(size, 2, RoundingMode.HALF_UP))
                 .bestMonth(bestMonth)
                 .worstMonth(worstMonth)
                 .build();
-    }
-
-    private static BigDecimal scale(BigDecimal value) {
-        return value.setScale(2, RoundingMode.HALF_UP);
     }
 
     private static final class MonthAccumulator {
@@ -141,13 +138,13 @@ public class DashboardService {
             BigDecimal totalExpenses = fixedCosts.add(variableCosts).add(paymentFees);
             return MonthlyFlowEntry.builder()
                     .month(month.toString())
-                    .revenue(scale(revenue))
+                    .revenue(Money.round(revenue))
                     .salesCount(salesCount)
-                    .fixedCosts(scale(fixedCosts))
-                    .variableCosts(scale(variableCosts))
-                    .paymentFees(scale(paymentFees))
-                    .totalExpenses(scale(totalExpenses))
-                    .balance(scale(revenue.subtract(totalExpenses)))
+                    .fixedCosts(Money.round(fixedCosts))
+                    .variableCosts(Money.round(variableCosts))
+                    .paymentFees(Money.round(paymentFees))
+                    .totalExpenses(Money.round(totalExpenses))
+                    .balance(Money.round(revenue.subtract(totalExpenses)))
                     .build();
         }
     }

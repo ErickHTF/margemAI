@@ -33,7 +33,10 @@ describe('Histórico de custos de vendas', () => {
   it('oferece custo unitário não negativo e explica o fallback manual sem duplicação', () => {
     const markup = renderToStaticMarkup(<SalesManager />)
     expect(markup).toContain('for="sale-unit-cost"')
-    expect(markup).toContain('id="sale-unit-cost" type="number" min="0" step="0.01"')
+    const unitCostInput = markup.match(/<input id="sale-unit-cost"[^>]*>/)?.[0]
+    expect(unitCostInput).toContain('type="number"')
+    expect(unitCostInput).toContain('min="0"')
+    expect(unitCostInput).toContain('step="0.01"')
     expect(markup).toContain('usa os custos vinculados ao produto; sem valor vinculado, usa o custo base manual')
     expect(markup).toContain('substitui o custo do catálogo')
   })

@@ -1,31 +1,32 @@
 import { AlertTriangle, AlertCircle, CheckCircle2, Info } from 'lucide-react'
+import { Badge, Card } from './ui'
 
 const SEVERITY_CONFIG = {
   CRITICAL: {
-    bg: 'bg-rose-50 border-rose-200 text-rose-900',
+    tone: 'rose',
+    text: 'text-rose-900',
     bar: 'bg-rose-600',
-    badge: 'bg-rose-100 text-rose-800',
     label: 'Crítico: Teto Excedido',
     Icon: AlertTriangle
   },
   WARNING: {
-    bg: 'bg-amber-50 border-amber-200 text-amber-900',
+    tone: 'amber',
+    text: 'text-amber-900',
     bar: 'bg-amber-500',
-    badge: 'bg-amber-100 text-amber-800',
     label: 'Atenção: Limite Próximo (>= 85%)',
     Icon: AlertCircle
   },
   INFO: {
-    bg: 'bg-sky-50 border-sky-200 text-sky-900',
+    tone: 'sky',
+    text: 'text-sky-900',
     bar: 'bg-sky-500',
-    badge: 'bg-sky-100 text-sky-800',
     label: 'Informativo: >= 70% do Teto',
     Icon: Info
   },
   NORMAL: {
-    bg: 'bg-emerald-50 border-emerald-200 text-emerald-900',
+    tone: 'emerald',
+    text: 'text-emerald-900',
     bar: 'bg-emerald-500',
-    badge: 'bg-emerald-100 text-emerald-800',
     label: 'Faixa Segura (< 70%)',
     Icon: CheckCircle2
   }
@@ -53,10 +54,7 @@ export default function MeiCapIndicator({ data }) {
     Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   return (
-    <div
-      data-testid="meicap-indicator"
-      className={`rounded-2xl p-5 border shadow-sm transition-all ${config.bg}`}
-    >
+    <Card data-testid="meicap-indicator" tone={config.tone} className={config.text}>
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex items-center gap-2.5">
           <Icon className="w-5 h-5 shrink-0" />
@@ -69,12 +67,11 @@ export default function MeiCapIndicator({ data }) {
             )}
           </div>
         </div>
-        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold shrink-0 ${config.badge}`}>
+        <Badge tone={config.tone} className="shrink-0">
           {config.label}
-        </span>
+        </Badge>
       </div>
 
-      {/* Barra de Progresso */}
       <div className="space-y-1.5 mb-4">
         <div className="flex justify-between text-xs font-medium">
           <span>{formatCurrency(accumulatedRevenue)} faturados</span>
@@ -98,7 +95,7 @@ export default function MeiCapIndicator({ data }) {
           Restante: {formatCurrency(remainingAmount)}
         </span>
       </div>
-    </div>
+    </Card>
   )
 }
 

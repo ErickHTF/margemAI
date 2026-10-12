@@ -8,13 +8,13 @@ import com.example.margemAI.model.RevenueBaselineMode;
 import com.example.margemAI.repository.FixedCostProfileRepository;
 import com.example.margemAI.repository.FixedCostRepository;
 import com.example.margemAI.repository.UserRepository;
+import com.example.margemAI.util.Money;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -22,7 +22,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FixedCostProfileService {
 
-    private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
     private static final BigDecimal SEVERE_RISK_THRESHOLD = BigDecimal.valueOf(80);
 
     private final FixedCostProfileRepository profileRepository;
@@ -70,20 +69,20 @@ public class FixedCostProfileService {
         if (snapshot == null) {
             snapshot = BigDecimal.ZERO;
         }
-        profile.setTotalFixedCostsSnapshot(snapshot.setScale(2, RoundingMode.HALF_UP));
+        profile.setTotalFixedCostsSnapshot(Money.round(snapshot));
 
         BigDecimal percent;
         if (Boolean.TRUE.equals(profile.getAutomaticRateio())) {
             BigDecimal baseline = resolveBaseline(profile);
             percent = baseline.compareTo(BigDecimal.ZERO) > 0
-                    ? snapshot.multiply(ONE_HUNDRED).divide(baseline, 2, RoundingMode.HALF_UP)
+                    ? Money.percentageOf(snapshot, baseline)
                     : BigDecimal.ZERO;
         } else {
             percent = profile.getManualAllocatedFixedCostPercent() != null
                     ? profile.getManualAllocatedFixedCostPercent()
                     : BigDecimal.ZERO;
         }
-        profile.setAllocatedFixedCostPercent(percent.setScale(2, RoundingMode.HALF_UP));
+        profile.setAllocatedFixedCostPercent(Money.round(percent));
         profile.setLastRecalculatedAt(LocalDateTime.now());
 
         return profileRepository.save(profile);

@@ -12,6 +12,7 @@ import com.example.margemAI.model.VariableCost;
 import com.example.margemAI.repository.ProductRepository;
 import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.repository.VariableCostRepository;
+import com.example.margemAI.util.Money;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -195,17 +196,16 @@ public class ProductService {
     public ProductResponse toResponse(Product product, UUID userId) {
         List<VariableCost> variableCosts = variableCostRepository.findByProductIdAndUserIdAndActiveTrue(product.getId(), userId);
 
-        BigDecimal variableCostsTotal = variableCosts.stream()
+        BigDecimal variableCostsTotal = Money.round(variableCosts.stream()
                 .map(VariableCost::getUnitAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
 
         BigDecimal manualBase = product.getBaseCost() != null ? product.getBaseCost() : BigDecimal.ZERO;
         BigDecimal effectiveBaseCost = variableCostsTotal.compareTo(BigDecimal.ZERO) > 0 ? variableCostsTotal : manualBase;
-        effectiveBaseCost = effectiveBaseCost.setScale(2, RoundingMode.HALF_UP);
+        effectiveBaseCost = Money.round(effectiveBaseCost);
 
-        BigDecimal sellingPrice = product.getSellingPrice().setScale(2, RoundingMode.HALF_UP);
-        BigDecimal contributionMargin = sellingPrice.subtract(effectiveBaseCost).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal sellingPrice = Money.round(product.getSellingPrice());
+        BigDecimal contributionMargin = Money.round(sellingPrice.subtract(effectiveBaseCost));
 
         BigDecimal marginPercentage = BigDecimal.ZERO;
         if (sellingPrice.compareTo(BigDecimal.ZERO) > 0) {

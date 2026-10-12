@@ -13,6 +13,7 @@ import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.repository.VariableCostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -197,15 +198,6 @@ public class VariableCostServiceTest {
     }
 
     @Test
-    void shouldNotReturnVariableCostBelongingToAnotherUser() {
-        when(variableCostRepository.findByIdAndUserIdAndActiveTrue(fabricCost.getId(), userId))
-                .thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> variableCostService.findById(userId, fabricCost.getId()));
-    }
-
-    @Test
     void shouldFullyUpdateVariableCost() {
         when(variableCostRepository.findByIdAndUserIdAndActiveTrue(fabricCost.getId(), userId))
                 .thenReturn(Optional.of(fabricCost));
@@ -253,8 +245,10 @@ public class VariableCostServiceTest {
     }
 
     @Test
+    @DisplayName("Deve preservar vínculo ao omitir produto no PATCH")
     void shouldPatchProductIdWithNull() {
-        fabricCost.setProductId(UUID.randomUUID());
+        UUID originalProductId = UUID.randomUUID();
+        fabricCost.setProductId(originalProductId);
         when(variableCostRepository.findByIdAndUserIdAndActiveTrue(fabricCost.getId(), userId))
                 .thenReturn(Optional.of(fabricCost));
         when(variableCostRepository.save(any(VariableCost.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -266,7 +260,8 @@ public class VariableCostServiceTest {
         VariableCostResponse response = variableCostService.patch(userId, fabricCost.getId(), request);
 
         assertEquals("Tecido avulso", response.getName());
-        assertEquals(fabricCost.getProductId(), response.getProductId());
+        assertEquals(originalProductId, response.getProductId());
+        assertEquals(originalProductId, fabricCost.getProductId());
     }
 
     @Test

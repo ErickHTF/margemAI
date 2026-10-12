@@ -1,7 +1,12 @@
-// Cabeçalho padrão das telas: ícone + nome do módulo (com dica opcional), descrição abaixo e ações à direita
+import { useContext } from 'react'
+import { CircleHelp } from 'lucide-react'
+import { TourContext } from './TourContext'
+import { Button } from './ui'
+
 export default function PageHeader({ Icon, title, description, tip, children }) {
+  const showTour = useContext(TourContext)
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div data-tour="page-header" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
@@ -12,7 +17,10 @@ export default function PageHeader({ Icon, title, description, tip, children }) 
         </div>
         {description && <p className="text-sm text-slate-500 mt-1">{description}</p>}
       </div>
-      {children}
+      {(children || showTour) && <div className="flex flex-wrap items-center gap-2.5">
+        {showTour && <Button variant="secondary" Icon={CircleHelp} onClick={showTour} className="shrink-0">Como usar</Button>}
+        {children}
+      </div>}
     </div>
   )
 }

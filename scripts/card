@@ -1,0 +1,281 @@
+#!/usr/bin/env bash
+# Fluxo padrão de cards do quadro Margem.AI (GitHub Project #2).
+#
+#   scripts/card new <US|TECH|BUG|INFRA|DOCS> "<título>" [opções]   cria a issue e coloca no quadro (Backlog)
+#       --layer backend|frontend|fullstack|devops|docs
+#       --priority must|should|could
+#       --domain auth|costs|pricing|dashboard|sales|alerts|products
+#       --body-file <arquivo.md>     corpo pronto (padrão: modelo do tipo, abaixo em card_body)
+#   scripts/card start <issue> [--prefix feature|fix|test|refactor|chore|docs] [--base develop]
+#                                    cria a branch a partir da base atualizada e move o card para In Progress
+#   scripts/card link <issue>        associa a branch atual a um card já existente (In Progress)
+#   scripts/card pr --body-file <arquivo.md> [--draft]
+#                                    publica a branch, abre o PR para develop com "Closes #N" e move o card para In Review
+#
+# DRY_RUN=1 mostra o que seria feito sem alterar nada.
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+source "$root/scripts/lib/conventions.sh"
+
+run() {
+  if [ "${DRY_RUN:-0}" = "1" ]; then
+    printf '[dry-run]'; printf ' %q' "$@"; echo
+  else
+    "$@"
+  fi
+}
+
+require_gh() {
+  command -v gh >/dev/null || die "gh não encontrado (https://cli.github.com)"
+  gh auth status >/dev/null 2>&1 || die "gh não autenticado: rode 'gh auth login'"
+}
+
+project_id() {
+  gh project view "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json -q .id
+}
+
+set_project_field() {
+  local item="$1" field="$2" option_prefix="$3" ids
+  ids="$(gh project field-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json \
+    -q ".fields[] | select(.name == \"$field\") | .id + \" \" + ([.options[] | select(.name | startswith(\"$option_prefix\")) | .id][0] // \"\")")"
+  local field_id="${ids%% *}" option_id="${ids#* }"
+  if [ -z "$field_id" ] || [ -z "$option_id" ]; then
+    echo "! campo \"$field\" ou opção \"$option_prefix\" não encontrado no quadro; ajuste manualmente" >&2
+    return 0
+  fi
+  run gh project item-edit --id "$item" --project-id "$(project_id)" --field-id "$field_id" --single-select-option-id "$option_id" >/dev/null
+}
+
+project_item_for_issue() {
+  local url="$1"
+  gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --limit 500 --format json \
+    -q ".items[] | select(.content.url == \"$url\") | .id" | head -n1
+}
+
+move_card() {
+  local issue="$1" status="$2" url item
+  url="$(gh issue view "$issue" --json url -q .url)"
+  item="$(project_item_for_issue "$url")"
+  if [ -z "$item" ]; then
+    item="$(run gh project item-add "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --url "$url" --format json -q .id)"
+  fi
+  [ "${DRY_RUN:-0}" = "1" ] && { echo "[dry-run] mover #$issue para $status"; return 0; }
+  set_project_field "$item" "Status" "$status"
+}
+
+next_card_id() {
+  local type="$1" last
+  last="$(gh issue list --state all --limit 1000 --json title -q '.[].title' \
+    | sed -nE "s/^\[$type-([0-9]+)\].*/\1/p" | sort -n | tail -n1)"
+  printf '%s-%02d' "$type" "$((10#${last:-0} + 1))"
+}
+
+card_body() {
+  case "$1" in
+    US) cat <<'BODY'
+## Contexto
+Como MEI, quero <ação> para <benefício>.
+
+## Critérios de aceite
+- [ ] <comportamento observável, verificável sem ler o código>
+- [ ] Estados de carregamento, erro e vazio tratados.
+
+## Fora do escopo
+- <o que não deve ser feito neste card>
+
+## Dependências
+- <cards relacionados> ou "Nenhuma".
+BODY
+    ;;
+    BUG) cat <<'BODY'
+## O que acontece
+<passos para reproduzir, com valores>
+
+## O que deveria acontecer
+<resultado esperado, com valores>
+
+## Critérios de aceite
+- [ ] Teste que reproduz o erro falha antes da correção e passa depois.
+BODY
+    ;;
+    *) cat <<'BODY'
+## Contexto
+<problema atual e evidência: números, arquivos, saída de testes>
+
+## Critérios de aceite
+- [ ] <resultado verificável>
+- [ ] Nenhuma mudança de comportamento visível ao MEI (ou descreva qual).
+
+## Fora do escopo
+- <o que não deve ser feito neste card>
+
+## Dependências
+- <cards relacionados> ou "Nenhuma".
+BODY
+    ;;
+  esac
+}
+
+cmd_new() {
+  local type="${1:-}" title="${2:-}" layer="" priority="" domain="" body_file=""
+  [ $# -ge 2 ] || die "uso: scripts/card new <$CARD_TYPES> \"<título>\" [opções]"
+  shift 2
+  type="$(printf '%s' "$type" | tr '[:lower:]' '[:upper:]')"
+  contains_word "$CARD_TYPES" "$type" || die "tipo \"$type\" inválido. Use: $CARD_TYPES"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --layer) layer="$2"; shift 2 ;;
+      --priority) priority="$2"; shift 2 ;;
+      --domain) domain="$2"; shift 2 ;;
+      --body-file) body_file="$2"; shift 2 ;;
+      *) die "opção desconhecida: $1" ;;
+    esac
+  done
+  require_gh
+
+  local id full_title body labels=()
+  id="$(next_card_id "$type")"
+  full_title="[$id] — $title"
+  body="$(mktemp)"
+  if [ -n "$body_file" ]; then cp "$body_file" "$body"; else card_body "$type" > "$body"; fi
+
+  case "$type" in
+    US) labels+=("type: feature") ;;
+    BUG) labels+=("type: bug") ;;
+    DOCS) labels+=("type: docs") ;;
+    *) labels+=("type: tech-debt") ;;
+  esac
+  case "$layer" in
+    backend|frontend|devops) labels+=("layer: $layer") ;;
+    fullstack) labels+=("layer: backend" "layer: frontend") ;;
+    docs|"") ;;
+    *) die "--layer inválido: $layer" ;;
+  esac
+  case "$priority" in
+    must|should|could) labels+=("priority: $priority-have") ;;
+    "") ;;
+    *) die "--priority inválido: $priority" ;;
+  esac
+  [ -n "$domain" ] && labels+=("domain: $domain")
+
+  local label_args=()
+  for label in "${labels[@]}"; do label_args+=(--label "$label"); done
+
+  echo "Criando: $full_title"
+  local url
+  url="$(run gh issue create --title "$full_title" --body-file "$body" "${label_args[@]}")"
+  rm -f "$body"
+  echo "$url"
+  [ "${DRY_RUN:-0}" = "1" ] && return 0
+
+  local item
+  item="$(gh project item-add "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --url "$url" --format json -q .id)"
+  set_project_field "$item" "Status" "Backlog"
+  case "$priority" in
+    must) set_project_field "$item" "Prioridade" "Must" ;;
+    should) set_project_field "$item" "Prioridade" "Should" ;;
+    could) set_project_field "$item" "Prioridade" "Could" ;;
+  esac
+  case "$layer" in
+    backend) set_project_field "$item" "Camada" "Backend" ;;
+    frontend) set_project_field "$item" "Camada" "Frontend" ;;
+    fullstack) set_project_field "$item" "Camada" "Fullstack" ;;
+    devops) set_project_field "$item" "Camada" "DevOps" ;;
+    docs) set_project_field "$item" "Camada" "Docs" ;;
+  esac
+  echo "✓ card $id no quadro (Backlog). Próximo passo: scripts/card start ${url##*/}"
+}
+
+cmd_start() {
+  local issue="${1:-}" prefix="" base="$BASE_BRANCH"
+  [ -n "$issue" ] || die "uso: scripts/card start <issue> [--prefix p] [--base b]"
+  shift
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --prefix) prefix="$2"; shift 2 ;;
+      --base) base="$2"; shift 2 ;;
+      *) die "opção desconhecida: $1" ;;
+    esac
+  done
+  require_gh
+
+  local title id type slug branch
+  title="$(gh issue view "$issue" --json title -q .title)"
+  id="$(printf '%s' "$title" | sed -nE 's/^\[([A-Z]+-[0-9]+)\].*/\1/p')"
+  [ -n "$id" ] || die "o título da issue #$issue não começa com [TIPO-NN]: \"$title\""
+  type="${id%%-*}"
+  [ -n "$prefix" ] || prefix="$(default_branch_prefix "$type")"
+  contains_word "$BRANCH_PREFIXES" "$prefix" || die "prefixo \"$prefix\" inválido. Use: $BRANCH_PREFIXES"
+  slug="$(slugify "$(printf '%s' "$title" | sed -E 's/^\[[^]]+\][[:space:]]*(—|-)?[[:space:]]*//')")"
+  branch="$prefix/$(printf '%s' "$id" | tr '[:upper:]' '[:lower:]')-$slug"
+
+  run git fetch origin "$base"
+  if git rev-parse -q --verify "refs/heads/$branch" >/dev/null; then
+    die "a branch $branch já existe"
+  fi
+  run git switch -c "$branch" "origin/$base"
+  run git config "branch.$branch.card-issue" "$issue"
+  run git config "branch.$branch.card-base" "$base"
+  run gh issue edit "$issue" --add-assignee @me >/dev/null
+  move_card "$issue" "In Progress"
+  echo "✓ branch $branch criada a partir de origin/$base (card #$issue em In Progress)"
+  [ "$base" = "$BASE_BRANCH" ] || echo "! base diferente de $BASE_BRANCH: registre a divergência no PR"
+}
+
+cmd_link() {
+  local issue="${1:-}" branch
+  [ -n "$issue" ] || die "uso: scripts/card link <issue>"
+  require_gh
+  branch="$(git symbolic-ref --short HEAD)"
+  run git config "branch.$branch.card-issue" "$issue"
+  run gh issue edit "$issue" --add-assignee @me >/dev/null
+  move_card "$issue" "In Progress"
+  echo "✓ branch $branch associada ao card #$issue"
+}
+
+cmd_pr() {
+  local body_file="" draft=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --body-file) body_file="$2"; shift 2 ;;
+      --draft) draft=(--draft); shift ;;
+      *) die "opção desconhecida: $1" ;;
+    esac
+  done
+  [ -n "$body_file" ] || die "informe --body-file (modelo de corpo no AGENTS.md › Pull requests)"
+  require_gh
+
+  local branch issue base card range subjects title body
+  branch="$(git symbolic-ref --short HEAD)"
+  issue="$(git config --get "branch.$branch.card-issue" || true)"
+  base="$(git config --get "branch.$branch.card-base" || echo "$BASE_BRANCH")"
+  card="$(card_id_from_branch "$branch")"
+  run git fetch -q origin "$base"
+  range="origin/$base..HEAD"
+  subjects="$(git log --no-merges --reverse --format=%s "$range")"
+  [ -n "$subjects" ] || die "nenhum commit novo em relação a origin/$base"
+  title="$(printf '%s\n' "$subjects" | grep -F "[$card]" | grep -E '^(feat|fix)' | head -n1 || true)"
+  [ -n "$title" ] || title="$(printf '%s\n' "$subjects" | grep -F "[$card]" | head -n1 || true)"
+  [ -n "$title" ] || title="$(printf '%s\n' "$subjects" | head -n1)"
+
+  "$root/scripts/lint-commit-msg.sh" --range "$range"
+
+  body="$(mktemp)"
+  cp "$body_file" "$body"
+  if [ -n "$issue" ] && ! grep -qE "(Closes|Fixes|Resolves) #$issue" "$body"; then
+    printf '\nCloses #%s\n' "$issue" >> "$body"
+  fi
+  run git push -u origin "$branch"
+  run gh pr create --base "$BASE_BRANCH" --title "$title" --body-file "$body" "${draft[@]+"${draft[@]}"}"
+  rm -f "$body"
+  [ -n "$issue" ] && move_card "$issue" "In Review"
+  return 0
+}
+
+case "${1:-}" in
+  new) shift; cmd_new "$@" ;;
+  start) shift; cmd_start "$@" ;;
+  link) shift; cmd_link "$@" ;;
+  pr) shift; cmd_pr "$@" ;;
+  *) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 1 ;;
+esac

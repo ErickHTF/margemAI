@@ -1,12 +1,11 @@
+import useDraft from '../hooks/useDraft'
 import { useState, useEffect, useRef } from 'react'
 import {
   Plus,
   Pencil,
   Trash2,
   AlertCircle,
-  Loader2,
   RefreshCw,
-  Receipt,
   Wallet,
   CalendarDays,
   Repeat,
@@ -16,6 +15,8 @@ import {
 import { formatCurrencyBRL } from '../utils/formatters'
 import { costCategoryLabel } from '../constants/costCategories'
 import CostForm from './CostForm'
+import ConfirmDialog from './ConfirmDialog'
+import { Badge, Button, Card, EmptyState, IconButton, Input, Notice, Select } from './ui'
 
 const KIND_META = {
   fixed: {
@@ -37,6 +38,7 @@ const KIND_META = {
 const PAGE_SIZE = 50
 
 export default function CostManager({ kind, service, categories, products = [] }) {
+  const { guard } = useDraft(null)
   const meta = KIND_META[kind]
   const amountKey = meta.amountKey
   const isVariable = kind === 'variable'
@@ -49,9 +51,12 @@ export default function CostManager({ kind, service, categories, products = [] }
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [formVersion, setFormVersion] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editingCost, setEditingCost] = useState(null)
   const formRef = useRef(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
+  const [deleteError, setDeleteError] = useState(null)
 
   useEffect(() => {
     if (showForm && formRef.current) {
@@ -109,27 +114,27 @@ export default function CostManager({ kind, service, categories, products = [] }
   }
 
   const handleNew = () => {
+    setFormVersion(version => version + 1)
     setEditingCost(null)
     setShowForm(true)
   }
 
   const handleEdit = (cost) => {
+    setFormVersion(version => version + 1)
     setEditingCost(cost)
     setShowForm(true)
   }
 
-  const handleDelete = async (cost) => {
-    const confirmed = window.confirm(
-      `Excluir "${cost.name}"? O registro será desativado e preservado no histórico.`
-    )
-    if (!confirmed) return
-
+  const handleDelete = async () => {
+    const cost = pendingDelete
+    setPendingDelete(null)
+    setDeleteError(null)
     setSaving(true)
     try {
       await service.remove(cost.id)
       reload()
     } catch {
-      window.alert('Não foi possível excluir o custo. Tente novamente.')
+      setDeleteError('Não foi possível excluir o custo. Tente novamente.')
     } finally {
       setSaving(false)
     }
@@ -141,6 +146,15 @@ export default function CostManager({ kind, service, categories, products = [] }
     reload()
   }
 
+  const hasFilters = Boolean(selectedCategory || selectedProduct || referenceMonth)
+  const clearFilters = () => {
+    if (!hasFilters) return
+    setLoading(true)
+    setSelectedCategory('')
+    setSelectedProduct('')
+    setReferenceMonth('')
+  }
+
   const monthlyFixedTotal = costs
     .filter((cost) => cost.recurring)
     .reduce((acc, cost) => acc + (Number(cost[amountKey]) || 0), 0)
@@ -148,27 +162,28 @@ export default function CostManager({ kind, service, categories, products = [] }
   const renderSummary = () => {
     if (kind === 'fixed') {
       return (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+        <Card tone="emerald" inset padding="sm">
           <p className="text-xs font-medium text-emerald-700 mb-1 flex items-center gap-1.5">
             <Repeat className="w-3.5 h-3.5" />
             Total mensal dos custos recorrentes exibidos
           </p>
           <p className="text-lg font-bold text-emerald-700">{formatCurrencyBRL(monthlyFixedTotal)}</p>
-        </div>
+        </Card>
       )
     }
     const totalExibido = costs.reduce((acc, cost) => acc + (Number(cost[amountKey]) || 0), 0)
     return (
-      <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+      <Card tone="emerald" inset padding="sm">
         <p className="text-xs font-medium text-emerald-700 mb-1">Total exibido</p>
         <p className="text-lg font-bold text-emerald-700">{formatCurrencyBRL(totalExibido)}</p>
-      </div>
+      </Card>
     )
   }
 
   const formSection = showForm ? (
     <div className="w-full mb-6" ref={formRef}>
       <CostForm
+        key={formVersion}
         kind={kind}
         service={service}
         categories={categories}
@@ -184,7 +199,7 @@ export default function CostManager({ kind, service, categories, products = [] }
   ) : null
 
   const listSection = (
-    <div className="w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+    <Card padding="none" className="w-full overflow-hidden">
       <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-3">
@@ -199,118 +214,95 @@ export default function CostManager({ kind, service, categories, products = [] }
             </div>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleNew}
-          className="inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-sm transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
+        <Button Icon={Plus} onClick={() => guard(handleNew)}>
           Novo custo
-        </button>
+        </Button>
       </div>
 
       <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row gap-4">
         <div className="flex-1 flex flex-col sm:flex-row gap-3">
-          <div className="relative sm:max-w-xs">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-              <Search className="w-4 h-4" />
-            </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => handleCategoryChange(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 appearance-none"
-            >
-              <option value="">Todos os padrões de precificação</option>
-              {categories.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            Icon={Search}
+            className="sm:max-w-xs"
+            aria-label="Filtrar por padrão de precificação"
+            value={selectedCategory}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+          >
+            <option value="">Todos os padrões de precificação</option>
+            {categories.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
 
           {meta.supportMonth && (
-            <div className="relative sm:max-w-[150px]">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <CalendarDays className="w-4 h-4" />
-              </div>
-              <input
-                type="month"
-                value={referenceMonth}
-                onChange={(e) => handleMonthChange(e.target.value)}
-                placeholder="AAAA-MM"
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
-              />
-            </div>
+            <Input
+              type="month"
+              Icon={CalendarDays}
+              className="sm:max-w-[150px]"
+              aria-label="Filtrar por mês"
+              value={referenceMonth}
+              onChange={(e) => handleMonthChange(e.target.value)}
+              placeholder="AAAA-MM"
+            />
           )}
 
           {isVariable && (
-            <div className="relative sm:max-w-[220px]">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <Package className="w-4 h-4" />
-              </div>
-              <select
-                value={selectedProduct}
-                onChange={(e) => handleProductChange(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 appearance-none"
-              >
-                <option value="">Todos os produtos</option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              Icon={Package}
+              className="sm:max-w-[220px]"
+              aria-label="Filtrar por produto"
+              value={selectedProduct}
+              onChange={(e) => handleProductChange(e.target.value)}
+            >
+              <option value="">Todos os produtos</option>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </Select>
           )}
         </div>
 
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={reload}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <Button variant="secondary" size="sm" Icon={RefreshCw} loading={loading} onClick={reload}>
             Atualizar
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              handleCategoryChange('')
-              handleMonthChange('')
-              if (isVariable) handleProductChange('')
-            }}
-            className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium transition-all cursor-pointer"
+          </Button>
+          <Button variant="secondary" size="sm" disabled={!hasFilters} onClick={clearFilters}
           >
             Limpar filtros
-          </button>
+          </Button>
         </div>
       </div>
 
+      {deleteError && <Notice tone="rose" size="sm" className="m-5">{deleteError}</Notice>}
+
       {loading ? (
-        <div className="p-10 text-center">
-          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-3" />
-          <p className="text-sm text-slate-500">Carregando custos...</p>
-        </div>
+        <EmptyState loading title="Carregando custos..." />
       ) : error ? (
-        <div className="p-10 text-center">
-          <AlertCircle className="w-8 h-8 text-rose-500 mx-auto mb-3" />
-          <p className="text-sm text-rose-600 font-medium mb-4">{error}</p>
-          <button
-            type="button"
-            onClick={reload}
-            className="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm transition-all cursor-pointer"
-          >
-            Tentar novamente
-          </button>
-        </div>
+        <EmptyState
+          tone="rose"
+          Icon={AlertCircle}
+          title={error}
+          action={<Button onClick={reload}>Tentar novamente</Button>}
+        />
       ) : costs.length === 0 ? (
-        <div className="p-10 text-center">
-          <Receipt className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">{meta.emptyMessage}</p>
-        </div>
+        <EmptyState
+          Icon={Wallet}
+          title={hasFilters ? 'Nenhum custo para os filtros selecionados' : meta.emptyMessage}
+          description={hasFilters
+            ? 'Limpe os filtros para consultar os demais custos cadastrados.'
+            : isVariable
+              ? 'Cadastre os custos por produto ou serviço para compor seus preços de venda.'
+              : 'Cadastre as despesas do negócio para acompanhar seu resultado no fluxo de caixa.'}
+          action={hasFilters
+            ? <Button size="sm" variant="secondary" onClick={clearFilters}>Limpar filtros</Button>
+            : <Button size="sm" Icon={Plus} onClick={() => guard(handleNew)}>
+              {isVariable ? 'Cadastrar primeiro custo variável' : 'Cadastrar primeiro custo fixo'}
+            </Button>}
+        />
       ) : (
         <ul className="divide-y divide-slate-100">
           {costs.map((cost) => (
@@ -322,16 +314,9 @@ export default function CostManager({ kind, service, categories, products = [] }
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-slate-900 text-sm truncate">{cost.name}</p>
                   {kind === 'fixed' && (
-                    <span
-                      className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                        cost.recurring
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-amber-50 text-amber-700'
-                      }`}
-                    >
-                      <Repeat className="w-3 h-3" />
+                    <Badge tone={cost.recurring ? 'emerald' : 'amber'} Icon={Repeat}>
                       {cost.recurring ? 'Mensal' : 'Eventual'}
-                    </span>
+                    </Badge>
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
@@ -345,23 +330,23 @@ export default function CostManager({ kind, service, categories, products = [] }
                   {formatCurrencyBRL(cost[amountKey])}
                 </p>
                 <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(cost)}
+                  <IconButton
+                    label={`Editar ${cost.name}`}
                     title="Editar"
-                    className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(cost)}
-                    disabled={saving}
+                    Icon={Pencil}
+                    tone="indigo"
+                    size="md"
+                    onClick={() => guard(() => handleEdit(cost))}
+                  />
+                  <IconButton
+                    label={`Excluir ${cost.name}`}
                     title="Excluir"
-                    className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    Icon={Trash2}
+                    tone="rose"
+                    size="md"
+                    onClick={() => setPendingDelete(cost)}
+                    disabled={saving}
+                  />
                 </div>
               </div>
             </li>
@@ -370,13 +355,22 @@ export default function CostManager({ kind, service, categories, products = [] }
       )}
 
       <div className="p-5 border-t border-slate-100">{renderSummary()}</div>
-    </div>
+    </Card>
   )
 
   return (
     <div className="w-full">
       {formSection}
       {listSection}
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Excluir custo?"
+        message={`"${pendingDelete?.name}" será desativado e preservado no histórico.`}
+        confirmLabel="Excluir custo"
+        cancelLabel="Manter custo"
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

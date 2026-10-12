@@ -52,6 +52,13 @@ describe('paymentFees', () => {
     })
   })
 
+  it.each([0, '0'])('deve zerar taxas quando a taxa avulsa for %s', (customFeePercent) => {
+    const fee = resolvePaymentFee(matrix, 'DEBITO')
+    expect(calculateSaleFee({ quantity: 1, unitPrice: 100, fee, customFeePercent })).toEqual({
+      gross: 100, feePercent: 0, fixedFee: 0, feeAmount: 0, netAmount: 100
+    })
+  })
+
   it('should return zeros for empty sales', () => {
     expect(calculateSaleFee({ quantity: 0, unitPrice: 10, fee: null }).feeAmount).toBe(0)
   })
