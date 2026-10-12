@@ -1,4 +1,6 @@
 import EmptyState, { EmptyStateAction } from './EmptyState'
+import useDraft from '../hooks/useDraft'
+import PageHeader from './PageHeader'
 import { useState, useEffect, useRef } from 'react'
 import {
   Package,
@@ -22,6 +24,7 @@ import ProductForm from './ProductForm'
 const PAGE_SIZE = 50
 
 export default function ProductManager() {
+  const { guard } = useDraft(null)
   const [products, setProducts] = useState([])
   const [totalElements, setTotalElements] = useState(0)
   const [selectedType, setSelectedType] = useState('')
@@ -29,6 +32,7 @@ export default function ProductManager() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [formVersion, setFormVersion] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const formRef = useRef(null)
@@ -72,11 +76,13 @@ export default function ProductManager() {
   }
 
   const handleNew = () => {
+    setFormVersion(version => version + 1)
     setEditingProduct(null)
     setShowForm(true)
   }
 
   const handleEdit = (product) => {
+    setFormVersion(version => version + 1)
     setEditingProduct(product)
     setShowForm(true)
   }
@@ -117,9 +123,21 @@ export default function ProductManager() {
 
   return (
     <div className="w-full space-y-6">
+      <PageHeader Icon={Package} title="Catálogo de Produtos e Serviços" description="Gerencie os itens, custos e preços do seu negócio.">
+          <button
+            type="button"
+            data-tour="products-new"
+            onClick={() => guard(handleNew)}
+            className="inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium shadow-sm transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Item
+          </button>
+      </PageHeader>
       {showForm && (
         <div ref={formRef}>
           <ProductForm
+            key={formVersion}
           initialProduct={editingProduct}
           onCancel={() => {
             setShowForm(false)
@@ -130,29 +148,7 @@ export default function ProductManager() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
-              <Package className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Catálogo de Produtos e Serviços</h2>
-              <p className="text-xs text-slate-500">
-                Gerencie itens comercializados, custos base dinâmicos e preços de venda com margem calculada.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleNew}
-            className="inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium shadow-sm transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Item
-          </button>
-        </div>
+      <div data-tour="products-list" className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
 
         <div className="p-4 sm:p-6 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           <div className="flex flex-1 flex-col sm:flex-row gap-3">
@@ -164,6 +160,7 @@ export default function ProductManager() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => { setLoading(true); setSearchTerm(e.target.value) }}
+                data-tour="products-search"
                 placeholder="Buscar por nome do produto ou serviço..."
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
               />
@@ -251,7 +248,7 @@ export default function ProductManager() {
                 setSearchTerm('')
               }}>Limpar filtros</EmptyStateAction>
             ) : (
-              <EmptyStateAction onClick={handleNew}>Cadastrar primeiro item</EmptyStateAction>
+              <EmptyStateAction onClick={() => guard(handleNew)}>Cadastrar primeiro item</EmptyStateAction>
             )}
           </EmptyState>
         ) : (
@@ -324,7 +321,7 @@ export default function ProductManager() {
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => handleEdit(item)}
+                      onClick={() => guard(() => handleEdit(item))}
                       title="Editar"
                       className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
                     >

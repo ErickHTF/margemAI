@@ -36,11 +36,29 @@ describe('validators', () => {
       expect(result.rules.specialChar).toBe(true)
     })
 
-    it('should reject weak password missing special char', () => {
-      const result = validatePasswordStrength('WeakPass123')
+    it.each([
+      ['strongpass123!', 'upperCase'],
+      ['STRONGPASS123!', 'lowerCase'],
+      ['StrongPass!!!', 'number'],
+      ['StrongPass123', 'specialChar'],
+      ['Aa1!xxx', 'minLength'],
+      [`Aa1!${'x'.repeat(125)}`, 'minLength']
+    ])('deve rejeitar senha com requisito independente inválido: %s (%s)', (password, rule) => {
+      const result = validatePasswordStrength(password)
       expect(result.isValid).toBe(false)
-      expect(result.rules.specialChar).toBe(false)
+      expect(result.rules).toEqual({
+        minLength: rule !== 'minLength',
+        lowerCase: rule !== 'lowerCase',
+        upperCase: rule !== 'upperCase',
+        number: rule !== 'number',
+        specialChar: rule !== 'specialChar'
+      })
     })
+  })
+
+  it('deve aceitar nome com 150 caracteres e rejeitar acima desse limite', () => {
+    expect(validateName('A'.repeat(150))).toBe(true)
+    expect(validateName('A'.repeat(151))).toBe(false)
   })
 
   describe('validateEmail', () => {

@@ -1,3 +1,4 @@
+import useDraft from '../hooks/useDraft'
 import { useState, useEffect, useRef } from 'react'
 import {
   Banknote,
@@ -59,6 +60,8 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
     setShowCustomFee(value.showCustomFee)
     setNotes(value.notes)
   }
+  const formDraft = { selectedProductId, customDescription, isCustomItem, quantity, unitPrice, paymentMethod, installments, customFee, showCustomFee, notes }
+  useDraft(formDraft, EMPTY_SALE_DRAFT)
 
   useEffect(() => {
     let cancelled = false
@@ -257,6 +260,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
 
       {feedback && (
         <div
+          role={feedback.type === 'error' ? 'alert' : 'status'}
           className={`mb-6 p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${
             feedback.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
@@ -369,7 +373,7 @@ export default function SalesForm({ onSaleCreated, onNavigate, draft, onDraftCha
         {/* Métodos de Pagamento */}
         <div>
           {feesError && (
-            <p className="mb-2 text-[11px] font-medium text-amber-700">{feesError}</p>
+            <p role="status" className="mb-2 text-[11px] font-medium text-amber-700">{feesError}</p>
           )}
           {onNavigate && <button type="button" onClick={() => onNavigate('payment-methods')} className="mb-2 text-xs font-semibold text-indigo-700 underline">Conferir taxas configuradas e voltar à venda</button>}
           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">

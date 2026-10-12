@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,7 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -193,7 +193,16 @@ class PaymentMethodConfigServiceTest {
         List<PaymentMethodConfigResponse> result = configService.updateMatrix(userId, List.of(req));
 
         assertNotNull(result);
-        verify(configRepository).save(any(PaymentMethodConfig.class));
+        ArgumentCaptor<PaymentMethodConfig> captor = ArgumentCaptor.forClass(PaymentMethodConfig.class);
+        verify(configRepository).save(captor.capture());
+        PaymentMethodConfig saved = captor.getValue();
+        assertEquals(userId, saved.getUser().getId());
+        assertEquals(PaymentMethod.CREDITO_A_VISTA, saved.getPaymentMethod());
+        assertEquals(1, saved.getInstallments());
+        assertEquals(0, new BigDecimal("2.99").compareTo(saved.getMdrFeePercent()));
+        assertEquals(0, new BigDecimal("0.35").compareTo(saved.getFixedFeeAmount()));
+        assertEquals(30, saved.getSettlementDays());
+        assertTrue(saved.getIsActive());
     }
 
     @Test
@@ -218,5 +227,43 @@ class PaymentMethodConfigServiceTest {
         Optional<PaymentMethodConfig> resolved = configService.resolveConfig(userId, PaymentMethod.PIX, 1);
         assertTrue(resolved.isPresent());
         assertEquals(PaymentMethod.PIX, resolved.get().getPaymentMethod());
+    }
+
+    @Test
+    @DisplayName("Deve atualizar campos da configuração existente preservando identidade e titular")
+    void shouldPersistExistingMatrixConfiguration() {
+        UUID configId = UUID.randomUUID();
+        PaymentMethodConfig existing = PaymentMethodConfig.builder()
+                .id(configId).user(user).paymentMethod(PaymentMethod.CREDITO_PARCELADO)
+                .installments(3).mdrFeePercent(new BigDecimal("6.50"))
+                .fixedFeeAmount(BigDecimal.ZERO).settlementDays(30).isActive(true).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(configRepository.findByUserIdAndPaymentMethodAndInstallments(userId, PaymentMethod.CREDITO_PARCELADO, 3))
+                .thenReturn(Optional.of(existing));
+        when(configRepository.findByUserIdOrderByPaymentMethodAscInstallmentsAsc(userId))
+                .thenReturn(List.of(existing));
+        PaymentMethodConfigRequest request = PaymentMethodConfigRequest.builder()
+                .paymentMethod(PaymentMethod.CREDITO_PARCELADO).installments(3)
+                .mdrFeePercent(new BigDecimal("7.25")).fixedFeeAmount(new BigDecimal("0.45"))
+                .settlementDays(14).isActive(false).build();
+
+        PaymentMethodConfigResponse response = configService.updateMatrix(userId, List.of(request)).stream()
+                .filter(row -> row.getPaymentMethod() == PaymentMethod.CREDITO_PARCELADO && row.getInstallments() == 3)
+                .findFirst().orElseThrow();
+
+        verify(configRepository).save(existing);
+        assertEquals(configId, existing.getId());
+        assertEquals(userId, existing.getUser().getId());
+        assertEquals(PaymentMethod.CREDITO_PARCELADO, existing.getPaymentMethod());
+        assertEquals(3, existing.getInstallments());
+        assertEquals(0, new BigDecimal("7.25").compareTo(existing.getMdrFeePercent()));
+        assertEquals(0, new BigDecimal("0.45").compareTo(existing.getFixedFeeAmount()));
+        assertEquals(14, existing.getSettlementDays());
+        assertFalse(existing.getIsActive());
+        assertEquals(configId, response.getId());
+        assertEquals(0, new BigDecimal("7.25").compareTo(response.getMdrFeePercent()));
+        assertEquals(0, new BigDecimal("0.45").compareTo(response.getFixedFeeAmount()));
+        assertEquals(14, response.getSettlementDays());
+        assertFalse(response.getIsActive());
     }
 }

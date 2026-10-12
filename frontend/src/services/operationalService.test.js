@@ -33,7 +33,9 @@ describe('operationalService', () => {
     const payload = { revenueBaselineMode: 'TARGET_REVENUE', monthlyRevenueTarget: 2000.0 }
     api.patch.mockResolvedValueOnce({ data: { allocatedFixedCostPercent: 50.0 } })
 
-    await operationalService.updateRateioConfig(payload)
+    const result = await operationalService.updateRateioConfig(payload)
+
+    expect(result).toEqual({ allocatedFixedCostPercent: 50.0 })
 
     expect(api.patch).toHaveBeenCalledWith('/settings/operational/rateio-config', payload)
   })

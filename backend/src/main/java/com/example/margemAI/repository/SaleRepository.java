@@ -21,7 +21,7 @@ public interface SaleRepository extends JpaRepository<Sale, UUID>, JpaSpecificat
     @Query("SELECT COALESCE(SUM(s.grossAmount), 0) FROM Sale s WHERE s.user.id = :userId")
     BigDecimal sumGrossAmountByUserId(@Param("userId") UUID userId);
 
-    @Query("SELECT COALESCE(SUM(s.grossAmount), 0) FROM Sale s WHERE s.user.id = :userId AND s.createdAt >= :startDate AND s.createdAt <= :endDate")
+    @Query("SELECT COALESCE(SUM(s.grossAmount), 0) FROM Sale s WHERE s.user.id = :userId AND s.soldAt >= :startDate AND s.soldAt <= :endDate")
     BigDecimal sumGrossAmountByUserIdAndPeriod(
             @Param("userId") UUID userId,
             @Param("startDate") java.time.LocalDateTime startDate,

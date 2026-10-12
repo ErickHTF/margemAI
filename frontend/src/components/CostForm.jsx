@@ -1,3 +1,4 @@
+import useDraft from '../hooks/useDraft'
 import { useState } from 'react'
 import {
   XCircle,
@@ -45,6 +46,8 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
   const [amountDigits, setAmountDigits] = useState(currencyToDigits(initialCost?.[amountKey]))
   const [dueDate, setDueDate] = useState(initialCost?.dueDate || '')
   const [recurring, setRecurring] = useState(initialCost ? Boolean(initialCost.recurring) : true)
+  const { dirty, changes, guard } = useDraft({ name, category, productId, amountDigits, dueDate, recurring })
+
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
   const [loading, setLoading] = useState(false)
@@ -193,6 +196,7 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
       )}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-left">
+        {dirty && <p role="status" className="text-sm text-amber-700">{changes} {changes === 1 ? 'alteração não salva' : 'alterações não salvas'}</p>}
         <div>
           <label htmlFor="cost-name" className="block text-sm font-medium text-slate-700 mb-1.5">
             Nome
@@ -335,7 +339,7 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
         <div className="flex gap-3 pt-2">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={() => guard(onCancel)}
             disabled={loading}
             className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
@@ -344,7 +348,7 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !dirty}
             className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
             {loading ? (

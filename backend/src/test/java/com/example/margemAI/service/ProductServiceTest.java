@@ -16,6 +16,7 @@ import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.repository.VariableCostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -90,6 +91,7 @@ public class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("Deve persistir nome e descrição normalizados")
     void shouldCreateProductSuccessfully() {
         ProductRequest request = ProductRequest.builder()
                 .name("  Camiseta Estampada  ")
@@ -100,13 +102,18 @@ public class ProductServiceTest {
                 .build();
 
         when(userRepository.getReferenceById(userId)).thenReturn(user);
-        when(productRepository.save(any(Product.class))).thenReturn(product);
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
+            Product saved = invocation.getArgument(0);
+            saved.setId(productId);
+            return saved;
+        });
         when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(List.of());
 
         ProductResponse response = productService.create(userId, request);
 
         assertNotNull(response);
         assertEquals("Camiseta Estampada", response.getName());
+        assertEquals("100% Algodão", response.getDescription());
         assertEquals(ItemType.PRODUTO, response.getType());
         assertEquals(new BigDecimal("20.00"), response.getEffectiveBaseCost());
         assertEquals(new BigDecimal("50.00"), response.getSellingPrice());
@@ -116,7 +123,9 @@ public class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("Deve preferir custos vinculados ao custo manual diferente")
     void shouldCalculateDynamicBaseCostFromLinkedVariableCosts() {
+        product.setBaseCost(new BigDecimal("99.00"));
         VariableCost cost1 = VariableCost.builder()
                 .id(UUID.randomUUID())
                 .name("Tecido")
@@ -271,6 +280,7 @@ public class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("Deve preferir margem própria à margem diferente da categoria")
     void shouldPreferExplicitMarginOverCategoryInheritance() {
         Category category = Category.builder()
                 .id(UUID.randomUUID())
@@ -286,7 +296,7 @@ public class ProductServiceTest {
         when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(Optional.of(product));
         when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(List.of());
         when(categoryService.resolveParameters(category))
-                .thenReturn(new CategoryParameters(null, new BigDecimal("6.00"), null, null));
+                .thenReturn(new CategoryParameters(new BigDecimal("30.00"), new BigDecimal("6.00"), null, null));
 
         ProductResponse response = productService.findById(userId, productId);
 

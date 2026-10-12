@@ -26,6 +26,7 @@ describe('monthlyFlow utils', () => {
   it('should compute proportional bar heights and clamp invalid values', () => {
     expect(toBarHeight(750, 1500)).toBe(50)
     expect(toBarHeight(1500, 1500)).toBe(100)
+    expect(toBarHeight(2000, 1500)).toBe(100)
     expect(toBarHeight(0, 1500)).toBe(0)
     expect(toBarHeight(-10, 1500)).toBe(0)
     expect(toBarHeight(100, 0)).toBe(0)
@@ -34,6 +35,7 @@ describe('monthlyFlow utils', () => {
   it('should detect when there is any revenue or expense in the period', () => {
     expect(hasActivity([{ revenue: 0, totalExpenses: 0 }])).toBe(false)
     expect(hasActivity([{ revenue: 0, totalExpenses: 50 }])).toBe(true)
+    expect(hasActivity([{ revenue: 50, totalExpenses: 0 }])).toBe(true)
     expect(hasActivity([])).toBe(false)
   })
 

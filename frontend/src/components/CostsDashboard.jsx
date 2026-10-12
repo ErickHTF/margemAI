@@ -1,3 +1,4 @@
+import useDraft from '../hooks/useDraft'
 import { useState, useEffect } from 'react'
 import { Package, Landmark, Wallet } from 'lucide-react'
 import PageHeader from './PageHeader'
@@ -8,6 +9,7 @@ import productService from '../services/productService'
 import { FIXED_COST_CATEGORIES, VARIABLE_COST_CATEGORIES } from '../constants/costCategories'
 
 export default function CostsDashboard() {
+  const { guard } = useDraft(null)
   const [activeTab, setActiveTab] = useState('fixed')
   const [products, setProducts] = useState([])
 
@@ -61,12 +63,12 @@ export default function CostsDashboard() {
       />
 
       <div>
-        <div className="bg-white/70 backdrop-blur rounded-2xl p-1.5 border border-slate-200 grid grid-cols-2 gap-1 shadow-sm w-full sm:w-auto sm:inline-grid">
+        <div data-tour="costs-tabs" className="bg-white/70 backdrop-blur rounded-2xl p-1.5 border border-slate-200 grid grid-cols-2 gap-1 shadow-sm w-full sm:w-auto sm:inline-grid">
           {tabs.map(({ key, label, Icon }) => (
             <button
               key={key}
               type="button"
-              onClick={() => setActiveTab(key)}
+              onClick={() => guard(() => setActiveTab(key))}
               className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 activeTab === key
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
@@ -80,6 +82,7 @@ export default function CostsDashboard() {
         </div>
       </div>
 
+      <div data-tour="costs-content">
       {activeTab === 'fixed' && (
         <CostManager
           key="fixed"
@@ -97,6 +100,7 @@ export default function CostsDashboard() {
           products={products}
         />
       )}
+      </div>
     </div>
   )
 }

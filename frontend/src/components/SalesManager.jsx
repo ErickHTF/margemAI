@@ -1,3 +1,4 @@
+import useDraft from '../hooks/useDraft'
 import { useState } from 'react'
 import {
   ShoppingBag,
@@ -23,6 +24,7 @@ import { PAYMENT_METHODS } from '../constants/sales'
 export default function SalesManager({ onNavigate, draft, onDraftChange, onBusyChange }) {
   const [formBusy, setFormBusy] = useState(false)
   const handleBusyChange = (busy) => { setFormBusy(busy); onBusyChange?.(busy) }
+  const { guard } = useDraft(null)
   const [selectedMethod, setSelectedMethod] = useState('')
   const [showQuickForm, setShowQuickForm] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
@@ -32,6 +34,7 @@ export default function SalesManager({ onNavigate, draft, onDraftChange, onBusyC
     salesData,
     loading,
     error,
+    operationError,
     setFilters,
     recordSale,
     removeSale
@@ -91,7 +94,8 @@ export default function SalesManager({ onNavigate, draft, onDraftChange, onBusyC
         <button
           type="button"
           disabled={formBusy}
-          onClick={() => setShowQuickForm(!showQuickForm)}
+          data-tour="sales-new"
+          onClick={() => guard(() => setShowQuickForm(!showQuickForm))}
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
         >
           {showQuickForm ? (
@@ -108,8 +112,9 @@ export default function SalesManager({ onNavigate, draft, onDraftChange, onBusyC
         </button>
       </PageHeader>
 
+      {operationError && <p role="alert" className="text-sm text-rose-700">{operationError}</p>}
       {/* Cards de Métricas Consolidadas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div data-tour="sales-metrics" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <TrendingUp className="w-6 h-6" />
@@ -153,7 +158,7 @@ export default function SalesManager({ onNavigate, draft, onDraftChange, onBusyC
 
       {/* Formulário de Registro Rápido */}
       {showQuickForm && (
-        <div className="transition-all duration-300">
+        <div data-tour="sales-form" className="transition-all duration-300">
           <SalesForm onSaleCreated={recordSale} onNavigate={onNavigate} draft={draft} onDraftChange={onDraftChange} onBusyChange={handleBusyChange} />
         </div>
       )}
@@ -161,7 +166,7 @@ export default function SalesManager({ onNavigate, draft, onDraftChange, onBusyC
       {/* Histórico de Vendas */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         {/* Barra de Filtros */}
-        <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+        <div data-tour="sales-filters" className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-slate-500" />
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Filtrar por Pagamento:</span>
@@ -203,7 +208,7 @@ export default function SalesManager({ onNavigate, draft, onDraftChange, onBusyC
             <span className="text-sm font-medium">Carregando histórico de vendas...</span>
           </div>
         ) : error ? (
-          <div className="p-8 text-center text-rose-600 flex flex-col items-center justify-center gap-2">
+          <div role="alert" className="p-8 text-center text-rose-600 flex flex-col items-center justify-center gap-2">
             <AlertCircle className="w-8 h-8" />
             <span className="text-sm font-semibold">{error}</span>
           </div>

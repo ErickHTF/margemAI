@@ -1,4 +1,6 @@
 import EmptyState, { EmptyStateAction } from './EmptyState'
+import useDraft from '../hooks/useDraft'
+import PageHeader from './PageHeader'
 import { useState, useEffect, useRef } from 'react'
 import {
   Tags,
@@ -17,6 +19,7 @@ import CategoryForm from './CategoryForm'
 const PAGE_SIZE = 50
 
 export default function CategoryManager() {
+  const { guard } = useDraft(null)
   const [categories, setCategories] = useState([])
   const [totalElements, setTotalElements] = useState(0)
   const [selectedType, setSelectedType] = useState('')
@@ -24,6 +27,7 @@ export default function CategoryManager() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [formVersion, setFormVersion] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
   const [feedback, setFeedback] = useState(null)
@@ -68,11 +72,13 @@ export default function CategoryManager() {
   }
 
   const handleNew = () => {
+    setFormVersion(version => version + 1)
     setEditingCategory(null)
     setShowForm(true)
   }
 
   const handleEdit = (category) => {
+    setFormVersion(version => version + 1)
     setEditingCategory(category)
     setShowForm(true)
   }
@@ -129,9 +135,21 @@ export default function CategoryManager() {
 
   return (
     <div className="w-full space-y-6">
+      <PageHeader Icon={Tags} title="Padrões de Preço" description="Defina parâmetros de preço para seus produtos e serviços.">
+          <button
+            type="button"
+            data-tour="categories-new"
+            onClick={() => guard(handleNew)}
+            className="inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium shadow-sm transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Novo padrão
+          </button>
+      </PageHeader>
       {showForm && (
         <div ref={formRef}>
           <CategoryForm
+            key={formVersion}
             initialCategory={editingCategory}
             onCancel={() => {
               setShowForm(false)
@@ -142,29 +160,7 @@ export default function CategoryManager() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
-              <Tags className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Padrões de precificação</h2>
-              <p className="text-xs text-slate-500">
-                Defina margem, impostos, taxas e desconto padrão para os produtos e serviços que você cadastrar.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleNew}
-            className="inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium shadow-sm transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Novo padrão
-          </button>
-        </div>
+      <div data-tour="categories-list" className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
 
         <div className="p-4 sm:p-6 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           <div className="flex flex-1 flex-col sm:flex-row gap-3">
@@ -176,6 +172,7 @@ export default function CategoryManager() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => { setLoading(true); setSearchTerm(e.target.value) }}
+                data-tour="categories-search"
                 placeholder="Buscar por nome do padrão..."
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
               />
@@ -249,7 +246,7 @@ export default function CategoryManager() {
                 setSearchTerm('')
               }}>Limpar filtros</EmptyStateAction>
             ) : (
-              <EmptyStateAction onClick={handleNew}>Criar primeiro padrão</EmptyStateAction>
+              <EmptyStateAction onClick={() => guard(handleNew)}>Criar primeiro padrão</EmptyStateAction>
             )}
           </EmptyState>
         ) : (
@@ -322,7 +319,7 @@ export default function CategoryManager() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleEdit(category)}
+                      onClick={() => guard(() => handleEdit(category))}
                       title="Editar"
                       className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
                     >
