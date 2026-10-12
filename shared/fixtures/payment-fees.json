@@ -620,6 +620,136 @@
         "feeAmount": "0.38",
         "netAmount": "24.62"
       }
+    },
+    {
+      "category": "parcelas",
+      "description": "Crédito parcelado com 1 parcela é tratado como 2x (taxa padrão 5,50%)",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "CREDITO_PARCELADO",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "5.50",
+        "fixedFee": "0.00",
+        "feeAmount": "5.50",
+        "netAmount": "94.50"
+      }
+    },
+    {
+      "category": "parcelas",
+      "description": "Crédito parcelado sem parcelas informadas usa a configuração de 2x",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "CREDITO_PARCELADO",
+            "installments": 2,
+            "mdrFeePercent": "3.99",
+            "fixedFeeAmount": "0.00",
+            "isActive": true
+          }
+        ],
+        "paymentMethod": "CREDITO_PARCELADO",
+        "installments": null,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "3.99",
+        "fixedFee": "0.00",
+        "feeAmount": "3.99",
+        "netAmount": "96.01"
+      }
+    },
+    {
+      "category": "arredondamento",
+      "description": "Taxa avulsa de 15% sobre 3.420,30 arredonda 513,045 para 513,05",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "PIX",
+        "installments": 1,
+        "quantity": "10",
+        "unitPrice": "342.03",
+        "customFeePercent": "15.00"
+      },
+      "expected": {
+        "gross": "3420.30",
+        "feePercent": "15.00",
+        "fixedFee": "0.00",
+        "feeAmount": "513.05",
+        "netAmount": "2907.25"
+      }
+    },
+    {
+      "category": "arredondamento",
+      "description": "Bruto exato 1.950,585 arredonda para 1.950,59",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "DINHEIRO",
+        "installments": 1,
+        "quantity": "7.145",
+        "unitPrice": "273.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "1950.59",
+        "feePercent": "0.00",
+        "fixedFee": "0.00",
+        "feeAmount": "0.00",
+        "netAmount": "1950.59"
+      }
+    },
+    {
+      "category": "arredondamento",
+      "description": "Taxa avulsa de 8,155% arredonda para 8,16%",
+      "input": {
+        "matrix": [],
+        "paymentMethod": "PIX",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": "8.155"
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "8.16",
+        "fixedFee": "0.00",
+        "feeAmount": "8.16",
+        "netAmount": "91.84"
+      }
+    },
+    {
+      "category": "matriz",
+      "description": "Configuração sem indicação de ativa é ignorada e usa o padrão",
+      "input": {
+        "matrix": [
+          {
+            "paymentMethod": "DEBITO",
+            "installments": 1,
+            "mdrFeePercent": "0.99",
+            "fixedFeeAmount": "0.50",
+            "isActive": null
+          }
+        ],
+        "paymentMethod": "DEBITO",
+        "installments": 1,
+        "quantity": "1",
+        "unitPrice": "100.00",
+        "customFeePercent": null
+      },
+      "expected": {
+        "gross": "100.00",
+        "feePercent": "1.50",
+        "fixedFee": "0.00",
+        "feeAmount": "1.50",
+        "netAmount": "98.50"
+      }
     }
   ]
 }
