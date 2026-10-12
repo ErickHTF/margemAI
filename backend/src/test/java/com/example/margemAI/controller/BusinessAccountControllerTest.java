@@ -20,6 +20,7 @@ class BusinessAccountControllerTest {
     @Autowired SegmentRepository segments;
     @Autowired BusinessAccountRepository accounts;
     @Autowired JwtService jwt;
+    @Autowired AccountMovementRepository movements;
     String token;
     BusinessAccount own, foreign;
     @BeforeEach void setup() {
@@ -44,10 +45,30 @@ class BusinessAccountControllerTest {
         mvc.perform(get("/accounts").header("Authorization",token)).andExpect(jsonPath("$[0].balance").value(74.50));
         mvc.perform(get("/costs/fixed").header("Authorization",token)).andExpect(jsonPath("$.totalElements").value(0));
     }
-    @Test @DisplayName("Rejeita valor zero e data futura")
-    void validation() throws Exception {
+
+    @Test @DisplayName("Rejeita valor zero com data válida e não persiste movimento")
+    void shouldRejectZeroAmount() throws Exception {
+        long count = movements.count();
         mvc.perform(post("/accounts/movements").header("Authorization",token).contentType(MediaType.APPLICATION_JSON).content("""
-            {"accountId":"%s","type":"APORTE","amount":0,"date":"2999-01-01","description":"Inválido"}
-            """.formatted(own.getId()))).andExpect(status().isBadRequest());
+            {"accountId":"%s","type":"APORTE","amount":0,"date":"%s","description":"Inválido"}
+            """.formatted(own.getId(), LocalDate.now())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.details[0]", org.hamcrest.Matchers.startsWith("amount:")));
+        Assertions.assertEquals(count, movements.count());
+    }
+
+    @Test @DisplayName("Rejeita data futura com valor válido e não persiste movimento")
+    void shouldRejectFutureDate() throws Exception {
+        long count = movements.count();
+        mvc.perform(post("/accounts/movements").header("Authorization",token).contentType(MediaType.APPLICATION_JSON).content("""
+            {"accountId":"%s","type":"APORTE","amount":10,"date":"%s","description":"Inválido"}
+            """.formatted(own.getId(), LocalDate.now().plusDays(1))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.details[0]", org.hamcrest.Matchers.startsWith("date:")));
+        Assertions.assertEquals(count, movements.count());
     }
 }

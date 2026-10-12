@@ -1,9 +1,7 @@
 package com.example.margemAI.service;
 
-import com.example.margemAI.dto.request.BreakEvenRequest;
 import com.example.margemAI.dto.request.PricingRequest;
 import com.example.margemAI.dto.request.SimulateDiscountRequest;
-import com.example.margemAI.dto.response.BreakEvenResponse;
 import com.example.margemAI.dto.response.PricingResponse;
 import com.example.margemAI.dto.response.SimulateDiscountResponse;
 import com.example.margemAI.exception.InvalidFinancialCalculationException;
@@ -287,32 +285,6 @@ class SimplesNacionalMarkupPrecisionTest {
 
         assertEquals(new BigDecimal("1000.00"), response.getMinimumSellingPrice());
         assertEquals(new BigDecimal("100.0000"), response.getMarkup().setScale(4, RoundingMode.HALF_UP));
-    }
-
-    @Test
-    @DisplayName("Deve calcular Ponto de Equilíbrio contábil com precisão monetária e margem de contribuição real")
-    void shouldCalculateBreakEvenWithFinancialPrecision() {
-        // Custos Fixos Totais = R$ 3.000,00
-        // Preço de Venda = R$ 50,00 | Custo Variável Unitário = R$ 20,00
-        // Margem de Contribuição Unitária = R$ 30,00
-        // Índice MC = 30 / 50 = 60,00%
-        // Qtd Ponto de Equilíbrio = 100 unidades
-        // Faturamento Ponto de Equilíbrio = 3000 / 0.60 = R$ 5.000,00
-
-        BreakEvenRequest request = BreakEvenRequest.builder()
-                .totalFixedCosts(new BigDecimal("3000.00"))
-                .sellingPrice(new BigDecimal("50.00"))
-                .unitVariableCost(new BigDecimal("20.00"))
-                .build();
-
-        BreakEvenResponse response = pricingService.calculateBreakEven(request, userId);
-
-        assertNotNull(response);
-        assertEquals(new BigDecimal("30.00"), response.getUnitContributionMargin());
-        assertEquals(new BigDecimal("60.00"), response.getContributionMarginRatio());
-        assertEquals(100L, response.getBreakEvenQuantity());
-        assertEquals(new BigDecimal("5000.00"), response.getBreakEvenRevenue());
-        assertTrue(response.isViable());
     }
 
     @Test

@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 import PageHeader from './PageHeader'
 import { Badge, Button, Card, Checkbox, EmptyState, Field, Input, Notice, Select } from './ui'
+import PricingResultExplanation from './PricingResultExplanation'
+import { buildPricingExplanation } from '../utils/pricingExplanation'
 import { calculatePricing, simulateDiscount, calculateBreakEven } from '../services/pricingService'
 import { productService } from '../services/productService'
 import { operationalService } from '../services/operationalService'
@@ -32,7 +34,7 @@ import { formatFeePercent } from '../utils/paymentFees'
 import { PAYMENT_METHODS } from '../constants/sales'
 import { SEBRAE_PILLS, getPillById, selectContextualPill } from '../data/sebraePills'
 
-export default function PricingCalculator() {
+export default function PricingCalculator({ onNavigate }) {
   const [formData, setFormData] = useState({
     baseCost: '50.00',
     fixedCostPercent: '10.00',
@@ -58,6 +60,7 @@ export default function PricingCalculator() {
   })
 
   const [pricingResult, setPricingResult] = useState(null)
+  const [resultExplanation, setResultExplanation] = useState(null)
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -252,9 +255,10 @@ export default function PricingCalculator() {
 
       const data = await calculatePricing(payload)
       setPricingResult(data)
+      setResultExplanation(buildPricingExplanation(data, { paymentFeePercent, fixedFeeAmount: configuredFee.fixedFeeAmount, useConfiguredFee }))
       runBreakEven(data)
       if (data?.minimumSellingPrice) {
-        runDiscountSimulation(data.minimumSellingPrice, discountPercent, baseCostNum, fixedNum, varNum)
+        runDiscountSimulation(data.minimumSellingPrice, discountPercent, data.baseCost, fixedNum, varNum)
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Falha ao calcular precificação.'
@@ -311,6 +315,7 @@ export default function PricingCalculator() {
         })
         if (isMounted) {
           setPricingResult(data)
+          setResultExplanation(buildPricingExplanation(data))
           fetchBreakEven(data)
             .then((breakEven) => {
               if (isMounted) setBreakEvenResult(breakEven)
@@ -353,9 +358,9 @@ export default function PricingCalculator() {
       runDiscountSimulation(
         pricingResult.minimumSellingPrice,
         newDiscount,
-        formData.baseCost,
-        effectiveFixedPercent,
-        effectiveVariablePercent
+        pricingResult.baseCost,
+        resultExplanation?.rows.find((row) => row.key === 'fixed')?.percent ?? 0,
+        resultExplanation?.rows.filter((row) => row.key === 'variable' || row.key === 'payment').reduce((total, row) => total + row.percent, 0) ?? 0
       )
     }
   }
@@ -365,6 +370,17 @@ export default function PricingCalculator() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
   }
 
+
+  const lockedHint = (
+    <>
+      Herdado do padrão do item.{' '}
+      {onNavigate && (
+        <Button variant="link" size="sm" className="underline" onClick={() => onNavigate('categories')}>
+          Conferir padrões de preço
+        </Button>
+      )}
+    </>
+  )
   return (
     <div className="w-full space-y-6">
       <PageHeader
@@ -424,6 +440,7 @@ export default function PricingCalculator() {
               />
             </Field>
 
+            {onNavigate && <p className="text-xs text-slate-500">O rateio usa os custos fixos do negócio. <Button variant="link" size="sm" className="underline" onClick={() => onNavigate('costs')}>Conferir custos cadastrados</Button></p>}
             <Card tone="muted" inset padding="sm" className="space-y-4">
               <div className="flex items-center justify-between">
                 <label htmlFor="toggleFixed" className="text-sm font-medium text-slate-700 cursor-pointer">
@@ -590,7 +607,7 @@ export default function PricingCalculator() {
             <div>
               <Field
                 label={useConfiguredFee ? 'Outras Despesas Variáveis (%)' : 'Despesas Variáveis e Taxas de Venda / Cartão (%)'}
-                hint={profileLocked ? 'Herdado do padrão do item.' : undefined}
+                hint={profileLocked ? lockedHint : undefined}
               >
                 <Input
                   id="pricing-variableCostPercent"
@@ -670,7 +687,8 @@ export default function PricingCalculator() {
               </Card>
             </div>
 
-            <Field label="Margem de Lucro Desejada (%)" hint={profileLocked ? 'Herdado do padrão do item.' : undefined}>
+            {onNavigate && <p className="text-xs text-slate-500">A taxa aplicada vem da matriz de pagamento. <Button variant="link" size="sm" className="underline" onClick={() => onNavigate('payment-methods')}>Conferir taxas de pagamento</Button></p>}
+            <Field label="Margem de Lucro Desejada (%)" hint={profileLocked ? lockedHint : undefined}>
               <Input
                 id="pricing-desiredMargin"
                 type="number"
@@ -718,7 +736,7 @@ export default function PricingCalculator() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 text-xs">
                     <div>
-                      <span className="text-slate-500 block">Lucro Estimado</span>
+                      <span className="text-slate-500 block">{Number(pricingResult.estimatedTaxes) > 0 ? 'Lucro estimado antes dos tributos' : 'Lucro Estimado'}</span>
                       <span className="text-sm font-bold text-emerald-700">
                         {formatCurrency(pricingResult.unitProfit)}
                       </span>
@@ -736,29 +754,7 @@ export default function PricingCalculator() {
                   </div>
                 </Card>
 
-                <Card inset className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Composição do Preço de Venda
-                  </h4>
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between py-1 border-b border-slate-100">
-                      <span className="text-slate-600">Custo Base de Aquisição:</span>
-                      <span className="font-semibold text-slate-900">{formatCurrency(pricingResult.baseCost)}</span>
-                    </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100">
-                      <span className="text-slate-600">Despesas Fixas Alocadas:</span>
-                      <span className="font-semibold text-slate-900">{formatCurrency(pricingResult.allocatedFixedCosts)}</span>
-                    </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100">
-                      <span className="text-slate-600">Despesas Variáveis e Taxas:</span>
-                      <span className="font-semibold text-slate-900">{formatCurrency(pricingResult.totalVariableCosts)}</span>
-                    </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100 text-emerald-700 font-bold">
-                      <span>Lucro Líquido Unitário:</span>
-                      <span>{formatCurrency(pricingResult.unitProfit)}</span>
-                    </div>
-                  </div>
-                </Card>
+                <PricingResultExplanation explanation={resultExplanation} />
 
                 <Card inset className="space-y-4">
                   <div>
@@ -903,13 +899,15 @@ export default function PricingCalculator() {
         <div className="border-t border-slate-100 bg-slate-50/50">
           <button
             type="button"
+            aria-expanded={showExplanation}
+            aria-controls="pricing-method-preview"
             onClick={() => setShowExplanation((value) => !value)}
             aria-expanded={showExplanation}
             className="w-full flex items-center justify-between gap-3 px-6 sm:px-8 py-4 text-left cursor-pointer"
           >
             <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
               <HelpCircle className="w-4 h-4 text-indigo-600" />
-              Como o preço de venda é calculado (método SEBRAE)
+              Prévia dos parâmetros atuais (método SEBRAE)
             </span>
             {showExplanation ? (
               <ChevronUp className="w-4 h-4 text-slate-400" />
@@ -919,7 +917,8 @@ export default function PricingCalculator() {
           </button>
 
           {showExplanation && (
-            <div className="px-6 sm:px-8 pb-6 sm:pb-8 space-y-4">
+            <div id="pricing-method-preview" className="px-6 sm:px-8 pb-6 sm:pb-8 space-y-4">
+              <p className="text-xs text-slate-500">Esta prévia acompanha as entradas atuais. O resultado acima só muda ao recalcular.</p>
               <Card inset padding="sm" className="space-y-2">
                 <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
                   Fórmula simplificada

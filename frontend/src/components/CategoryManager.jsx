@@ -69,6 +69,13 @@ export default function CategoryManager() {
     setReloadKey((k) => k + 1)
   }
 
+  const hasFilters = Boolean(selectedType || searchTerm.trim())
+  const clearFilters = () => {
+    setLoading(true)
+    setSelectedType('')
+    setSearchTerm('')
+  }
+
   const handleNew = () => {
     setFormVersion(version => version + 1)
     setEditingCategory(null)
@@ -161,7 +168,7 @@ export default function CategoryManager() {
               className="flex-1"
               aria-label="Buscar padrão"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setLoading(true); setSearchTerm(e.target.value) }}
               data-tour="categories-search"
               placeholder="Buscar por nome do padrão..."
             />
@@ -175,7 +182,10 @@ export default function CategoryManager() {
                 { value: 'SERVICO', label: 'Serviços' }
               ]}
               value={selectedType}
-              onChange={setSelectedType}
+              onChange={(value) => {
+                if (selectedType !== value) setLoading(true)
+                setSelectedType(value)
+              }}
             />
           </div>
 
@@ -196,9 +206,13 @@ export default function CategoryManager() {
         ) : categories.length === 0 ? (
           <EmptyState
             Icon={Tags}
-            title="Nenhum padrão cadastrado"
-            description="Crie um padrão para aplicar a mesma margem, impostos e taxas a vários produtos e serviços."
-            action={<Button size="sm" Icon={Plus} onClick={() => guard(handleNew)}>Criar primeiro padrão</Button>}
+            title={hasFilters ? 'Nenhum resultado para os filtros selecionados' : 'Nenhum padrão cadastrado'}
+            description={hasFilters
+              ? 'Altere a busca ou limpe os filtros para ver os registros disponíveis.'
+              : 'Crie um padrão para aplicar a mesma margem, impostos e taxas a vários produtos e serviços.'}
+            action={hasFilters
+              ? <Button size="sm" variant="secondary" onClick={clearFilters}>Limpar filtros</Button>
+              : <Button size="sm" Icon={Plus} onClick={() => guard(handleNew)}>Criar primeiro padrão</Button>}
           />
         ) : (
           <div className="divide-y divide-slate-100">

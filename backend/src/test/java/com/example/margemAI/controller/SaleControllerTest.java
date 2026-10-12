@@ -222,13 +222,13 @@ public class SaleControllerTest {
         saleRepository.save(sale2);
 
         mockMvc.perform(get("/sales")
-                        .header("Authorization", bearerHeader()))
+                        .header("Authorization", bearerHeader()).param("size", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalGrossRevenue").value(60.00))
                 .andExpect(jsonPath("$.totalFeeAmount").value(0.64))
                 .andExpect(jsonPath("$.totalNetRevenue").value(59.36))
                 .andExpect(jsonPath("$.totalSalesCount").value(2))
-                .andExpect(jsonPath("$.sales.content", hasSize(2)));
+                .andExpect(jsonPath("$.sales.content", hasSize(1)));
     }
 
     @Test
@@ -400,7 +400,7 @@ public class SaleControllerTest {
                 {
                     "productId": "%s",
                     "quantity": 2,
-                    "unitAmount": 18.00,
+                    "unitAmount": 27.00,
                     "paymentMethod": "PIX",
                     "saleDate": "2026-06-15T14:30:00"
                 }
@@ -411,8 +411,9 @@ public class SaleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonPayload))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.grossAmount").value(36.00))
-                .andExpect(jsonPath("$.unitPrice").value(18.00))
+                .andExpect(jsonPath("$.grossAmount").value(54.00))
+                .andExpect(jsonPath("$.unitPrice").value(27.00))
+                .andExpect(jsonPath("$.soldAt").value("2026-06-15T14:30:00"))
                 .andExpect(jsonPath("$.paymentMethod").value("PIX"));
     }
 

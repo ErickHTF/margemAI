@@ -11,7 +11,7 @@ import {
   CreditCard
 } from 'lucide-react'
 import PageHeader from './PageHeader'
-import { Card, EmptyState, SegmentedControl } from './ui'
+import { Button, Card, EmptyState, SegmentedControl } from './ui'
 import MeiCapIndicator from './MeiCapIndicator'
 import useMonthlyFlow from '../hooks/useMonthlyFlow'
 import useMeiCap from '../hooks/useMeiCap'
@@ -24,6 +24,8 @@ import {
   hasActivity,
   expenseShare
 } from '../utils/monthlyFlow'
+
+const MAX_PERIOD = Math.max(...PERIOD_OPTIONS)
 
 const shareHint = (value, totalExpenses) => {
   const share = expenseShare(value, totalExpenses)
@@ -45,7 +47,7 @@ const SummaryCard = ({ Icon, iconClass, label, value, valueClass = 'text-slate-9
   </Card>
 )
 
-export default function MonthlyFlowDashboard() {
+export default function MonthlyFlowDashboard({ onNavigate }) {
   const { flowData, months, changeMonths, loading, error } = useMonthlyFlow()
   const { meiCap, error: meiCapError } = useMeiCap()
 
@@ -198,8 +200,23 @@ export default function MonthlyFlowDashboard() {
             ) : (
               <EmptyState
                 Icon={BarChart3}
-                title="Nenhuma venda ou custo registrado neste período."
-                description="Registre vendas e custos para acompanhar a evolução do seu caixa."
+                title="Nenhuma movimentação neste período"
+                description={`Não há receitas ou despesas de ${formatMonthLabel(flowData?.startMonth)} a ${formatMonthLabel(flowData?.endMonth)}. Consulte outro período ou registre uma movimentação.`}
+                action={
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {months < MAX_PERIOD && (
+                      <Button size="sm" variant="secondary" onClick={() => changeMonths(MAX_PERIOD)}>
+                        Consultar {MAX_PERIOD} meses
+                      </Button>
+                    )}
+                    {onNavigate && (
+                      <>
+                        <Button size="sm" onClick={() => onNavigate('sales')}>Registrar venda</Button>
+                        <Button size="sm" variant="secondary" onClick={() => onNavigate('costs')}>Cadastrar custos</Button>
+                      </>
+                    )}
+                  </div>
+                }
               />
             )}
           </Card>

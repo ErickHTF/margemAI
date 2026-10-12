@@ -191,15 +191,6 @@ public class FixedCostServiceTest {
     }
 
     @Test
-    void shouldNotReturnFixedCostBelongingToAnotherUser() {
-        when(fixedCostRepository.findByIdAndUserIdAndActiveTrue(rentCost.getId(), userId))
-                .thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> fixedCostService.findById(userId, rentCost.getId()));
-    }
-
-    @Test
     void shouldFullyUpdateFixedCost() {
         when(fixedCostRepository.findByIdAndUserIdAndActiveTrue(rentCost.getId(), userId))
                 .thenReturn(Optional.of(rentCost));

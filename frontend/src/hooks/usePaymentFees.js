@@ -7,10 +7,10 @@ const NO_CONFIGS = []
 
 // Padrão do projeto: toda tela que exibe ou calcula taxa de pagamento usa este hook,
 // nunca valores fixos. Se a matriz falhar ao carregar, getFee cai nos padrões recomendados.
-export function usePaymentFees() {
+export function usePaymentFees(refreshKey = 0) {
   const { data: matrix, loading, error } = useApiResource(
     async () => (await paymentMethodService.getPaymentMethodConfigs()) || NO_CONFIGS,
-    [],
+    [refreshKey],
     {
       initialData: NO_CONFIGS,
       errorMessage: 'Não foi possível carregar suas taxas configuradas. Usando as taxas recomendadas.'

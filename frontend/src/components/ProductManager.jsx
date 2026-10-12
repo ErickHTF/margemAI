@@ -77,6 +77,13 @@ export default function ProductManager() {
     setReloadKey((k) => k + 1)
   }
 
+  const hasFilters = Boolean(selectedType || searchTerm.trim())
+  const clearFilters = () => {
+    setLoading(true)
+    setSelectedType('')
+    setSearchTerm('')
+  }
+
   const handleNew = () => {
     setFormVersion(version => version + 1)
     setEditingProduct(null)
@@ -151,7 +158,7 @@ export default function ProductManager() {
               className="flex-1"
               aria-label="Buscar item do catálogo"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setLoading(true); setSearchTerm(e.target.value) }}
               data-tour="products-search"
               placeholder="Buscar por nome do produto ou serviço..."
             />
@@ -165,7 +172,10 @@ export default function ProductManager() {
                 { value: 'SERVICO', label: 'Serviços' }
               ]}
               value={selectedType}
-              onChange={setSelectedType}
+              onChange={(value) => {
+                if (selectedType !== value) setLoading(true)
+                setSelectedType(value)
+              }}
             />
           </div>
 
@@ -190,9 +200,13 @@ export default function ProductManager() {
         ) : products.length === 0 ? (
           <EmptyState
             Icon={Package}
-            title="Nenhum item encontrado"
-            description="Cadastre seu primeiro produto ou serviço para acompanhar margens e custos."
-            action={<Button size="sm" Icon={Plus} onClick={() => guard(handleNew)}>Cadastrar Primeiro Item</Button>}
+            title={hasFilters ? 'Nenhum resultado para os filtros selecionados' : 'Nenhum item cadastrado'}
+            description={hasFilters
+              ? 'Altere a busca ou limpe os filtros para ver os registros disponíveis.'
+              : 'Cadastre produtos e serviços para reutilizá-los nas vendas e acompanhar seus custos e margens.'}
+            action={hasFilters
+              ? <Button size="sm" variant="secondary" onClick={clearFilters}>Limpar filtros</Button>
+              : <Button size="sm" Icon={Plus} onClick={() => guard(handleNew)}>Cadastrar primeiro item</Button>}
           />
         ) : (
           <div className="divide-y divide-slate-100">

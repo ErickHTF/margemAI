@@ -6,7 +6,6 @@ import {
   Trash2,
   AlertCircle,
   RefreshCw,
-  Receipt,
   Wallet,
   CalendarDays,
   Repeat,
@@ -147,6 +146,15 @@ export default function CostManager({ kind, service, categories, products = [] }
     reload()
   }
 
+  const hasFilters = Boolean(selectedCategory || selectedProduct || referenceMonth)
+  const clearFilters = () => {
+    if (!hasFilters) return
+    setLoading(true)
+    setSelectedCategory('')
+    setSelectedProduct('')
+    setReferenceMonth('')
+  }
+
   const monthlyFixedTotal = costs
     .filter((cost) => cost.recurring)
     .reduce((acc, cost) => acc + (Number(cost[amountKey]) || 0), 0)
@@ -262,14 +270,7 @@ export default function CostManager({ kind, service, categories, products = [] }
           <Button variant="secondary" size="sm" Icon={RefreshCw} loading={loading} onClick={reload}>
             Atualizar
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              handleCategoryChange('')
-              handleMonthChange('')
-              if (isVariable) handleProductChange('')
-            }}
+          <Button variant="secondary" size="sm" disabled={!hasFilters} onClick={clearFilters}
           >
             Limpar filtros
           </Button>
@@ -288,7 +289,20 @@ export default function CostManager({ kind, service, categories, products = [] }
           action={<Button onClick={reload}>Tentar novamente</Button>}
         />
       ) : costs.length === 0 ? (
-        <EmptyState Icon={Receipt} description={meta.emptyMessage} />
+        <EmptyState
+          Icon={Wallet}
+          title={hasFilters ? 'Nenhum custo para os filtros selecionados' : meta.emptyMessage}
+          description={hasFilters
+            ? 'Limpe os filtros para consultar os demais custos cadastrados.'
+            : isVariable
+              ? 'Cadastre os custos por produto ou serviço para compor seus preços de venda.'
+              : 'Cadastre as despesas do negócio para acompanhar seu resultado no fluxo de caixa.'}
+          action={hasFilters
+            ? <Button size="sm" variant="secondary" onClick={clearFilters}>Limpar filtros</Button>
+            : <Button size="sm" Icon={Plus} onClick={() => guard(handleNew)}>
+              {isVariable ? 'Cadastrar primeiro custo variável' : 'Cadastrar primeiro custo fixo'}
+            </Button>}
+        />
       ) : (
         <ul className="divide-y divide-slate-100">
           {costs.map((cost) => (

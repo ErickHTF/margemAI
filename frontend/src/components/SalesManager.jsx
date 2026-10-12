@@ -21,7 +21,9 @@ import { Badge, Button, Card, EmptyState, IconButton, Notice, SegmentedControl }
 import { formatCurrencyBRL } from '../utils/formatters'
 import { PAYMENT_METHODS } from '../constants/sales'
 
-export default function SalesManager({ onNavigate }) {
+export default function SalesManager({ onNavigate, draft, onDraftChange, onBusyChange }) {
+  const [formBusy, setFormBusy] = useState(false)
+  const handleBusyChange = (busy) => { setFormBusy(busy); onBusyChange?.(busy) }
   const { guard } = useDraft(null)
   const [selectedMethod, setSelectedMethod] = useState('')
   const [showQuickForm, setShowQuickForm] = useState(true)
@@ -48,6 +50,15 @@ export default function SalesManager({ onNavigate }) {
         delete next.paymentMethod
       }
       return next
+    })
+  }
+
+  const openQuickForm = () => {
+    setShowQuickForm(true)
+    requestAnimationFrame(() => {
+      const form = document.getElementById('sale-form')
+      form?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      form?.querySelector('input, select')?.focus({ preventScroll: true })
     })
   }
 
@@ -89,6 +100,7 @@ export default function SalesManager({ onNavigate }) {
         description="Lance vendas com agilidade e acompanhe seu faturamento bruto, taxas e lucro líquido real."
       >
         <Button
+          disabled={formBusy}
           data-tour="sales-new"
           Icon={showQuickForm ? ChevronUp : Plus}
           onClick={() => guard(() => setShowQuickForm(!showQuickForm))}
@@ -142,7 +154,7 @@ export default function SalesManager({ onNavigate }) {
 
       {showQuickForm && (
         <div data-tour="sales-form" className="transition-all duration-300">
-          <SalesForm onSaleCreated={recordSale} onNavigate={onNavigate} />
+          <SalesForm onSaleCreated={recordSale} onNavigate={onNavigate} draft={draft} onDraftChange={onDraftChange} onBusyChange={handleBusyChange} />
         </div>
       )}
 
@@ -168,8 +180,13 @@ export default function SalesManager({ onNavigate }) {
         ) : salesList.length === 0 ? (
           <EmptyState
             Icon={ShoppingBag}
-            title="Nenhuma venda registrada"
-            description="Lance sua primeira venda no formulário acima para começar a controlar suas entradas e taxas da maquineta."
+            title={selectedMethod ? 'Nenhuma venda com este pagamento' : 'Nenhuma venda registrada'}
+            description={selectedMethod
+              ? 'Escolha outro pagamento ou limpe o filtro para ver as demais vendas.'
+              : 'Registre sua primeira venda para acompanhar entradas e taxas de pagamento.'}
+            action={selectedMethod
+              ? <Button size="sm" variant="secondary" onClick={() => handleFilterMethod('')}>Limpar filtro</Button>
+              : <Button size="sm" Icon={Plus} onClick={openQuickForm}>Registrar primeira venda</Button>}
           />
         ) : (
           <div className="overflow-x-auto">
