@@ -82,7 +82,8 @@ Implementa a **[US-xx] (Issue #N) — <título>**, <objetivo para o MEI>.
 
 **Payment fees come from the configured matrix** (Configurações › Taxas de Pagamento,
 `GET /settings/financial/payment-methods`): active configuration → otherwise the recommended default; fee = percentage
-(MDR) + fixed charge; a one-off fee on a sale replaces the percentage and skips the fixed charge. The rule exists in
+(MDR) + fixed charge; a one-off fee on a sale replaces the percentage and skips the fixed charge; Crédito Parcelado has at least 2 installments (fewer counts as 2x); amounts
+round HALF_UP at each step, exactly (frontend uses `utils/decimal.js`, never float math). The rule exists in
 `PaymentFeeCalculator` (backend) and `utils/paymentFees.js` (frontend); both run the same cases in
 `shared/fixtures/payment-fees.json` (decimals as strings; `customFeePercent: null` = none, `"0.00"` = zero fee).
 To change the rule: **edit the fixture first, then both implementations**; never delete a case to make a side pass.
