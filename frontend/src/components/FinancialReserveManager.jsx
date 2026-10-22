@@ -9,7 +9,7 @@ import { useApiResource } from '../hooks/useApiResource'
 import useDraft from '../hooks/useDraft'
 import { reserveService } from '../services/reserveService'
 import { accountService } from '../services/accountService'
-import { formatCurrencyBRL, formatDateBR } from '../utils/formatters'
+import { formatCurrencyBRL, formatDateBR, maskCurrency, unmaskCurrency, currencyToDigits } from '../utils/formatters'
 import {
   GOAL_MODES,
   MOVEMENT_TYPES,
@@ -42,7 +42,7 @@ const emptyMovement = () => ({
 
 const normalizeGoalDraft = (summary) => ({
   goalMode: summary?.goalMode || GOAL_MODES.FIXED_AMOUNT,
-  targetAmount: summary?.targetAmount !== undefined && summary?.targetAmount !== null ? String(summary.targetAmount) : '0',
+  targetAmount: currencyToDigits(summary?.targetAmount),
   targetMonths: summary?.targetMonths !== undefined && summary?.targetMonths !== null ? String(summary.targetMonths || 3) : '3'
 })
 
@@ -97,7 +97,7 @@ export default function FinancialReserveManager({ onNavigate }) {
 
   const snapshot = computeReserveSnapshot({
     goalMode: goalForm.goalMode,
-    targetAmount: goalForm.targetAmount,
+    targetAmount: unmaskCurrency(goalForm.targetAmount),
     targetMonths: goalForm.targetMonths,
     monthlyFixedCosts: summary.monthlyFixedCosts,
     reservedBalance: summary.reservedBalance ?? summary.currentBalance,
@@ -112,7 +112,7 @@ export default function FinancialReserveManager({ onNavigate }) {
     try {
       const payload = {
         goalMode: goalForm.goalMode,
-        targetAmount: goalForm.goalMode === GOAL_MODES.FIXED_AMOUNT ? Number(goalForm.targetAmount) : Number(summary.targetAmount || 0),
+        targetAmount: goalForm.goalMode === GOAL_MODES.FIXED_AMOUNT ? unmaskCurrency(goalForm.targetAmount) : Number(summary.targetAmount || 0),
         targetMonths: goalForm.goalMode === GOAL_MODES.MONTHS_OF_COSTS ? Number(goalForm.targetMonths) : Number(summary.targetMonths || 0)
       }
       const updated = await reserveService.updateGoal(payload)
@@ -136,7 +136,7 @@ export default function FinancialReserveManager({ onNavigate }) {
     try {
       await reserveService.createMovement({
         type: movementForm.type,
-        amount: Number(movementForm.amount),
+        amount: unmaskCurrency(movementForm.amount),
         occurredAt: movementForm.occurredAt,
         description: movementForm.description.trim(),
         businessAccountId: movementForm.businessAccountId || null
@@ -161,6 +161,7 @@ export default function FinancialReserveManager({ onNavigate }) {
     setFeedback('')
     const validationError = validateReserveMovement({
       ...movementForm,
+      amount: unmaskCurrency(movementForm.amount),
       reservedBalance: snapshot.reservedBalance
     })
     if (validationError) {
@@ -266,12 +267,11 @@ export default function FinancialReserveManager({ onNavigate }) {
               <Input
                 required
                 prefix="R$"
-                type="number"
-                inputMode="decimal"
-                min="0.01"
-                step="0.01"
+                type="text"
+                inputMode="numeric"
+                placeholder="0,00"
                 name="targetAmount"
-                value={goalForm.targetAmount}
+                value={maskCurrency(goalForm.targetAmount)}
                 onChange={(e) => setGoalOverrides((prev) => ({ ...prev, targetAmount: e.target.value }))}
               />
             </Field>
@@ -323,12 +323,11 @@ export default function FinancialReserveManager({ onNavigate }) {
             <Input
               required
               prefix="R$"
-              type="number"
-              inputMode="decimal"
-              min="0.01"
-              step="0.01"
+              type="text"
+              inputMode="numeric"
+              placeholder="0,00"
               name="amount"
-              value={movementForm.amount}
+              value={maskCurrency(movementForm.amount)}
               onChange={(e) => setMovementForm((prev) => ({ ...prev, amount: e.target.value }))}
             />
           </Field>
