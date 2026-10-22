@@ -57,6 +57,7 @@ const NAV_GROUPS = [
       { key: 'reserves', label: 'Reserva Financeira', Icon: PiggyBank },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
+      { key: 'debts', label: 'Dívidas e Quitação', Icon: Scale },
       { key: 'costs', label: 'Custos', Icon: Wallet },
       { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator },
       { key: 'obligations', label: 'Obrigações MEI', Icon: CalendarCheck }
@@ -269,6 +270,8 @@ export default function App() {
         return <MonthlyFlowDashboard onNavigate={navigateContext} />
       case 'payment-methods':
         return <PaymentMethodSettings />
+      case 'debts':
+        return <DebtManager onNavigate={navigateContext} />
       case 'costs':
         return <CostsDashboard />
       case 'pricing':
