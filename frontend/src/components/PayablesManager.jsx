@@ -31,7 +31,13 @@ import {
 import { selectContextualPill } from '../data/sebraePills'
 import useApiResource from '../hooks/useApiResource'
 import payableService from '../services/payableService'
-import { formatCurrencyBRL, formatDateBR } from '../utils/formatters'
+import {
+  formatCurrencyBRL,
+  formatDateBR,
+  maskCurrency,
+  unmaskCurrency,
+  currencyToDigits
+} from '../utils/formatters'
 import {
   PAYABLE_CATEGORIES,
   getPayableStatusConfig,
@@ -123,7 +129,7 @@ export default function PayablesManager() {
       description: acc.description || '',
       category: acc.category || 'OUTRO',
       dueDate: acc.dueDate || '',
-      totalAmount: acc.totalAmount != null ? String(acc.totalAmount) : '',
+      totalAmount: currencyToDigits(acc.totalAmount),
       competency: acc.competency || competency,
       notes: acc.notes || ''
     })
@@ -133,6 +139,11 @@ export default function PayablesManager() {
 
   const handleSaveAccount = async (e) => {
     e.preventDefault()
+    const totalAmountValue = unmaskCurrency(formData.totalAmount)
+    if (totalAmountValue <= 0) {
+      setFailure('Informe um valor total maior que zero.')
+      return
+    }
     setBusy(true)
     setFailure('')
     setFeedback('')
@@ -141,7 +152,7 @@ export default function PayablesManager() {
         description: formData.description,
         category: formData.category,
         dueDate: formData.dueDate,
-        totalAmount: parseFloat(formData.totalAmount),
+        totalAmount: totalAmountValue,
         competency: formData.competency,
         notes: formData.notes
       }
@@ -165,7 +176,7 @@ export default function PayablesManager() {
   const handleOpenPay = (acc) => {
     setPayingAccount(acc)
     const remaining = calculateRemainingBalance(acc.totalAmount, acc.paidAmount)
-    setPaymentAmount(remaining > 0 ? String(remaining) : String(acc.totalAmount))
+    setPaymentAmount(currencyToDigits(remaining > 0 ? remaining : acc.totalAmount))
     setPaymentNotes('')
     setFailure('')
     setPaymentOpen(true)
@@ -174,12 +185,17 @@ export default function PayablesManager() {
   const handleConfirmPay = async (e) => {
     e.preventDefault()
     if (!payingAccount) return
+    const paidAmountValue = unmaskCurrency(paymentAmount)
+    if (paidAmountValue <= 0) {
+      setFailure('Informe um valor de pagamento maior que zero.')
+      return
+    }
     setBusy(true)
     setFailure('')
     setFeedback('')
     try {
       await payableService.pay(payingAccount.id, {
-        amount: parseFloat(paymentAmount),
+        amount: paidAmountValue,
         notes: paymentNotes || undefined
       })
       setFeedback(`Pagamento registrado para "${payingAccount.description}".`)
@@ -599,13 +615,11 @@ export default function PayablesManager() {
                 <Field label="Valor Total (R$)">
                   <Input
                     required
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min="0.01"
+                    type="text"
+                    inputMode="numeric"
                     prefix="R$"
                     placeholder="0,00"
-                    value={formData.totalAmount}
+                    value={maskCurrency(formData.totalAmount)}
                     onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
                   />
                 </Field>
@@ -678,12 +692,11 @@ export default function PayablesManager() {
               <Field label="Valor do Pagamento (R$)" hint="Você pode registrar quitação total ou parcial.">
                 <Input
                   required
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0.01"
+                  type="text"
+                  inputMode="numeric"
                   prefix="R$"
-                  value={paymentAmount}
+                  placeholder="0,00"
+                  value={maskCurrency(paymentAmount)}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                 />
               </Field>
