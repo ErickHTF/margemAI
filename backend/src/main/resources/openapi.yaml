@@ -49,6 +49,8 @@ tags:
     description: Payment method rates and settlement terms matrix
   - name: Sales
     description: Registration and query of completed sales
+  - name: Receivables
+    description: Contas a receber, parcelas e baixas
   - name: Pricing
     description: Selling price and margin calculator
   - name: Dashboard
@@ -92,6 +94,191 @@ paths:
         '400': {description: Dados inválidos}
         '401': {description: Não autenticado}
         '404': {description: Conta não encontrada}
+  /receivables:
+    get:
+      tags:
+        - Receivables
+      summary: Listar títulos e parcelas a receber com totalizadores
+      description: Retorna os títulos a receber com distinção entre faturamento por competência, recebimento efetivo, a receber no prazo e em atraso.
+      operationId: listReceivables
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PARTIALLY_RECEIVED, RECEIVED, OVERDUE]
+        - name: paymentMethod
+          in: query
+          schema:
+            $ref: '#/components/schemas/PaymentMethod'
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Resumo e lista paginada de títulos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivableSummaryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Receivables
+      summary: Criar título a receber manual
+      description: Gera o título e as parcelas com taxas e prazos configurados e divisão exata de centavos.
+      operationId: createReceivable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceivableRequest'
+      responses:
+        '201':
+          description: Título criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivableResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /receivables/{id}:
+    get:
+      tags:
+        - Receivables
+      summary: Obter detalhes do título a receber
+      operationId: getReceivableById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes do título
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivableResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Receivables
+      summary: Excluir título a receber
+      operationId: deleteReceivable
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Título excluído
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /receivables/installments/{id}/settle:
+    post:
+      tags:
+        - Receivables
+      summary: Baixa parcial ou total de parcela
+      description: Liquida parcial ou totalmente uma parcela a receber, atualizando o recebimento efetivo e os saldos.
+      operationId: settleInstallment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettleInstallmentRequest'
+      responses:
+        '200':
+          description: Parcela liquidada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivableInstallmentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /receivables/installments/{id}/reverse:
+    post:
+      tags:
+        - Receivables
+      summary: Estorno de baixa de parcela
+      description: Estorna o recebimento de uma parcela, restaurando o saldo em aberto e registrando o motivo.
+      operationId: reverseInstallment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReverseInstallmentRequest'
+      responses:
+        '200':
+          description: Baixa estornada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivableInstallmentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /accounts/movements:
     get:
       summary: Movimentos do titular
@@ -1919,6 +2106,201 @@ components:
         amount: {type: number, minimum: 0.01, multipleOf: 0.01}
         date: {type: string, format: date}
         description: {type: string, minLength: 1, maxLength: 200}
+    ReceivableRequest:
+      type: object
+      required:
+        - description
+        - grossAmount
+        - paymentMethod
+      properties:
+        description:
+          type: string
+          maxLength: 200
+        grossAmount:
+          type: number
+          format: double
+          minimum: 0.01
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        installments:
+          type: integer
+          minimum: 1
+          default: 1
+        customFeePercentage:
+          type: number
+          format: double
+        issuedAt:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 500
+
+    SettleInstallmentRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        receivedAt:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 500
+
+    ReverseInstallmentRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 300
+
+    ReceivableStatus:
+      type: string
+      enum:
+        - PENDING
+        - PARTIALLY_RECEIVED
+        - RECEIVED
+        - OVERDUE
+
+    InstallmentStatus:
+      type: string
+      enum:
+        - PENDING
+        - PARTIAL
+        - RECEIVED
+        - OVERDUE
+
+    ReceivableInstallmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        receivableId:
+          type: string
+          format: uuid
+        installmentNumber:
+          type: integer
+        totalInstallments:
+          type: integer
+        dueDate:
+          type: string
+          format: date
+        grossAmount:
+          type: number
+          format: double
+        feeAmount:
+          type: number
+          format: double
+        netAmount:
+          type: number
+          format: double
+        receivedAmount:
+          type: number
+          format: double
+        remainingAmount:
+          type: number
+          format: double
+        status:
+          $ref: '#/components/schemas/InstallmentStatus'
+        overdue:
+          type: boolean
+        receivedAt:
+          type: string
+          format: date-time
+        reversalReason:
+          type: string
+        reversedAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+
+    ReceivableResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        saleId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        paymentMethodDescription:
+          type: string
+        grossAmount:
+          type: number
+          format: double
+        feeAmount:
+          type: number
+          format: double
+        netAmount:
+          type: number
+          format: double
+        receivedAmount:
+          type: number
+          format: double
+        remainingAmount:
+          type: number
+          format: double
+        installmentsCount:
+          type: integer
+        status:
+          $ref: '#/components/schemas/ReceivableStatus'
+        issuedAt:
+          type: string
+          format: date
+        notes:
+          type: string
+        installments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceivableInstallmentResponse'
+        createdAt:
+          type: string
+          format: date-time
+
+    ReceivableSummaryResponse:
+      type: object
+      properties:
+        totalSoldGross:
+          type: number
+          format: double
+        totalSoldNet:
+          type: number
+          format: double
+        totalReceivedEffectively:
+          type: number
+          format: double
+        totalPending:
+          type: number
+          format: double
+        totalOverdue:
+          type: number
+          format: double
+        totalCount:
+          type: integer
+        receivables:
+          type: object
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReceivableResponse'
+            totalElements:
+              type: integer
+            totalPages:
+              type: integer
+            size:
+              type: integer
+            number:
+              type: integer
     AccountMovementResponse:
       allOf:
         - $ref: '#/components/schemas/AccountMovementRequest'

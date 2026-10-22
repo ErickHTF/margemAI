@@ -13,6 +13,7 @@ import {
   ChevronRight,
   ShoppingBag,
   CreditCard,
+  Receipt,
   BarChart3
 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
@@ -27,6 +28,7 @@ import SalesManager from './components/SalesManager'
 import PaymentMethodSettings from './components/PaymentMethodSettings'
 import MonthlyFlowDashboard from './components/MonthlyFlowDashboard'
 import BusinessAccounts from './components/BusinessAccounts'
+import ReceivablesManager from './components/ReceivablesManager'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -50,6 +52,7 @@ const NAV_GROUPS = [
     label: 'Financeiro',
     items: [
       { key: 'accounts', label: 'Contas Empresariais', Icon: Landmark },
+      { key: 'receivables', label: 'Contas a Receber', Icon: Receipt },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
       { key: 'costs', label: 'Custos', Icon: Wallet },
@@ -255,6 +258,8 @@ export default function App() {
         return <CategoryManager />
       case 'accounts':
         return <BusinessAccounts />
+      case 'receivables':
+        return <ReceivablesManager onNavigate={navigateContext} />
       case 'sales':
         return <SalesManager key={userKey} onNavigate={navigateContext} draft={currentDraft} onDraftChange={saveSaleDraft} onBusyChange={setSaleBusy} />
       case 'cashflow':
