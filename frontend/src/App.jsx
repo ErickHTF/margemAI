@@ -18,7 +18,8 @@ import {
   BarChart3,
   BotMessageSquare,
   CalendarCheck,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Scale
 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
@@ -39,6 +40,7 @@ import FinancialReserveManager from './components/FinancialReserveManager'
 import ReceivablesManager from './components/ReceivablesManager'
 import PayablesManager from './components/PayablesManager'
 import MeiObligationsManager from './components/MeiObligationsManager'
+import DebtManager from './components/DebtManager'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -68,6 +70,7 @@ const NAV_GROUPS = [
       { key: 'payables', label: 'Contas a Pagar', Icon: FileSpreadsheet },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
+      { key: 'debts', label: 'Dívidas e Quitação', Icon: Scale },
       { key: 'costs', label: 'Custos', Icon: Wallet },
       { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator },
       { key: 'obligations', label: 'Obrigações MEI', Icon: CalendarCheck }
@@ -286,6 +289,8 @@ export default function App() {
         return <MonthlyFlowDashboard onNavigate={navigateContext} />
       case 'payment-methods':
         return <PaymentMethodSettings />
+      case 'debts':
+        return <DebtManager onNavigate={navigateContext} />
       case 'costs':
         return <CostsDashboard />
       case 'pricing':
