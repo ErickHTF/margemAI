@@ -29,10 +29,20 @@ const KIND_LABELS = {
   }
 }
 
+const EMPTY_DRAFT_BASELINE = {
+  name: '',
+  category: '',
+  productId: '',
+  amountDigits: '',
+  dueDate: '',
+  recurring: true
+}
+
 export default function CostForm({ kind, service, categories, initialCost, onCancel, onSaved, products = [] }) {
   const labels = KIND_LABELS[kind]
   const amountKey = labels.amountField
   const isVariable = kind === 'variable'
+  const isEditing = Boolean(initialCost?.id)
   const missingProduct =
     isVariable && initialCost?.productId && !products.some((p) => p.id === initialCost.productId)
       ? { id: initialCost.productId, name: initialCost.productName }
@@ -44,7 +54,10 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
   const [amountDigits, setAmountDigits] = useState(currencyToDigits(initialCost?.[amountKey]))
   const [dueDate, setDueDate] = useState(initialCost?.dueDate || '')
   const [recurring, setRecurring] = useState(initialCost ? Boolean(initialCost.recurring) : true)
-  const { dirty, changes, guard } = useDraft({ name, category, productId, amountDigits, dueDate, recurring })
+  const { dirty, changes, guard } = useDraft(
+    { name, category, productId, amountDigits, dueDate, recurring },
+    isEditing ? undefined : EMPTY_DRAFT_BASELINE
+  )
 
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
@@ -125,7 +138,7 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
     setLoading(true)
     try {
       const payload = buildPayload()
-      const saved = initialCost
+      const saved = isEditing
         ? await service.update(initialCost.id, payload)
         : await service.create(payload)
       if (onSaved) onSaved(saved)
@@ -153,12 +166,20 @@ export default function CostForm({ kind, service, categories, initialCost, onCan
           <Receipt className="w-7 h-7" />
         </div>
         <h2 className="text-xl font-bold text-slate-900 mb-1">
-          {initialCost ? labels.titleEdit : labels.titleNew}
+          {isEditing ? labels.titleEdit : labels.titleNew}
         </h2>
         <p className="text-sm text-slate-500">{labels.description}</p>
       </div>
 
-      {kind === 'fixed' && initialCost && (
+      {initialCost?.fromSuggestion && (
+        <Notice tone="sky" size="sm" title="Sugestão do seu segmento — ajuste como preferir" className="mb-4 text-left">
+          {initialCost.whyItMatters
+            ? `${initialCost.whyItMatters} Todos os campos abaixo são editáveis para você ajustar antes de salvar.`
+            : 'Os campos foram preenchidos como base inicial. Altere nome, padrão de precificação ou valor conforme a realidade do seu negócio.'}
+        </Notice>
+      )}
+
+      {kind === 'fixed' && isEditing && (
         <p className="mb-4 text-xs text-amber-800 bg-amber-50 rounded-xl p-3">
           As competências até o mês atual serão preservadas. As alterações valem para os próximos meses.
         </p>
