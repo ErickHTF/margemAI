@@ -98,7 +98,7 @@ public class SecurityConfig {
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/v1/auth/**", "/auth/**", "/v1/segments/**", "/segments/**", "/h2-console/**", "/actuator/**").permitAll()
+                .requestMatchers("/v1/auth/**", "/auth/**", "/v1/segments", "/segments", "/h2-console/**", "/actuator/**").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(exceptions -> exceptions
