@@ -10,7 +10,7 @@ import { calculatePricing, simulateDiscount, calculateBreakEven } from './pricin
 import { productService } from './productService'
 import profileService from './profileService'
 import { saleService } from './saleService'
-import { getSegments } from './segmentService'
+import { getSegments, getSegmentGuidance } from './segmentService'
 import variableCostService from './variableCostService'
 import { authService } from '../security/services/authService'
 
@@ -84,6 +84,8 @@ const CASES = [
   { label: 'saleService.deleteSale', call: () => saleService.deleteSale('sale-123'), verb: 'delete', args: ['/sales/sale-123'], returns: 'void' },
   // Segmentos
   { label: 'getSegments', call: () => getSegments(), verb: 'get', args: ['/segments'] },
+  { label: 'getSegmentGuidance sem filtros', call: () => getSegmentGuidance(), verb: 'get', args: ['/segments/guidance', { params: {} }] },
+  { label: 'getSegmentGuidance por segmento', call: () => getSegmentGuidance({ segmentName: 'COMERCIO' }), verb: 'get', args: ['/segments/guidance', { params: { segmentName: 'COMERCIO' } }] },
   // Autenticação
   { label: 'authService.register', call: () => authService.register(payload), verb: 'post', args: ['/auth/register', payload] },
   { label: 'authService.login', call: () => authService.login(payload), verb: 'post', args: ['/auth/login', payload] },
