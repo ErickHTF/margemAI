@@ -16,7 +16,8 @@ import {
   CreditCard,
   Receipt,
   BarChart3,
-  BotMessageSquare
+  BotMessageSquare,
+  CalendarCheck
 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
@@ -35,6 +36,7 @@ import AssistantBubble from './components/AssistantBubble'
 import BusinessAccounts from './components/BusinessAccounts'
 import FinancialReserveManager from './components/FinancialReserveManager'
 import ReceivablesManager from './components/ReceivablesManager'
+import MeiObligationsManager from './components/MeiObligationsManager'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -64,7 +66,8 @@ const NAV_GROUPS = [
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
       { key: 'costs', label: 'Custos', Icon: Wallet },
-      { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator }
+      { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator },
+      { key: 'obligations', label: 'Obrigações MEI', Icon: CalendarCheck }
     ]
   },
   {
@@ -282,6 +285,8 @@ export default function App() {
         return <CostsDashboard />
       case 'pricing':
         return <PricingCalculator onNavigate={navigateContext} />
+      case 'obligations':
+        return <MeiObligationsManager />
       default:
         return <ProfilePanel user={user} onUserUpdate={updateUser} />
     }
