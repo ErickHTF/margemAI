@@ -55,6 +55,8 @@ tags:
     description: Cash flow and financial summary panel
   - name: Alerts
     description: MEI cap monitoring and alerts
+  - name: Payables
+    description: Payable accounts and disbursement management
 
 security:
   - bearerAuth: []
@@ -1813,6 +1815,189 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /payables:
+    get:
+      tags:
+        - Payables
+      summary: Listar contas a pagar e resumo financeiro
+      description: Retorna os títulos a pagar filtrados e indicadores de regime de competência e caixa.
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: query
+          name: competency
+          schema: {type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$'}
+          example: '2026-10'
+        - in: query
+          name: status
+          schema: {$ref: '#/components/schemas/PayableStatus'}
+        - in: query
+          name: category
+          schema: {type: string}
+        - in: query
+          name: type
+          schema: {$ref: '#/components/schemas/PayableType'}
+        - in: query
+          name: startDate
+          schema: {type: string, format: date}
+        - in: query
+          name: endDate
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: Resumo e lista de contas a pagar
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableSummaryResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags:
+        - Payables
+      summary: Criar conta a pagar pontual ou recorrente
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PayableAccountRequest'}
+      responses:
+        '201':
+          description: Conta a pagar criada
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /payables/{id}:
+    get:
+      tags:
+        - Payables
+      summary: Obter detalhes da conta a pagar
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Detalhes da conta a pagar
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      tags:
+        - Payables
+      summary: Atualizar conta a pagar
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PayableAccountRequest'}
+      responses:
+        '200':
+          description: Conta a pagar atualizada
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags:
+        - Payables
+      summary: Excluir conta a pagar
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Conta a pagar excluída
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /payables/{id}/pay:
+    post:
+      tags:
+        - Payables
+      summary: Registrar pagamento parcial ou total
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PayablePaymentRequest'}
+      responses:
+        '200':
+          description: Pagamento registrado com sucesso
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /payables/{id}/reverse:
+    post:
+      tags:
+        - Payables
+      summary: Estornar pagamento realizado
+      description: Restaura o paidAmount para 0.00 e o status para PENDING mantendo rastreabilidade.
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Pagamento estornado com sucesso
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /payables/generate-recurring:
+    post:
+      tags:
+        - Payables
+      summary: Gerar títulos a pagar recorrentes a partir dos custos fixos
+      description: Geração idempotente de títulos a pagar para os custos fixos ativos do mês sem duplicar registros.
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/GenerateRecurringPayablesRequest'}
+      responses:
+        '200':
+          description: Títulos a pagar gerados
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3516,3 +3701,170 @@ components:
         defaultSettlementDays:
           type: integer
           example: 30
+
+    PayableType:
+      type: string
+      enum: [ONE_OFF, RECURRING]
+      example: RECURRING
+
+    PayableStatus:
+      type: string
+      enum: [PENDING, PARTIAL, PAID, REVERSED]
+      example: PENDING
+
+    PayableAccountRequest:
+      type: object
+      required:
+        - description
+        - dueDate
+        - totalAmount
+      properties:
+        description:
+          type: string
+          maxLength: 200
+          example: Aluguel do Galpão
+        category:
+          type: string
+          maxLength: 50
+          example: ALUGUEL
+        dueDate:
+          type: string
+          format: date
+          example: '2026-10-15'
+        totalAmount:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 1200.00
+        type:
+          $ref: '#/components/schemas/PayableType'
+        competency:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          example: '2026-10'
+        fixedCostId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+          maxLength: 500
+          example: Vencimento todo dia 15
+
+    PayablePaymentRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 600.00
+        paidAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          maxLength: 500
+          example: Primeira parcela paga via Pix
+
+    GenerateRecurringPayablesRequest:
+      type: object
+      required:
+        - competency
+      properties:
+        competency:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          example: '2026-10'
+        defaultDueDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+          example: 10
+        dueDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+          example: 10
+
+    PayableAccountResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/PayableType'
+        fixedCostId:
+          type: string
+          format: uuid
+        competency:
+          type: string
+          example: '2026-10'
+        description:
+          type: string
+          example: Aluguel do Galpão
+        category:
+          type: string
+          example: ALUGUEL
+        dueDate:
+          type: string
+          format: date
+          example: '2026-10-15'
+        totalAmount:
+          type: number
+          format: float
+          example: 1200.00
+        paidAmount:
+          type: number
+          format: float
+          example: 600.00
+        remainingAmount:
+          type: number
+          format: float
+          example: 600.00
+        status:
+          $ref: '#/components/schemas/PayableStatus'
+        paidAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          example: Primeira parcela paga via Pix
+        overdue:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PayableSummaryResponse:
+      type: object
+      properties:
+        totalCommittedExpense:
+          type: number
+          format: float
+          example: 2500.00
+        totalEffectiveDisbursement:
+          type: number
+          format: float
+          example: 1000.00
+        totalOpenPayable:
+          type: number
+          format: float
+          example: 1500.00
+        totalOverduePayable:
+          type: number
+          format: float
+          example: 0.00
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayableAccountResponse'
