@@ -14,6 +14,11 @@ export const MENU_TOURS = {
     step('accounts-movement', 'Entrou ou saiu? Registre', 'Lance aportes, retiradas, pró-labore ou transferências.', 'Confira também as vendas e despesas: elas ainda não entram automaticamente nestas contas.'),
     step('accounts-filter', 'Olhe uma conta de cada vez', 'Escolha uma conta para conferir saldo e movimentos.', 'Conferir com o extrato ajuda a encontrar registros esquecidos.')
   ],
+  reserves: [
+    step('reserves-summary', 'Reserva separada do caixa livre', 'Veja quanto já está guardado na reserva e quanto continua livre nas contas empresariais.'),
+    step('reserves-goal', 'Defina sua meta de segurança', 'Escolha um valor fixo em reais ou dimensione por meses dos seus custos fixos ativos.', 'O SEBRAE recomenda guardar de 3 a 6 meses de custos fixos para imprevistos.'),
+    step('reserves-movement', 'Registre aportes e resgates', 'Guarde parte da sobra mensal ou resgate em emergências sem gerar receita fictícia no faturamento.')
+  ],
   sales: [
     step('sales-form', 'Vendeu? Registre aqui', 'Confira item, preço e pagamento neste formulário.', 'Vendas esquecidas deixam seu faturamento incompleto.'),
     step('sales-metrics', 'Veja o que sobra', 'O valor líquido desconta as taxas do faturamento.', 'Compare as formas de pagamento para entender o peso das taxas.'),
