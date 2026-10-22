@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import api from './api'
 import { accountService } from './accountService'
 import alertService from './alertService'
+import { obligationService } from './obligationService'
 import { categoryService } from './categoryService'
 import dashboardService from './dashboardService'
 import fixedCostService from './fixedCostService'
@@ -33,8 +34,11 @@ const CASES = [
   { label: 'accountService.history sem conta não envia filtro', call: () => accountService.history(''), verb: 'get', args: ['/accounts/movements', { params: { accountId: undefined } }] },
   { label: 'accountService.create', call: () => accountService.create(payload), verb: 'post', args: ['/accounts', payload] },
   { label: 'accountService.movement', call: () => accountService.movement(payload), verb: 'post', args: ['/accounts/movements', payload] },
-  // Alertas e dashboard
+  // Alertas, obrigações MEI e dashboard
   { label: 'alertService.getMeiCapStatus', call: () => alertService.getMeiCapStatus({ accumulatedRevenue: 50000 }), verb: 'get', args: ['/alerts/mei-cap', { params: { accumulatedRevenue: 50000 } }] },
+  { label: 'obligationService.getSchedule', call: () => obligationService.getSchedule({ year: 2026 }), verb: 'get', args: ['/obligations', { params: { year: 2026 } }] },
+  { label: 'obligationService.updateStatus', call: () => obligationService.updateStatus('ob-1', payload), verb: 'patch', args: ['/obligations/ob-1/status', payload] },
+  { label: 'obligationService.updateReminders', call: () => obligationService.updateReminders({ reminderDaysBefore: 7, year: 2026 }), verb: 'patch', args: ['/obligations/reminders', { reminderDaysBefore: 7, year: 2026 }] },
   { label: 'dashboardService.getMonthlyFlow', call: () => dashboardService.getMonthlyFlow({ months: 6 }), verb: 'get', args: ['/dashboard/monthly-flow', { params: { months: 6 } }] },
   { label: 'dashboardService.getMonthlyFlow sem filtros', call: () => dashboardService.getMonthlyFlow(), verb: 'get', args: ['/dashboard/monthly-flow', { params: {} }] },
   // Categorias
