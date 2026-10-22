@@ -14,6 +14,12 @@ export const MENU_TOURS = {
     step('accounts-movement', 'Entrou ou saiu? Registre', 'Lance aportes, retiradas, pró-labore ou transferências.', 'Confira também as vendas e despesas: elas ainda não entram automaticamente nestas contas.'),
     step('accounts-filter', 'Olhe uma conta de cada vez', 'Escolha uma conta para conferir saldo e movimentos.', 'Conferir com o extrato ajuda a encontrar registros esquecidos.')
   ],
+  payables: [
+    step('payables-summary', 'Despesa vs. Desembolso', 'Acompanhe compromissos do mês e o que já foi efetivamente pago no caixa.', 'Separar despesa de desembolso evita surpresas na hora de pagar as contas.'),
+    step('payables-generate', 'Custos Fixos viram Títulos', 'Gere as contas do mês automaticamente a partir dos custos fixos com um clique.', 'A geração é idempotente: você nunca terá contas duplicadas.'),
+    step('payables-new', 'Despesas pontuais', 'Cadastre boletos avulsos, compras de insumos e contas extras.'),
+    step('payables-list', 'Dê baixa ou estorne', 'Registre pagamentos parciais, quitações ou estornos com total rastreabilidade.')
+  ],
   sales: [
     step('sales-form', 'Vendeu? Registre aqui', 'Confira item, preço e pagamento neste formulário.', 'Vendas esquecidas deixam seu faturamento incompleto.'),
     step('sales-metrics', 'Veja o que sobra', 'O valor líquido desconta as taxas do faturamento.', 'Compare as formas de pagamento para entender o peso das taxas.'),

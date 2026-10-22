@@ -13,7 +13,8 @@ import {
   ChevronRight,
   ShoppingBag,
   CreditCard,
-  BarChart3
+  BarChart3,
+  FileSpreadsheet
 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
@@ -27,6 +28,7 @@ import SalesManager from './components/SalesManager'
 import PaymentMethodSettings from './components/PaymentMethodSettings'
 import MonthlyFlowDashboard from './components/MonthlyFlowDashboard'
 import BusinessAccounts from './components/BusinessAccounts'
+import PayablesManager from './components/PayablesManager'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -50,6 +52,7 @@ const NAV_GROUPS = [
     label: 'Financeiro',
     items: [
       { key: 'accounts', label: 'Contas Empresariais', Icon: Landmark },
+      { key: 'payables', label: 'Contas a Pagar', Icon: FileSpreadsheet },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
       { key: 'costs', label: 'Custos', Icon: Wallet },
@@ -255,6 +258,8 @@ export default function App() {
         return <CategoryManager />
       case 'accounts':
         return <BusinessAccounts />
+      case 'payables':
+        return <PayablesManager onNavigate={navigateContext} />
       case 'sales':
         return <SalesManager key={userKey} onNavigate={navigateContext} draft={currentDraft} onDraftChange={saveSaleDraft} onBusyChange={setSaleBusy} />
       case 'cashflow':

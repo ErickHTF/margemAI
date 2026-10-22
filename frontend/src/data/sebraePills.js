@@ -43,6 +43,15 @@ export const SEBRAE_PILLS = [
     summary: 'Vender a prazo e comprar à vista cria um buraco no caixa que pode levar o MEI ao endividamento.',
     content: 'Se você paga seu fornecedor em 15 dias, mas recebe de seus clientes em 30 ou 60 dias, precisará de capital de giro próprio para financiar essa diferença de tempo.',
     tip: 'Tente sempre negociar prazos com fornecedores maiores ou iguais aos prazos que concede a seus clientes.'
+  },
+  {
+    id: 'payables-management',
+    category: 'payables',
+    categoryLabel: 'Contas a Pagar',
+    title: 'Despesa vs. Desembolso: controle a competência e o caixa',
+    summary: 'Registrar a conta quando ela chega (competência) evita surpresas no dia em que o dinheiro sai do caixa (desembolso).',
+    content: 'No regime de competência, a despesa pertence ao mês do consumo (energia, aluguel, DAS-MEI). No regime de caixa, o desembolso ocorre na data do pagamento efetivo. Acompanhar contas a pagar com antecedência protege o MEI contra juros e multas por atraso.',
+    tip: 'Gere os títulos recorrentes no início de cada mês e registre baixas parciais ou totais assim que efetuar o pagamento.'
   }
 ]
 
@@ -55,7 +64,7 @@ export const getPillsByCategory = (category) =>
  * Seleciona a pílula educativa do SEBRAE mais adequada para o contexto atual do usuário.
  *
  * @param {Object} context
- * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing'
+ * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing' | 'payables'
  * @param {boolean} [context.discountActive] - Se está simulando desconto
  * @param {string} [context.paymentMethod] - Forma de pagamento (ex: 'CREDIT_CARD', 'INSTALLMENTS', 'CARD')
  * @param {boolean} [context.isTermSale] - Se é venda a prazo
@@ -71,12 +80,17 @@ export function selectContextualPill({
   fixedCostPercent = 0,
   variableCostPercent = 0
 } = {}) {
-  // 1. Simulação ou concessão de desconto
+  // 1. Contas a pagar e gestão de despesas
+  if (action === 'payables') {
+    return getPillById('payables-management')
+  }
+
+  // 2. Simulação ou concessão de desconto
   if (action === 'discount' || discountActive) {
     return getPillById('discount-danger')
   }
 
-  // 2. Meios de pagamento e taxas de maquininha/cartão
+  // 3. Meios de pagamento e taxas de maquininha/cartão
   if (
     action === 'payment' ||
     paymentMethod === 'CREDIT_CARD' ||
@@ -87,17 +101,17 @@ export function selectContextualPill({
     return getPillById('card-fees')
   }
 
-  // 3. Vendas a prazo ou impacto no capital de giro
+  // 4. Vendas a prazo ou impacto no capital de giro
   if (action === 'working_capital' || isTermSale) {
     return getPillById('working-capital')
   }
 
-  // 4. Custos fixos elevados / pró-labore
+  // 5. Custos fixos elevados / pró-labore
   if (action === 'fixed_costs' || Number(fixedCostPercent) >= 25) {
     return getPillById('pro-labore')
   }
 
-  // 5. Formação de preço padrão (Markup Divisor SEBRAE)
+  // 6. Formação de preço padrão (Markup Divisor SEBRAE)
   return getPillById('markup-divisor')
 }
 
