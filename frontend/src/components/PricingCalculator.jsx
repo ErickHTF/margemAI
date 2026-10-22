@@ -1,5 +1,7 @@
 import useDraft from '../hooks/useDraft'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import MarginAvoidedNotice from './MarginAvoidedNotice'
+import { evaluateMarginDecisionTransition } from '../utils/marginAvoidedTip'
 import {
   Calculator,
   AlertCircle,
@@ -69,6 +71,9 @@ export default function PricingCalculator({ onNavigate }) {
 
   const [discountPercent, setDiscountPercent] = useState('10')
   const [discountResult, setDiscountResult] = useState(null)
+  const [marginAvoidedData, setMarginAvoidedData] = useState(null)
+  const [dismissedSignatures, setDismissedSignatures] = useState(() => new Set())
+  const previousScenarioRef = useRef(null)
   const [showExplanation, setShowExplanation] = useState(false)
   const [activeContextAction, setActiveContextAction] = useState(null)
   const [selectedPillId, setSelectedPillId] = useState(null)
@@ -183,6 +188,8 @@ export default function PricingCalculator({ onNavigate }) {
 
   const handleProductSelect = (productId) => {
     setSelectedProductId(productId)
+    setMarginAvoidedData(null)
+    previousScenarioRef.current = null
     if (!productId) {
       setUseAutomaticFixedCosts(false)
       return
@@ -210,6 +217,10 @@ export default function PricingCalculator({ onNavigate }) {
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     setSelectedPillId(null)
+    if (field === 'baseCost') {
+      setMarginAvoidedData(null)
+      previousScenarioRef.current = null
+    }
     if (field === 'fixedCostPercent') {
       setActiveContextAction(Number(value) >= 25 ? 'fixed_costs' : 'pricing')
     } else if (field === 'variableCostPercent') {
@@ -297,6 +308,31 @@ export default function PricingCalculator({ onNavigate }) {
         variableCostPercent: parseFloat(varPercent || '0')
       })
       setDiscountResult(data)
+
+      const currentScenario = {
+        productId: selectedProductId || null,
+        baseCost,
+        discountPercentage: parseFloat(discount || '0'),
+        discountedPrice: data.discountedPrice,
+        discountedProfit: data.discountedProfit,
+        discountedMargin: data.discountedMargin,
+        viable: data.viable,
+        maxDiscountPercentage: selectedProduct?.maxDiscountAllowed ?? selectedProduct?.maxDiscountPercentage
+      }
+
+      if (previousScenarioRef.current) {
+        const transition = evaluateMarginDecisionTransition(
+          previousScenarioRef.current,
+          currentScenario,
+          dismissedSignatures
+        )
+        if (transition) {
+          setMarginAvoidedData(transition)
+        } else if (!data.viable || Number(data.discountedProfit) <= 0) {
+          setMarginAvoidedData(null)
+        }
+      }
+      previousScenarioRef.current = currentScenario
     } catch (err) {
       console.error(err)
     }
@@ -337,6 +373,15 @@ export default function PricingCalculator({ onNavigate }) {
             })
             if (isMounted) {
               setDiscountResult(discData)
+              previousScenarioRef.current = {
+                productId: null,
+                baseCost: 50.0,
+                discountPercentage: 10.0,
+                discountedPrice: discData.discountedPrice,
+                discountedProfit: discData.discountedProfit,
+                discountedMargin: discData.discountedMargin,
+                viable: discData.viable
+              }
             }
           }
         }
@@ -349,6 +394,13 @@ export default function PricingCalculator({ onNavigate }) {
       isMounted = false
     }
   }, [])
+
+  const handleDismissMarginAvoided = () => {
+    if (marginAvoidedData?.contextKey) {
+      setDismissedSignatures((prev) => new Set([...prev, marginAvoidedData.contextKey]))
+    }
+    setMarginAvoidedData(null)
+  }
 
   const handleDiscountChange = (newDiscount) => {
     setDiscountPercent(newDiscount)
@@ -853,6 +905,13 @@ export default function PricingCalculator({ onNavigate }) {
                     aria-label="Percentual de desconto"
                     className="w-full cursor-pointer accent-indigo-600"
                   />
+
+                  {marginAvoidedData && (
+                    <MarginAvoidedNotice
+                      avoidedData={marginAvoidedData}
+                      onDismiss={handleDismissMarginAvoided}
+                    />
+                  )}
 
                   {discountResult && (
                     <Card inset padding="sm" className="space-y-3">
