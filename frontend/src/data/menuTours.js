@@ -33,6 +33,12 @@ export const MENU_TOURS = {
     step('pricing-parameters', 'Proteja sua margem', 'Revise margem, despesas e taxa de pagamento, sem contar a taxa duas vezes.'),
     step('pricing-results', 'Compare antes de decidir', 'Confira o preço sugerido e o impacto dos descontos.', 'Um desconto pode consumir mais margem do que parece.')
   ],
+  obligations: [
+    step('obligations-summary', 'Acompanhe o calendário do ano', 'Escolha o ano e veja quantas obrigações estão pendentes, próximas do vencimento ou com comprovante anotado.'),
+    step('obligations-reminders', 'Antecipe seus lembretes', 'Configure com quantos dias de antecedência quer destacar vencimentos próximos.'),
+    step('obligations-links', 'Use apenas os portais oficiais', 'Emita a guia DAS no PGMEI e envie a declaração anual no DASN-SIMEI da Receita Federal.'),
+    step('obligations-list', 'Anote seus comprovantes', 'Registre o número do recibo para seu controle interno.', 'A anotação aqui é declaratória e não substitui a consulta de regularidade na Receita Federal.')
+  ],
   categories: [
     step('categories-new', 'Uma regra, vários itens', 'Crie um padrão de preço para seus produtos ou serviços.'),
     step('categories-list', 'Revise suas regras de preço', 'Confira margens, despesas e itens vinculados.', 'Uma mudança neste padrão pode afetar vários itens do catálogo.'),
