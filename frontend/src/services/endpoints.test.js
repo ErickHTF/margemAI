@@ -11,6 +11,7 @@ import { paymentMethodService } from './paymentMethodService'
 import { calculatePricing, simulateDiscount, calculateBreakEven } from './pricingService'
 import { productService } from './productService'
 import profileService from './profileService'
+import { receivableService } from './receivableService'
 import { saleService } from './saleService'
 import { getSegments, getSegmentGuidance } from './segmentService'
 import variableCostService from './variableCostService'
@@ -86,6 +87,13 @@ const CASES = [
   { label: 'profileService.get', call: () => profileService.get(), verb: 'get', args: ['/profile'] },
   { label: 'profileService.update', call: () => profileService.update(payload), verb: 'put', args: ['/profile', payload] },
   { label: 'profileService.patch', call: () => profileService.patch(payload), verb: 'patch', args: ['/profile', payload] },
+  // Contas a receber
+  { label: 'receivableService.list', call: () => receivableService.list({ status: 'PENDING', page: 0, size: 20 }), verb: 'get', args: ['/receivables', { params: { status: 'PENDING', page: 0, size: 20 } }] },
+  { label: 'receivableService.get', call: () => receivableService.get('rec-123'), verb: 'get', args: ['/receivables/rec-123'] },
+  { label: 'receivableService.create', call: () => receivableService.create(payload), verb: 'post', args: ['/receivables', payload] },
+  { label: 'receivableService.delete', call: () => receivableService.delete('rec-123'), verb: 'delete', args: ['/receivables/rec-123'], returns: 'void' },
+  { label: 'receivableService.settleInstallment', call: () => receivableService.settleInstallment('inst-123', payload), verb: 'post', args: ['/receivables/installments/inst-123/settle', payload] },
+  { label: 'receivableService.reverseInstallment', call: () => receivableService.reverseInstallment('inst-123', payload), verb: 'post', args: ['/receivables/installments/inst-123/reverse', payload] },
   // Vendas
   { label: 'saleService.getSales', call: () => saleService.getSales({ paymentMethod: 'CREDITO_A_VISTA', page: 0, size: 10 }), verb: 'get', args: ['/sales', { params: { paymentMethod: 'CREDITO_A_VISTA', page: 0, size: 10 } }] },
   { label: 'saleService.getSale', call: () => saleService.getSale('sale-123'), verb: 'get', args: ['/sales/sale-123'] },

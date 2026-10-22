@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ShoppingBag,
   CreditCard,
+  Receipt,
   BarChart3,
   BotMessageSquare
 } from 'lucide-react'
@@ -33,6 +34,7 @@ import AssistantProvider from './components/AssistantProvider'
 import AssistantBubble from './components/AssistantBubble'
 import BusinessAccounts from './components/BusinessAccounts'
 import FinancialReserveManager from './components/FinancialReserveManager'
+import ReceivablesManager from './components/ReceivablesManager'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -58,6 +60,7 @@ const NAV_GROUPS = [
       { key: 'assistant', label: 'Margô IA', Icon: BotMessageSquare },
       { key: 'accounts', label: 'Contas Empresariais', Icon: Landmark },
       { key: 'reserves', label: 'Reserva Financeira', Icon: PiggyBank },
+      { key: 'receivables', label: 'Contas a Receber', Icon: Receipt },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
       { key: 'costs', label: 'Custos', Icon: Wallet },
@@ -265,6 +268,8 @@ export default function App() {
         return <BusinessAccounts />
       case 'reserves':
         return <FinancialReserveManager onNavigate={navigateContext} />
+      case 'receivables':
+        return <ReceivablesManager onNavigate={navigateContext} />
       case 'sales':
         return <SalesManager key={userKey} onNavigate={navigateContext} draft={currentDraft} onDraftChange={saveSaleDraft} onBusyChange={setSaleBusy} />
       case 'assistant':
