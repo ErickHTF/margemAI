@@ -15,7 +15,10 @@ import {
   ShoppingBag,
   CreditCard,
   BarChart3,
-  CalendarCheck
+  CalendarCheck,
+  FileSpreadsheet,
+  Scale,
+  Receipt
 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
@@ -31,6 +34,9 @@ import MonthlyFlowDashboard from './components/MonthlyFlowDashboard'
 import BusinessAccounts from './components/BusinessAccounts'
 import FinancialReserveManager from './components/FinancialReserveManager'
 import MeiObligationsManager from './components/MeiObligationsManager'
+import PayablesManager from './components/PayablesManager'
+import DebtManager from './components/DebtManager'
+import ReceivablesManager from './components/ReceivablesManager'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -54,6 +60,8 @@ const NAV_GROUPS = [
     label: 'Financeiro',
     items: [
       { key: 'accounts', label: 'Contas Empresariais', Icon: Landmark },
+      { key: 'receivables', label: 'Contas a Receber', Icon: Receipt },
+      { key: 'payables', label: 'Contas a Pagar', Icon: FileSpreadsheet },
       { key: 'reserves', label: 'Reserva Financeira', Icon: PiggyBank },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
@@ -262,6 +270,10 @@ export default function App() {
         return <CategoryManager />
       case 'accounts':
         return <BusinessAccounts />
+      case 'receivables':
+        return <ReceivablesManager onNavigate={navigateContext} />
+      case 'payables':
+        return <PayablesManager onNavigate={navigateContext} />
       case 'reserves':
         return <FinancialReserveManager onNavigate={navigateContext} />
       case 'sales':

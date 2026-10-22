@@ -70,6 +70,33 @@ export const SEBRAE_PILLS = [
     summary: 'O pagamento do DAS vence todo dia 20 e a declaração anual DASN-SIMEI deve ser entregue até 31 de maio nos portais oficiais da Receita Federal.',
     content: 'Mesmo sem faturamento no mês, o MEI precisa emitir e pagar o DAS no PGMEI e entregar a DASN-SIMEI anual. Guardar o código do comprovante no sistema ajuda na sua organização interna, mas a situação fiscal oficial deve ser sempre conferida diretamente no PGMEI ou e-CAC.',
     tip: 'Inclua o valor fixo do DAS nos seus Custos Fixos mensais e consulte periodicamente o extrato oficial no PGMEI.'
+  },
+  {
+    id: 'payables-management',
+    category: 'payables',
+    categoryLabel: 'Contas a Pagar',
+    title: 'Despesa vs. Desembolso: controle a competência e o caixa',
+    summary: 'Registrar a conta quando ela chega (competência) evita surpresas no dia em que o dinheiro sai do caixa (desembolso).',
+    content: 'No regime de competência, a despesa pertence ao mês do consumo (energia, aluguel, DAS-MEI). No regime de caixa, o desembolso ocorre na data do pagamento efetivo. Acompanhar contas a pagar com antecedência protege o MEI contra juros e multas por atraso.',
+    tip: 'Gere os títulos recorrentes no início de cada mês e registre baixas parciais ou totais assim que efetuar o pagamento.'
+  },
+  {
+    id: 'debt-avalanche',
+    category: 'debts',
+    categoryLabel: 'Gestão de Dívidas',
+    title: 'Priorize a quitação das dívidas mais caras (Método SEBRAE)',
+    summary: 'Quitar primeiro a dívida com maior taxa de juros estanca o vazamento financeiro do seu negócio.',
+    content: 'Nem todas as dívidas pesam igual. Um empréstimo com taxa de 5% a.m. consome muito mais caixa do que um de 1,5% a.m. No método recomendado pelo SEBRAE, o MEI deve pagar as parcelas normais de todas e direcionar qualquer folga ou reserva de caixa para abater ou antecipar as parcelas da dívida com maior taxa de juros (Método Avalanche), usufruindo do desconto proporcional obrigatório por lei (CDC Art. 52, § 2º).',
+    tip: 'Sempre exija o abatimento proporcional de juros futuros ao antecipar parcelas de financiamentos.'
+  },
+  {
+    id: 'receivables-control',
+    category: 'working_capital',
+    categoryLabel: 'Contas a Receber',
+    title: 'A diferença crucial entre Venda Realizada e Dinheiro no Caixa',
+    summary: 'Vender no crédito parcelado gera faturamento contábil imediato, mas o dinheiro real entra aos poucos segundo o prazo da operadora.',
+    content: 'Acompanhar as datas de liquidação e dar baixa nas parcelas recebidas evita que o MEI conte com um dinheiro que ainda não caiu na conta bancária. Além disso, monitorar parcelas atrasadas permite agir rápido para renegociar ou cobrar o cliente.',
+    tip: 'Compare o valor líquido das parcelas com seu extrato bancário para garantir que nenhuma taxa indevida foi descontada pela maquininha.'
   }
 ]
 
@@ -101,6 +128,26 @@ export function selectContextualPill({
   // 0. Decisão de margem evitada
   if (action === 'margin_avoided') {
     return getPillById('margin-avoided') || getPillById('discount-danger')
+  }
+
+  if (action === 'reserves') {
+    return getPillById('financial-reserve')
+  }
+
+  if (action === 'obligations') {
+    return getPillById('mei-obligations')
+  }
+
+  if (action === 'payables') {
+    return getPillById('payables-management')
+  }
+
+  if (action === 'debts') {
+    return getPillById('debt-avalanche')
+  }
+
+  if (action === 'receivables') {
+    return getPillById('receivables-control')
   }
 
   // 1. Simulação ou concessão de desconto

@@ -2329,6 +2329,2475 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /payables:
+    get:
+      tags:
+        - Payables
+      summary: Listar contas a pagar e resumo financeiro
+      description: Retorna os títulos a pagar filtrados e indicadores de regime de competência e caixa.
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: query
+          name: competency
+          schema: {type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from the authentication endpoint
+
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      description: Unique resource identifier (UUID)
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "VALIDATION_ERROR"
+            message: "Invalid data in request"
+            details:
+              - field: "email"
+                message: "Invalid email format"
+    Unauthorized:
+      description: Not authenticated or invalid/expired token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "UNAUTHORIZED"
+            message: "Invalid or expired authentication token"
+    Forbidden:
+      description: Authenticated but not authorized to access this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "FORBIDDEN"
+            message: "You do not have permission to access this resource"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "NOT_FOUND"
+            message: "Resource not found"
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "RATE_LIMIT_EXCEEDED"
+            message: "Too many requests. Please try again later."
+
+  schemas:
+    DebtRequest:
+      type: object
+      required: [creditor, principalAmount, monthlyInterestRate, totalInstallments, firstDueDate]
+      properties:
+        creditor: {type: string, minLength: 1, maxLength: 150}
+        description: {type: string, maxLength: 255}
+        principalAmount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        monthlyInterestRate: {type: number, minimum: 0.00}
+        fixedFeesAmount: {type: number, minimum: 0.00, multipleOf: 0.01}
+        totalInstallments: {type: integer, minimum: 1, maximum: 480}
+        installmentAmount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        firstDueDate: {type: string, format: date}
+    DebtResponse:
+      type: object
+      required: [id, creditor, principalAmount, monthlyInterestRate, totalInstallments, installmentAmount, firstDueDate, status, totalContractedCost, totalInterestAndFees, effectiveCostMultiple, effectiveCostPercent, remainingBalance]
+      properties:
+        id: {type: string, format: uuid}
+        creditor: {type: string}
+        description: {type: string}
+        principalAmount: {type: number}
+        monthlyInterestRate: {type: number}
+        fixedFeesAmount: {type: number}
+        totalInstallments: {type: integer}
+        installmentAmount: {type: number}
+        firstDueDate: {type: string, format: date}
+        status: {type: string, enum: [ACTIVE, PAID_OFF]}
+        totalContractedCost: {type: number}
+        totalInterestAndFees: {type: number}
+        effectiveCostMultiple: {type: number}
+        effectiveCostPercent: {type: number}
+        remainingBalance: {type: number}
+        paidAmountTotal: {type: number}
+        remainingInstallments: {type: integer}
+        paidInstallments: {type: integer}
+        priorityRank: {type: integer}
+        installments:
+          type: array
+          items: {$ref: '#/components/schemas/DebtInstallmentResponse'}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    DebtInstallmentResponse:
+      type: object
+      required: [id, debtId, creditor, installmentNumber, totalInstallments, dueDate, amount, status]
+      properties:
+        id: {type: string, format: uuid}
+        debtId: {type: string, format: uuid}
+        creditor: {type: string}
+        installmentNumber: {type: integer}
+        totalInstallments: {type: integer}
+        dueDate: {type: string, format: date}
+        amount: {type: number}
+        paidAmount: {type: number}
+        paidAt: {type: string, format: date}
+        status: {type: string, enum: [PENDING, PAID, PAID_EARLY]}
+        notes: {type: string}
+        overdue: {type: boolean}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    DebtSimulatePayoffRequest:
+      type: object
+      properties:
+        installmentsToAnticipate: {type: integer, minimum: 1}
+        amortizeAmount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        monthlyDiscountRate: {type: number, minimum: 0.00}
+        simulationDate: {type: string, format: date}
+    DebtPayoffSimulationResponse:
+      type: object
+      required: [debtId, creditor, simulationDate, discountRateMonthly, installmentsCount, simulatedInstallmentNumbers, originalTotalAmount, payoffAmount, estimatedSavings, savingsPercent, assumptions]
+      properties:
+        debtId: {type: string, format: uuid}
+        creditor: {type: string}
+        simulationDate: {type: string, format: date}
+        discountRateMonthly: {type: number}
+        installmentsCount: {type: integer}
+        simulatedInstallmentNumbers:
+          type: array
+          items: {type: integer}
+        originalTotalAmount: {type: number}
+        payoffAmount: {type: number}
+        estimatedSavings: {type: number}
+        savingsPercent: {type: number}
+        assumptions:
+          type: array
+          items: {type: string}
+    DebtSummaryResponse:
+      type: object
+      required: [totalOutstandingBalance, totalMonthlyCommitment, totalEstimatedInterest, activeDebtsCount, pendingInstallmentsCount]
+      properties:
+        totalOutstandingBalance: {type: number}
+        totalMonthlyCommitment: {type: number}
+        totalEstimatedInterest: {type: number}
+        activeDebtsCount: {type: integer}
+        pendingInstallmentsCount: {type: integer}
+        highestRateCreditor: {type: string}
+    PayInstallmentRequest:
+      type: object
+      properties:
+        paidAmount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        paymentDate: {type: string, format: date}
+        notes: {type: string, maxLength: 255}
+    BusinessAccountRequest:
+      type: object
+      required: [name, openingBalance, openingDate]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+        openingBalance: {type: number, multipleOf: 0.01}
+        openingDate: {type: string, format: date}
+    BusinessAccountResponse:
+      allOf:
+        - $ref: '#/components/schemas/BusinessAccountRequest'
+        - type: object
+          required: [id, balance]
+          properties:
+            id: {type: string, format: uuid}
+            balance: {type: number, multipleOf: 0.01}
+    AccountMovementRequest:
+      type: object
+      required: [accountId, type, amount, date, description]
+      properties:
+        accountId: {type: string, format: uuid}
+        destinationId:
+          type: [string, 'null']
+          format: uuid
+          description: Obrigatório apenas em transferência, diferente da origem e do mesmo titular.
+        type: {type: string, enum: [APORTE, RETIRADA, PRO_LABORE, TRANSFERENCIA]}
+        amount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        date: {type: string, format: date}
+        description: {type: string, minLength: 1, maxLength: 200}
+    ReceivableRequest:
+      type: object
+      required:
+        - description
+        - grossAmount
+        - paymentMethod
+      properties:
+        description:
+          type: string
+          maxLength: 200
+        grossAmount:
+          type: number
+          format: double
+          minimum: 0.01
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        installments:
+          type: integer
+          minimum: 1
+          default: 1
+        customFeePercentage:
+          type: number
+          format: double
+        issuedAt:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 500
+
+    SettleInstallmentRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        receivedAt:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 500
+
+    ReverseInstallmentRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 300
+
+    ReceivableStatus:
+      type: string
+      enum:
+        - PENDING
+        - PARTIALLY_RECEIVED
+        - RECEIVED
+        - OVERDUE
+
+    InstallmentStatus:
+      type: string
+      enum:
+        - PENDING
+        - PARTIAL
+        - RECEIVED
+        - OVERDUE
+
+    ReceivableInstallmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        receivableId:
+          type: string
+          format: uuid
+        installmentNumber:
+          type: integer
+        totalInstallments:
+          type: integer
+        dueDate:
+          type: string
+          format: date
+        grossAmount:
+          type: number
+          format: double
+        feeAmount:
+          type: number
+          format: double
+        netAmount:
+          type: number
+          format: double
+        receivedAmount:
+          type: number
+          format: double
+        remainingAmount:
+          type: number
+          format: double
+        status:
+          $ref: '#/components/schemas/InstallmentStatus'
+        overdue:
+          type: boolean
+        receivedAt:
+          type: string
+          format: date-time
+        reversalReason:
+          type: string
+        reversedAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+
+    ReceivableResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        saleId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        paymentMethodDescription:
+          type: string
+        grossAmount:
+          type: number
+          format: double
+        feeAmount:
+          type: number
+          format: double
+        netAmount:
+          type: number
+          format: double
+        receivedAmount:
+          type: number
+          format: double
+        remainingAmount:
+          type: number
+          format: double
+        installmentsCount:
+          type: integer
+        status:
+          $ref: '#/components/schemas/ReceivableStatus'
+        issuedAt:
+          type: string
+          format: date
+        notes:
+          type: string
+        installments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceivableInstallmentResponse'
+        createdAt:
+          type: string
+          format: date-time
+
+    ReceivableSummaryResponse:
+      type: object
+      properties:
+        totalSoldGross:
+          type: number
+          format: double
+        totalSoldNet:
+          type: number
+          format: double
+        totalReceivedEffectively:
+          type: number
+          format: double
+        totalPending:
+          type: number
+          format: double
+        totalOverdue:
+          type: number
+          format: double
+        totalCount:
+          type: integer
+        receivables:
+          type: object
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReceivableResponse'
+            totalElements:
+              type: integer
+            totalPages:
+              type: integer
+            size:
+              type: integer
+            number:
+              type: integer
+    AccountMovementResponse:
+      allOf:
+        - $ref: '#/components/schemas/AccountMovementRequest'
+        - type: object
+          required: [id]
+          properties:
+            id: {type: string, format: uuid}
+    ReserveGoalMode:
+      type: string
+      enum: [FIXED_AMOUNT, MONTHS_OF_COSTS]
+    ReserveMovementType:
+      type: string
+      enum: [DEPOSIT, WITHDRAWAL]
+    ReserveGoalRequest:
+      type: object
+      required: [goalMode]
+      properties:
+        goalMode: {$ref: '#/components/schemas/ReserveGoalMode'}
+        targetAmount: {type: number, minimum: 0.00, multipleOf: 0.01}
+        targetMonths: {type: integer, minimum: 0, maximum: 120}
+    ReserveMovementRequest:
+      type: object
+      required: [type, amount, description, occurredAt]
+      properties:
+        type: {$ref: '#/components/schemas/ReserveMovementType'}
+        amount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        description: {type: string, minLength: 1, maxLength: 200}
+        occurredAt: {type: string, format: date}
+        businessAccountId:
+          type: [string, 'null']
+          format: uuid
+    ReserveMovementResponse:
+      type: object
+      required: [id, type, amount, description, occurredAt]
+      properties:
+        id: {type: string, format: uuid}
+        type: {$ref: '#/components/schemas/ReserveMovementType'}
+        amount: {type: number, multipleOf: 0.01}
+        description: {type: string}
+        occurredAt: {type: string, format: date}
+        businessAccountId: {type: [string, 'null'], format: uuid}
+        businessAccountName: {type: [string, 'null']}
+        balanceAfter: {type: [number, 'null'], multipleOf: 0.01}
+    FinancialReserveResponse:
+      type: object
+      required:
+        - goalMode
+        - targetAmount
+        - targetMonths
+        - monthlyFixedCosts
+        - effectiveTargetAmount
+        - missingFixedCostsForMonthsGoal
+        - guidanceMessage
+        - currentBalance
+        - reservedBalance
+        - totalBusinessAccountsBalance
+        - freeBalance
+        - progressPercent
+        - movements
+      properties:
+        goalMode: {$ref: '#/components/schemas/ReserveGoalMode'}
+        targetAmount: {type: number, multipleOf: 0.01}
+        targetMonths: {type: integer}
+        monthlyFixedCosts: {type: number, multipleOf: 0.01}
+        effectiveTargetAmount: {type: number, multipleOf: 0.01}
+        missingFixedCostsForMonthsGoal: {type: boolean}
+        guidanceMessage: {type: string}
+        currentBalance: {type: number, multipleOf: 0.01}
+        reservedBalance: {type: number, multipleOf: 0.01}
+        totalBusinessAccountsBalance: {type: number, multipleOf: 0.01}
+        freeBalance: {type: number, multipleOf: 0.01}
+        progressPercent: {type: number, multipleOf: 0.01}
+        movements:
+          type: array
+          items: {$ref: '#/components/schemas/ReserveMovementResponse'}
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error identifier code
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Descriptive error message
+          example: "Invalid data in request"
+        details:
+          type: array
+          description: List of field-level validation errors
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "email"
+              message:
+                type: string
+                example: "Invalid email format"
+        timestamp:
+          type: string
+          format: date-time
+
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - email
+        - password
+        - cnpj
+        - segment
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 150
+          description: Full name of the entrepreneur
+          example: "Maria Silva"
+        email:
+          type: string
+          format: email
+          description: Email for login and communications
+          example: "maria@email.com"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=])[A-Za-z\d@$!%*?&#^()_+\-=]{8,128}$'
+          description: "Password with minimum 8 characters, at least one uppercase letter, one lowercase letter, one number, and one special character"
+          example: "Senha@123"
+        cnpj:
+          type: string
+          pattern: '^([A-Za-z0-9]{2}\.[A-Za-z0-9]{3}\.[A-Za-z0-9]{3}/[A-Za-z0-9]{4}-[A-Za-z0-9]{2}|[A-Za-z0-9]{14})$'
+          description: MEI CNPJ (formatted or raw, numeric or alphanumeric)
+          example: "12.ABC.345/0001-90"
+        segment:
+          $ref: '#/components/schemas/MeiSegment'
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - identifier
+        - password
+      properties:
+        identifier:
+          type: string
+          description: Email or CNPJ (numeric or alphanumeric, with or without mask)
+          example: "maria@email.com"
+        password:
+          type: string
+          example: "Senha@123"
+
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token obtained during login/registration
+          example: "eyJhbGciOiJIUzI1NiIs..."
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token (expires in 1 hour)
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        refreshToken:
+          type: string
+          description: Refresh token (expires in 7 days)
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        type:
+          type: string
+          enum: [Bearer]
+          example: "Bearer"
+        expiresIn:
+          type: integer
+          description: Access token expiration time in seconds
+          example: 3600
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            email:
+              type: string
+
+    MeiSegment:
+      type: string
+      description: MEI business segment
+      enum:
+        - COMERCIO
+        - SERVICOS
+        - INDUSTRIA
+        - ALIMENTACAO
+        - BELEZA
+        - VESTUARIO
+        - TECNOLOGIA
+        - AUTOMOTIVO
+        - CONSTRUCAO
+        - OUTRO
+
+    MeiProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: "Maria Silva"
+        email:
+          type: string
+          format: email
+          example: "maria@email.com"
+        cnpj:
+          type: string
+          example: "12.345.678/0001-90"
+        segment:
+          $ref: '#/components/schemas/MeiSegment'
+        customAnnualCap:
+          type: number
+          x-currency: BRL
+          description: Custom annual revenue cap (default R$ 81,000.00)
+          example: 81000.00
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ProfileUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 150
+        segment:
+          $ref: '#/components/schemas/MeiSegment'
+        customAnnualCap:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          description: Custom annual revenue cap
+
+    FixedCostCategory:
+      type: string
+      description: Fixed cost category
+      enum:
+        - ALUGUEL
+        - DAS_MEI
+        - ENERGIA
+        - AGUA
+        - INTERNET
+        - TELEFONE
+        - SALARIOS
+        - PRO_LABORE
+        - TAXA_MAQUININHA
+        - IMPOSTOS
+        - SEGUROS
+        - CONTABILIDADE
+        - MARKETING
+        - SOFTWARE
+        - MANUTENCAO
+        - DEPRECIACAO
+        - OUTRO
+
+    FixedCost:
+      description: Edições e exclusões preservam as competências até o mês atual inclusive. Os novos valores e regras valem para competências futuras.
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: "Commercial space rent"
+        amount:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          example: 1500.00
+        category:
+          $ref: '#/components/schemas/FixedCostCategory'
+        dueDate:
+          type: string
+          format: date
+          example: "2026-07-05"
+        recurring:
+          type: boolean
+          description: Indicates whether the cost recurs monthly
+          example: true
+        active:
+          type: boolean
+          default: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    FixedCostRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - amount
+        - category
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Commercial space rent"
+        amount:
+          type: number
+          x-currency: BRL
+          minimum: 0.01
+          example: 1500.00
+        category:
+          $ref: '#/components/schemas/FixedCostCategory'
+        dueDate:
+          type: string
+          format: date
+          example: "2026-07-05"
+        recurring:
+          type: boolean
+          default: true
+
+    VariableCostCategory:
+      type: string
+      description: Variable cost category
+      enum:
+        - MATERIA_PRIMA
+        - EMBALAGEM
+        - FRETE
+        - COMISSAO
+        - TAXA_PAGAMENTO
+        - IMPOSTO_VENDA
+        - DESPERDICIO
+        - OUTRO
+
+    VariableCost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: "Raw material (fabric)"
+        unitAmount:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          example: 25.50
+        category:
+          $ref: '#/components/schemas/VariableCostCategory'
+        productId:
+          type: string
+          format: uuid
+          description: Associated product/service ID
+        productName:
+          type: string
+          readOnly: true
+          description: Associated product name
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    VariableCostRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - unitAmount
+        - category
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Raw material (fabric)"
+        unitAmount:
+          type: number
+          x-currency: BRL
+          minimum: 0.01
+          example: 25.50
+        category:
+          $ref: '#/components/schemas/VariableCostCategory'
+        productId:
+          type: string
+          format: uuid
+          description: Associated product/service ID (optional)
+
+    ProductType:
+      type: string
+      description: Item type (physical product or service)
+      enum:
+        - PRODUTO
+        - SERVICO
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: "Chocolate cake"
+        description:
+          type: string
+          example: "Decorated cake 1kg"
+        type:
+          $ref: '#/components/schemas/ProductType'
+        baseCost:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          description: Base unit cost of the product/service
+          example: 18.50
+        currentSellingPrice:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          description: Current selling price
+          example: 45.00
+        totalVariableCost:
+          type: number
+          x-currency: BRL
+          readOnly: true
+          description: Sum of associated variable costs
+          example: 32.00
+        currentMargin:
+          type: number
+          readOnly: true
+          description: Current gross margin as a percentage
+          example: 28.89
+        markup:
+          type: number
+          readOnly: true
+          description: Applied markup
+          example: 1.41
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        targetProfitMargin:
+          type: number
+          nullable: true
+          readOnly: true
+          description: Effective profit margin (explicit or inherited from the category)
+          example: 25.00
+        marginInheritedFromCategory:
+          type: boolean
+          readOnly: true
+        taxRate:
+          type: number
+          nullable: true
+          readOnly: true
+          description: Effective tax rate (explicit or inherited from the category)
+          example: 6.00
+        variableCostPercent:
+          type: number
+          nullable: true
+          readOnly: true
+          description: Effective variable sales cost percentage (explicit or inherited from the category)
+          example: 5.00
+        active:
+          type: boolean
+          default: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ProductRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - type
+        - baseCost
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Chocolate cake"
+        description:
+          type: string
+          maxLength: 500
+          example: "Decorated cake 1kg"
+        type:
+          $ref: '#/components/schemas/ProductType'
+        baseCost:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          example: 18.50
+        currentSellingPrice:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          example: 45.00
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        targetProfitMargin:
+          type: number
+          minimum: 0.01
+          maximum: 99.99
+          nullable: true
+          description: Explicit margin override; when omitted the category value is inherited
+
+    ProductPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 500
+        type:
+          $ref: '#/components/schemas/ProductType'
+        baseCost:
+          type: number
+          minimum: 0
+        currentSellingPrice:
+          type: number
+          minimum: 0
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        targetProfitMargin:
+          type: number
+          minimum: 0.01
+          maximum: 99.99
+          nullable: true
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: "Bebidas"
+        slug:
+          type: string
+          readOnly: true
+          example: "bebidas"
+        type:
+          $ref: '#/components/schemas/ProductType'
+        targetProfitMargin:
+          type: number
+          minimum: 0.01
+          maximum: 99.99
+          description: Default desired profit margin inherited by products without an explicit value
+          example: 25.00
+        taxRate:
+          type: number
+          minimum: 0
+          maximum: 99.99
+          description: Default tax rate inherited by products
+          example: 6.00
+        maxDiscountAllowed:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Maximum discount allowed for the category
+          example: 10.00
+        variableCostPercent:
+          type: number
+          minimum: 0
+          maximum: 99.99
+          description: Default variable sales costs / card fees percentage inherited by products
+          example: 5.00
+        active:
+          type: boolean
+          default: true
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        parentName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CategoryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+          example: "Bebidas"
+        type:
+          $ref: '#/components/schemas/ProductType'
+        targetProfitMargin:
+          type: number
+          minimum: 0.01
+          maximum: 99.99
+          example: 25.00
+        taxRate:
+          type: number
+          minimum: 0
+          maximum: 99.99
+          example: 6.00
+        maxDiscountAllowed:
+          type: number
+          minimum: 0
+          maximum: 100
+          example: 10.00
+        variableCostPercent:
+          type: number
+          minimum: 0
+          maximum: 99.99
+          example: 5.00
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+
+    CategoryStatusRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - active
+      properties:
+        active:
+          type: boolean
+
+    CategoryRevalidationResponse:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+        updatedProducts:
+          type: integer
+          example: 3
+
+    PaginatedCategories:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        last:
+          type: boolean
+
+    RevenueBaselineMode:
+      type: string
+      description: Source of the monthly revenue baseline used to compute R_cf
+      enum:
+        - TARGET_REVENUE
+        - HISTORICAL_AVERAGE
+
+    FixedCostsSummary:
+      type: object
+      properties:
+        totalFixedCosts:
+          type: number
+          x-currency: BRL
+          description: Cached sum of all active fixed costs
+          example: 1000.00
+        revenueBaseline:
+          type: number
+          x-currency: BRL
+          description: Monthly revenue baseline considered
+          example: 2000.00
+        revenueBaselineMode:
+          $ref: '#/components/schemas/RevenueBaselineMode'
+        allocatedFixedCostPercent:
+          type: number
+          description: Resulting fixed cost allocation rate (R_cf)
+          example: 50.00
+        automaticRateio:
+          type: boolean
+        severeRisk:
+          type: boolean
+          description: True when fixed costs exceed 80% of the projected revenue
+        riskMessage:
+          type: string
+        lastRecalculatedAt:
+          type: string
+          format: date-time
+
+    RateioConfigRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        revenueBaselineMode:
+          $ref: '#/components/schemas/RevenueBaselineMode'
+        monthlyRevenueTarget:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          example: 5000.00
+        historicalAverageRevenue:
+          type: number
+          x-currency: BRL
+          minimum: 0
+        automaticRateio:
+          type: boolean
+        manualAllocatedFixedCostPercent:
+          type: number
+          minimum: 0
+          maximum: 99.99
+
+    CostBreakdown:
+      type: object
+      description: Complete cost breakdown of a product/service
+      properties:
+        productId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+        variableCosts:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariableCost'
+        totalVariableCosts:
+          type: number
+          x-currency: BRL
+          example: 32.00
+        fixedCostAllocation:
+          type: number
+          x-currency: BRL
+          description: Allocated fixed cost per estimated unit
+          example: 5.00
+        taxes:
+          type: number
+          x-currency: BRL
+          description: Estimated taxes (Simples Nacional)
+          example: 2.70
+        totalCost:
+          type: number
+          x-currency: BRL
+          description: Total unit cost
+          example: 39.70
+
+    PaymentMethod:
+      type: string
+      description: Sale payment method
+      enum:
+        - DINHEIRO
+        - PIX
+        - DEBITO
+        - CREDITO_A_VISTA
+        - CREDITO_PARCELADO
+        - BOLETO
+        - OUTRO
+
+    Sale:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        productId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          example: "Consultoria MEI"
+        quantity:
+          type: number
+          minimum: 0.01
+          example: 2
+        unitPrice:
+          type: number
+          minimum: 0.01
+          example: 45.00
+        unitAmount:
+          type: number
+          minimum: 0
+          example: 45.00
+        unitCost:
+          type: number
+          minimum: 0
+          readOnly: true
+          description: Custo unitário preservado na venda.
+        operationCost:
+          type: number
+          minimum: 0
+          readOnly: true
+          description: Custo unitário multiplicado pela quantidade, arredondado com HALF_UP.
+        costEstimated:
+          type: boolean
+          readOnly: true
+          description: Indica custo de venda legada estimado uma única vez na atualização, a partir do cadastro disponível.
+        grossAmount:
+          type: number
+          x-currency: BRL
+          readOnly: true
+          example: 90.00
+        totalAmount:
+          type: number
+          x-currency: BRL
+          readOnly: true
+          example: 90.00
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        paymentMethodDescription:
+          type: string
+          readOnly: true
+          example: "Crédito à Vista"
+        installments:
+          type: integer
+          minimum: 1
+          example: 1
+        feePercentage:
+          type: number
+          example: 3.20
+        feeAmount:
+          type: number
+          example: 2.88
+        netAmount:
+          type: number
+          example: 87.12
+        soldAt:
+          type: string
+          format: date-time
+          example: "2026-06-15T14:30:00"
+        saleDate:
+          type: string
+          format: date-time
+          example: "2026-06-15T14:30:00"
+        notes:
+          type: string
+          maxLength: 500
+        obtainedMargin:
+          type: number
+          readOnly: true
+          description: Gross margin obtained from the sale as a percentage
+          example: 28.89
+        netProfit:
+          type: number
+          readOnly: true
+          description: Estimated net profit from the sale
+          example: 25.60
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    SaleRequest:
+      description: Na edição, omitir unitCost preserva o custo unitário histórico se o produto não mudar. Alterar quantidade recalcula apenas o custo total; trocar produto resolve o custo do novo item.
+      type: object
+      required:
+        - quantity
+        - paymentMethod
+      properties:
+        productId:
+          type: string
+          format: uuid
+        description:
+          type: string
+          maxLength: 200
+        quantity:
+          type: number
+          minimum: 0.01
+          default: 1
+        unitPrice:
+          type: number
+          minimum: 0.01
+        unitAmount:
+          type: number
+          minimum: 0.01
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        installments:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Em CREDITO_PARCELADO, valores abaixo de 2 são registrados e cobrados como 2 parcelas.
+        unitCost:
+          type: number
+          minimum: 0
+          description: Custo unitário exclusivo desta operação. Quando omitido na criação, usa a soma positiva dos custos vinculados, senão custo base manual; venda avulsa usa zero. Nunca soma custo base e custos vinculados. Zero explícito é respeitado.
+        customFeePercentage:
+          type: number
+          minimum: 0.00
+          maximum: 100.00
+        soldAt:
+          type: string
+          format: date-time
+        saleDate:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          maxLength: 500
+
+    PaginatedSales:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sale'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 45
+        totalPages:
+          type: integer
+          example: 3
+        last:
+          type: boolean
+
+    SaleSummaryResponse:
+      type: object
+      properties:
+        totalGrossRevenue:
+          type: number
+          example: 1500.00
+        totalFeeAmount:
+          type: number
+          example: 42.50
+        totalNetRevenue:
+          type: number
+          example: 1457.50
+        totalSalesCount:
+          type: integer
+          example: 15
+        sales:
+          $ref: '#/components/schemas/PaginatedSales'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 45
+        totalPages:
+          type: integer
+          example: 3
+        last:
+          type: boolean
+
+    PaginatedFixedCosts:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedCost'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        last:
+          type: boolean
+
+    PaginatedVariableCosts:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariableCost'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        last:
+          type: boolean
+
+    PaginatedProducts:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        last:
+          type: boolean
+
+    PaginatedAlerts:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        last:
+          type: boolean
+
+    PricingRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: Product/service ID for calculation. When provided, unspecified percentages are inherited from the product category.
+        baseCost:
+          type: number
+          x-currency: BRL
+          minimum: 0
+          description: Required when productId is not provided
+        fixedCostPercent:
+          type: number
+          minimum: 0
+          maximum: 99.99
+        variableCostPercent:
+          type: number
+          minimum: 0
+          maximum: 99.99
+        desiredMargin:
+          type: number
+          minimum: 0
+          maximum: 99.99
+          description: Desired profit margin as a percentage. Inherited from the product category when omitted.
+          example: 30.0
+        taxRate:
+          type: number
+          minimum: 0
+          maximum: 99.99
+          description: Tax rate as a percentage. Inherited from the product category when omitted.
+          example: 6.0
+        includeFixedCosts:
+          type: boolean
+          default: true
+          description: Include fixed cost allocation in the calculation
+        useAutomaticFixedCosts:
+          type: boolean
+          default: false
+          description: When true, the fixed cost percentage is taken automatically from the consolidated R_cf
+
+    PricingResponse:
+      type: object
+      description: Pricing calculation result
+      properties:
+        productId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+        baseCost:
+          type: number
+          x-currency: BRL
+          example: 18.50
+        totalVariableCosts:
+          type: number
+          x-currency: BRL
+          example: 13.50
+        allocatedFixedCosts:
+          type: number
+          x-currency: BRL
+          example: 5.00
+        estimatedTaxes:
+          type: number
+          x-currency: BRL
+          example: 2.70
+        totalUnitCost:
+          type: number
+          x-currency: BRL
+          description: Sum of all costs per unit
+          example: 39.70
+        desiredMargin:
+          type: number
+          example: 30.0
+        minimumSellingPrice:
+          type: number
+          x-currency: BRL
+          description: Minimum selling price calculated via Markup
+          example: 56.71
+        markup:
+          type: number
+          description: Applied markup factor
+          example: 1.43
+        unitProfit:
+          type: number
+          x-currency: BRL
+          example: 17.01
+
+    SimulateDiscountRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - productId
+        - sellingPrice
+        - discountPercentage
+      properties:
+        productId:
+          type: string
+          format: uuid
+        sellingPrice:
+          type: number
+          minimum: 0.01
+          example: 45.00
+        discountPercentage:
+          type: number
+          minimum: 0
+          maximum: 100
+          example: 10.0
+
+    SimulateDiscountResponse:
+      type: object
+      properties:
+        originalPrice:
+          type: number
+          x-currency: BRL
+          example: 45.00
+        discount:
+          type: number
+          x-currency: BRL
+          example: 4.50
+        discountedPrice:
+          type: number
+          x-currency: BRL
+          example: 40.50
+        totalCost:
+          type: number
+          x-currency: BRL
+          example: 39.70
+        originalProfit:
+          type: number
+          x-currency: BRL
+          example: 5.30
+        discountedProfit:
+          type: number
+          x-currency: BRL
+          example: 0.80
+        originalMargin:
+          type: number
+          example: 11.78
+        discountedMargin:
+          type: number
+          example: 1.98
+        viable:
+          type: boolean
+          description: Indicates whether the discounted sale still generates profit
+          example: true
+        recommendation:
+          type: string
+          description: Recommendation based on SEBRAE guidelines
+          example: "A 10% discount significantly reduces the margin. Consider offering at most 5%."
+
+    MarginsResponse:
+      type: object
+      description: Calculated margins of a product/service
+      properties:
+        productId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+        sellingPrice:
+          type: number
+          x-currency: BRL
+          example: 45.00
+        totalCost:
+          type: number
+          x-currency: BRL
+          example: 39.70
+        grossMargin:
+          type: number
+          description: Gross margin as a percentage ((price - cost) / price * 100)
+          example: 11.78
+        markup:
+          type: number
+          description: Markup factor (price / cost)
+          example: 1.13
+        breakEvenPoint:
+          type: integer
+          description: Minimum monthly sales quantity to cover fixed costs
+          example: 95
+        unitContributionMargin:
+          type: number
+          x-currency: BRL
+          description: Amount remaining from each sale to cover fixed costs and generate profit
+          example: 5.30
+
+    CashFlowResponse:
+      type: object
+      properties:
+        period:
+          type: string
+          enum: [DIARIO, SEMANAL, MENSAL, ANUAL]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashFlowEntry'
+        totalRevenue:
+          type: number
+          x-currency: BRL
+          example: 12500.00
+        totalExpenses:
+          type: number
+          x-currency: BRL
+          example: 8300.00
+        balance:
+          type: number
+          x-currency: BRL
+          example: 4200.00
+        accumulatedBalance:
+          type: number
+          x-currency: BRL
+          description: Accumulated balance since the beginning of the year
+          example: 25600.00
+
+    CashFlowEntry:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        type:
+          type: string
+          enum: [RECEITA, DESPESA]
+        category:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+          x-currency: BRL
+        balanceAfter:
+          type: number
+          description: Balance after this transaction
+        referenceId:
+          type: string
+          format: uuid
+          description: ID of the sale or cost that originated this entry
+
+    FinancialSummary:
+      type: object
+      properties:
+        referenceMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: "2026-06"
+        totalRevenue:
+          type: number
+          x-currency: BRL
+          example: 12500.00
+        totalFixedCosts:
+          type: number
+          x-currency: BRL
+          example: 4500.00
+        totalVariableCosts:
+          type: number
+          x-currency: BRL
+          example: 3800.00
+        grossProfit:
+          type: number
+          x-currency: BRL
+          example: 4200.00
+        grossMargin:
+          type: number
+          example: 33.60
+        totalSales:
+          type: integer
+          example: 85
+        averageTicket:
+          type: number
+          x-currency: BRL
+          example: 147.06
+        bestSellingProduct:
+          type: object
+          properties:
+            name:
+              type: string
+            quantity:
+              type: integer
+        predominantPaymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        projectedAnnualRevenue:
+          type: number
+          description: Projected annual revenue based on the average of recent months
+          example: 75000.00
+
+    AccumulatedRevenue:
+      type: object
+      properties:
+        year:
+          type: integer
+          example: 2026
+        accumulatedRevenue:
+          type: number
+          x-currency: BRL
+          example: 45000.00
+        meiCap:
+          type: number
+          x-currency: BRL
+          description: MEI annual cap (R$ 81,000.00)
+          example: 81000.00
+        percentageUsed:
+          type: number
+          example: 55.56
+        proportionalCap:
+          type: number
+          x-currency: BRL
+          description: Proportional cap based on months elapsed in the year
+          example: 40500.00
+        exceededProportionalCap:
+          type: boolean
+          example: true
+        remainingMonths:
+          type: integer
+          example: 6
+        yearEndProjection:
+          type: number
+          x-currency: BRL
+          example: 75000.00
+
+    MonthlyFlowResponse:
+      type: object
+      properties:
+        startMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: "2026-01"
+        endMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: "2026-06"
+        months:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonthlyFlowEntry'
+        totalRevenue:
+          type: number
+          x-currency: BRL
+          example: 18600.00
+        totalExpenses:
+          type: number
+          x-currency: BRL
+          example: 12450.00
+        totalFixedCosts:
+          type: number
+          x-currency: BRL
+          description: Sum of the monthly fixed costs in the period
+          example: 9000.00
+        totalVariableCosts:
+          type: number
+          x-currency: BRL
+          description: Sum of the variable costs of the products sold in the period
+          example: 2850.00
+        totalPaymentFees:
+          type: number
+          x-currency: BRL
+          description: Sum of the payment fees withheld from sales in the period
+          example: 600.00
+        balance:
+          type: number
+          x-currency: BRL
+          example: 6150.00
+        averageRevenue:
+          type: number
+          x-currency: BRL
+          example: 3100.00
+        averageExpenses:
+          type: number
+          x-currency: BRL
+          example: 2075.00
+        bestMonth:
+          type: string
+          nullable: true
+          description: Month with the highest balance (null when there is no activity)
+          example: "2026-03"
+        worstMonth:
+          type: string
+          nullable: true
+          description: Month with the lowest balance (null when there is no activity)
+          example: "2026-05"
+
+    MonthlyFlowEntry:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: "2026-03"
+        revenue:
+          type: number
+          x-currency: BRL
+          description: Gross revenue from sales in the month
+          example: 3200.00
+        salesCount:
+          type: integer
+          example: 42
+        fixedCosts:
+          type: number
+          x-currency: BRL
+          description: Fixed costs in effect in the month (recurring from registration month, one-off on due month)
+          example: 1500.00
+        variableCosts:
+          type: number
+          x-currency: BRL
+          description: Unit variable costs of the products sold multiplied by quantity
+          example: 480.00
+        paymentFees:
+          type: number
+          x-currency: BRL
+          description: Payment method fees charged on sales
+          example: 64.00
+        totalExpenses:
+          type: number
+          x-currency: BRL
+          example: 2044.00
+        balance:
+          type: number
+          x-currency: BRL
+          example: 1156.00
+
+    AlertType:
+      type: string
+      description: System alert type
+      enum:
+        - TETO_MEI_PROXIMO
+        - TETO_MEI_ULTRAPASSADO
+        - MARGEM_ABAIXO_MINIMO
+        - CUSTO_ELEVADO
+        - CREDITO_PARCELADO_RISCO
+        - FLUXO_CAIXA_NEGATIVO
+
+    AlertSeverity:
+      type: string
+      enum:
+        - INFO
+        - AVISO
+        - CRITICO
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          $ref: '#/components/schemas/AlertType'
+        severity:
+          $ref: '#/components/schemas/AlertSeverity'
+        title:
+          type: string
+          example: "Warning: 80% of MEI revenue cap reached"
+        message:
+          type: string
+          example: "Your accumulated revenue has reached 80% of the MEI annual cap. Monitor closely to avoid disqualification."
+        details:
+          type: object
+          description: Additional data related to the alert
+          additionalProperties: true
+          example:
+            faturamentoAtual: 64800.00
+            teto: 81000.00
+            percentual: 80.0
+        read:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    PaymentMethodConfigRequest:
+      type: object
+      required:
+        - paymentMethod
+        - mdrFeePercent
+      properties:
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        installments:
+          type: integer
+          minimum: 1
+          maximum: 12
+          default: 1
+        mdrFeePercent:
+          type: number
+          format: float
+          minimum: 0.00
+          maximum: 99.99
+          example: 3.20
+        fixedFeeAmount:
+          type: number
+          format: float
+          minimum: 0.00
+          example: 0.35
+        settlementDays:
+          type: integer
+          minimum: 0
+          maximum: 365
+          example: 30
+        isActive:
+          type: boolean
+          default: true
+
+    PaymentMethodConfigResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        description:
+          type: string
+          example: "Crédito Parcelado (3x)"
+        installments:
+          type: integer
+          example: 3
+        mdrFeePercent:
+          type: number
+          format: float
+          example: 6.50
+        fixedFeeAmount:
+          type: number
+          format: float
+          example: 0.00
+        settlementDays:
+          type: integer
+          example: 30
+        isActive:
+          type: boolean
+          example: true
+        isCustomized:
+          type: boolean
+          description: Verdadeiro quando algum valor salvo diverge do padrão recomendado.
+          example: true
+        defaultMdrFeePercent:
+          type: number
+          format: float
+          example: 6.50
+        defaultFixedFeeAmount:
+          type: number
+          format: float
+          example: 0.00
+        defaultSettlementDays:
+          type: integer
+          example: 30
+
+    SegmentGuidanceResponse:
+      type: object
+      required:
+        - ruleVersion
+        - segmentCode
+        - segmentName
+        - fallbackUsed
+        - sebraeGuidanceSummary
+        - costSuggestions
+      properties:
+        ruleVersion:
+          type: string
+          description: Versão explícita do catálogo de regras por segmento
+          example: "2026.1"
+        segmentCode:
+          type: string
+          example: "COMERCIO"
+        segmentName:
+          type: string
+          example: "Comércio Varejista e Atacadista"
+        fallbackUsed:
+          type: boolean
+          description: Verdadeiro quando o catálogo geral de fallback foi utilizado
+          example: false
+        sebraeGuidanceSummary:
+          type: string
+          description: Resumo didático de orientação SEBRAE para o segmento
+        costSuggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SegmentCostSuggestionResponse'
+
+    SegmentCostSuggestionResponse:
+      type: object
+      required:
+        - code
+        - name
+        - costType
+        - category
+        - whyItMatters
+        - mandatory
+      properties:
+        code:
+          type: string
+          example: "COM_EMB_01"
+        name:
+          type: string
+          example: "Embalagens, sacolas e etiquetas"
+        costType:
+          type: string
+          enum: [FIXED, VARIABLE]
+          example: "VARIABLE"
+        category:
+          type: string
+          example: "EMBALAGEM"
+        suggestedAmount:
+          type: number
+          x-currency: BRL
+          nullable: true
+          example: 1.50
+        suggestedPercent:
+          type: number
+          nullable: true
+          example: 3.00
+        whyItMatters:
+          type: string
+          description: Explicação didática do motivo pelo qual o custo costuma ocorrer no segmento
+        mandatory:
+          type: boolean
+          description: Indica se o custo é obrigatório (sempre false; sugestões nunca são obrigatórias)
+          example: false
+
+    MeiObligationType:
+      type: string
+      enum:
+        - DAS_MENSAL
+        - DASN_SIMEI_ANUAL
+
+    MeiObligationStatus:
+      type: string
+      enum:
+        - PENDING
+        - PAID_DECLARED
+        - OVERDUE
+
+    MeiOfficialLinkResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+          format: uri
+        verified:
+          type: boolean
+
+    MeiObligationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        obligationType:
+          $ref: '#/components/schemas/MeiObligationType'
+        title:
+          type: string
+        referenceYear:
+          type: integer
+        competency:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/MeiObligationStatus'
+        manualReceiptCode:
+          type: string
+          nullable: true
+        paidAt:
+          type: string
+          format: date
+          nullable: true
+        reminderDaysBefore:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+        dueSoon:
+          type: boolean
+        overdue:
+          type: boolean
+        daysUntilDue:
+          type: integer
+        officialUrl:
+          type: string
+          format: uri
+        officialPortalLabel:
+          type: string
+        verificationSource:
+          type: string
+          example: "MANUAL_DECLARATION"
+        regularityGuaranteed:
+          type: boolean
+          example: false
+        regularityDisclaimer:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    MeiObligationScheduleResponse:
+      type: object
+      properties:
+        year:
+          type: integer
+        reminderDaysBefore:
+          type: integer
+        verificationSource:
+          type: string
+          example: "MANUAL_DECLARATION"
+        regularityGuaranteed:
+          type: boolean
+          example: false
+        regularityDisclaimer:
+          type: string
+        totalCount:
+          type: integer
+        paidDeclaredCount:
+          type: integer
+        pendingCount:
+          type: integer
+        overdueCount:
+          type: integer
+        dueSoonCount:
+          type: integer
+        officialLinks:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeiOfficialLinkResponse'
+        obligations:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeiObligationResponse'
+
+    MeiObligationStatusUpdateRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/MeiObligationStatus'
+        manualReceiptCode:
+          type: string
+          maxLength: 120
+        paidAt:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 500
+
+    MeiObligationReminderRequest:
+      type: object
+      required:
+        - reminderDaysBefore
+      properties:
+        reminderDaysBefore:
+          type: integer
+          minimum: 1
+          maximum: 30
+        year:
+          type: integer
+          minimum: 2020
+          maximum: 2100
+
+}
+          example: '2026-10'
+        - in: query
+          name: status
+          schema: {$ref: '#/components/schemas/PayableStatus'}
+        - in: query
+          name: category
+          schema: {type: string}
+        - in: query
+          name: type
+          schema: {$ref: '#/components/schemas/PayableType'}
+        - in: query
+          name: startDate
+          schema: {type: string, format: date}
+        - in: query
+          name: endDate
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: Resumo e lista de contas a pagar
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableSummaryResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags:
+        - Payables
+      summary: Criar conta a pagar pontual ou recorrente
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PayableAccountRequest'}
+      responses:
+        '201':
+          description: Conta a pagar criada
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /payables/{id}:
+    get:
+      tags:
+        - Payables
+      summary: Obter detalhes da conta a pagar
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Detalhes da conta a pagar
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      tags:
+        - Payables
+      summary: Atualizar conta a pagar
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PayableAccountRequest'}
+      responses:
+        '200':
+          description: Conta a pagar atualizada
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags:
+        - Payables
+      summary: Excluir conta a pagar
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Conta a pagar excluída
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /payables/{id}/pay:
+    post:
+      tags:
+        - Payables
+      summary: Registrar pagamento parcial ou total
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PayablePaymentRequest'}
+      responses:
+        '200':
+          description: Pagamento registrado com sucesso
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /payables/{id}/reverse:
+    post:
+      tags:
+        - Payables
+      summary: Estornar pagamento realizado
+      description: Restaura o paidAmount para 0.00 e o status para PENDING mantendo rastreabilidade.
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Pagamento estornado com sucesso
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /payables/generate-recurring:
+    post:
+      tags:
+        - Payables
+      summary: Gerar títulos a pagar recorrentes a partir dos custos fixos
+      description: Geração idempotente de títulos a pagar para os custos fixos ativos do mês sem duplicar registros.
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/GenerateRecurringPayablesRequest'}
+      responses:
+        '200':
+          description: Títulos a pagar gerados
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/PayableAccountResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
 components:
   securitySchemes:
     bearerAuth:
@@ -4615,3 +7084,169 @@ components:
           minimum: 2020
           maximum: 2100
 
+    PayableType:
+      type: string
+      enum: [ONE_OFF, RECURRING]
+      example: RECURRING
+
+    PayableStatus:
+      type: string
+      enum: [PENDING, PARTIAL, PAID, REVERSED]
+      example: PENDING
+
+    PayableAccountRequest:
+      type: object
+      required:
+        - description
+        - dueDate
+        - totalAmount
+      properties:
+        description:
+          type: string
+          maxLength: 200
+          example: Aluguel do Galpão
+        category:
+          type: string
+          maxLength: 50
+          example: ALUGUEL
+        dueDate:
+          type: string
+          format: date
+          example: '2026-10-15'
+        totalAmount:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 1200.00
+        type:
+          $ref: '#/components/schemas/PayableType'
+        competency:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          example: '2026-10'
+        fixedCostId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+          maxLength: 500
+          example: Vencimento todo dia 15
+
+    PayablePaymentRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 600.00
+        paidAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          maxLength: 500
+          example: Primeira parcela paga via Pix
+
+    GenerateRecurringPayablesRequest:
+      type: object
+      required:
+        - competency
+      properties:
+        competency:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          example: '2026-10'
+        defaultDueDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+          example: 10
+        dueDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+          example: 10
+
+    PayableAccountResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/PayableType'
+        fixedCostId:
+          type: string
+          format: uuid
+        competency:
+          type: string
+          example: '2026-10'
+        description:
+          type: string
+          example: Aluguel do Galpão
+        category:
+          type: string
+          example: ALUGUEL
+        dueDate:
+          type: string
+          format: date
+          example: '2026-10-15'
+        totalAmount:
+          type: number
+          format: float
+          example: 1200.00
+        paidAmount:
+          type: number
+          format: float
+          example: 600.00
+        remainingAmount:
+          type: number
+          format: float
+          example: 600.00
+        status:
+          $ref: '#/components/schemas/PayableStatus'
+        paidAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          example: Primeira parcela paga via Pix
+        overdue:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PayableSummaryResponse:
+      type: object
+      properties:
+        totalCommittedExpense:
+          type: number
+          format: float
+          example: 2500.00
+        totalEffectiveDisbursement:
+          type: number
+          format: float
+          example: 1000.00
+        totalOpenPayable:
+          type: number
+          format: float
+          example: 1500.00
+        totalOverduePayable:
+          type: number
+          format: float
+          example: 0.00
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayableAccountResponse'
