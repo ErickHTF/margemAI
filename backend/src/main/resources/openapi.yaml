@@ -55,11 +55,176 @@ tags:
     description: Cash flow and financial summary panel
   - name: Alerts
     description: MEI cap monitoring and alerts
+  - name: Debts
+    description: Gerenciamento de dívidas e simulação de quitação antecipada
 
 security:
   - bearerAuth: []
 
 paths:
+  /debts:
+    get:
+      tags: [Debts]
+      summary: Listar dívidas do titular com ranking de prioridade
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Lista de dívidas com métricas de custo efetivo
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/DebtResponse'}
+        '401': {description: Não autenticado}
+    post:
+      tags: [Debts]
+      summary: Cadastrar dívida e gerar parcelas
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DebtRequest'}
+      responses:
+        '201':
+          description: Dívida cadastrada
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DebtResponse'}
+        '400': {description: Dados inválidos}
+        '401': {description: Não autenticado}
+  /debts/summary:
+    get:
+      tags: [Debts]
+      summary: Resumo consolidado de dívidas
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Indicadores consolidados de endividamento
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DebtSummaryResponse'}
+        '401': {description: Não autenticado}
+  /debts/schedule:
+    get:
+      tags: [Debts]
+      summary: Cronograma consolidado de parcelas
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: query
+          name: status
+          schema: {type: string, enum: [PENDING, PAID, PAID_EARLY]}
+        - in: query
+          name: startDate
+          schema: {type: string, format: date}
+        - in: query
+          name: endDate
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: Lista de parcelas ordenada por vencimento
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/DebtInstallmentResponse'}
+        '401': {description: Não autenticado}
+  /debts/{id}:
+    get:
+      tags: [Debts]
+      summary: Obter detalhes da dívida e suas parcelas
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DebtResponse'}
+        '401': {description: Não autenticado}
+        '404': {description: Dívida não encontrada}
+    put:
+      tags: [Debts]
+      summary: Atualizar dados da dívida
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DebtRequest'}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DebtResponse'}
+        '400': {description: Dados inválidos}
+        '401': {description: Não autenticado}
+        '404': {description: Dívida não encontrada}
+    delete:
+      tags: [Debts]
+      summary: Excluir dívida
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '204': {description: Dívida excluída}
+        '401': {description: Não autenticado}
+        '404': {description: Dívida não encontrada}
+  /debts/{id}/simulate-payoff:
+    post:
+      tags: [Debts]
+      summary: Simular quitação antecipada de parcelas com hipóteses explícitas
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DebtSimulatePayoffRequest'}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DebtPayoffSimulationResponse'}
+        '400': {description: Requisição inválida}
+        '401': {description: Não autenticado}
+        '404': {description: Dívida não encontrada}
+  /debts/installments/{installmentId}/pay:
+    post:
+      tags: [Debts]
+      summary: Baixar parcela de dívida sem duplicar em custos fixos
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: installmentId
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PayInstallmentRequest'}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DebtInstallmentResponse'}
+        '400': {description: Parcela já liquidada ou dados inválidos}
+        '401': {description: Não autenticado}
+        '404': {description: Parcela não encontrada}
   /accounts:
     get:
       summary: Contas empresariais do titular
@@ -1891,6 +2056,106 @@ components:
             message: "Too many requests. Please try again later."
 
   schemas:
+    DebtRequest:
+      type: object
+      required: [creditor, principalAmount, monthlyInterestRate, totalInstallments, firstDueDate]
+      properties:
+        creditor: {type: string, minLength: 1, maxLength: 150}
+        description: {type: string, maxLength: 255}
+        principalAmount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        monthlyInterestRate: {type: number, minimum: 0.00}
+        fixedFeesAmount: {type: number, minimum: 0.00, multipleOf: 0.01}
+        totalInstallments: {type: integer, minimum: 1, maximum: 480}
+        installmentAmount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        firstDueDate: {type: string, format: date}
+    DebtResponse:
+      type: object
+      required: [id, creditor, principalAmount, monthlyInterestRate, totalInstallments, installmentAmount, firstDueDate, status, totalContractedCost, totalInterestAndFees, effectiveCostMultiple, effectiveCostPercent, remainingBalance]
+      properties:
+        id: {type: string, format: uuid}
+        creditor: {type: string}
+        description: {type: string}
+        principalAmount: {type: number}
+        monthlyInterestRate: {type: number}
+        fixedFeesAmount: {type: number}
+        totalInstallments: {type: integer}
+        installmentAmount: {type: number}
+        firstDueDate: {type: string, format: date}
+        status: {type: string, enum: [ACTIVE, PAID_OFF]}
+        totalContractedCost: {type: number}
+        totalInterestAndFees: {type: number}
+        effectiveCostMultiple: {type: number}
+        effectiveCostPercent: {type: number}
+        remainingBalance: {type: number}
+        paidAmountTotal: {type: number}
+        remainingInstallments: {type: integer}
+        paidInstallments: {type: integer}
+        priorityRank: {type: integer}
+        installments:
+          type: array
+          items: {$ref: '#/components/schemas/DebtInstallmentResponse'}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    DebtInstallmentResponse:
+      type: object
+      required: [id, debtId, creditor, installmentNumber, totalInstallments, dueDate, amount, status]
+      properties:
+        id: {type: string, format: uuid}
+        debtId: {type: string, format: uuid}
+        creditor: {type: string}
+        installmentNumber: {type: integer}
+        totalInstallments: {type: integer}
+        dueDate: {type: string, format: date}
+        amount: {type: number}
+        paidAmount: {type: number}
+        paidAt: {type: string, format: date}
+        status: {type: string, enum: [PENDING, PAID, PAID_EARLY]}
+        notes: {type: string}
+        overdue: {type: boolean}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    DebtSimulatePayoffRequest:
+      type: object
+      properties:
+        installmentsToAnticipate: {type: integer, minimum: 1}
+        amortizeAmount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        monthlyDiscountRate: {type: number, minimum: 0.00}
+        simulationDate: {type: string, format: date}
+    DebtPayoffSimulationResponse:
+      type: object
+      required: [debtId, creditor, simulationDate, discountRateMonthly, installmentsCount, simulatedInstallmentNumbers, originalTotalAmount, payoffAmount, estimatedSavings, savingsPercent, assumptions]
+      properties:
+        debtId: {type: string, format: uuid}
+        creditor: {type: string}
+        simulationDate: {type: string, format: date}
+        discountRateMonthly: {type: number}
+        installmentsCount: {type: integer}
+        simulatedInstallmentNumbers:
+          type: array
+          items: {type: integer}
+        originalTotalAmount: {type: number}
+        payoffAmount: {type: number}
+        estimatedSavings: {type: number}
+        savingsPercent: {type: number}
+        assumptions:
+          type: array
+          items: {type: string}
+    DebtSummaryResponse:
+      type: object
+      required: [totalOutstandingBalance, totalMonthlyCommitment, totalEstimatedInterest, activeDebtsCount, pendingInstallmentsCount]
+      properties:
+        totalOutstandingBalance: {type: number}
+        totalMonthlyCommitment: {type: number}
+        totalEstimatedInterest: {type: number}
+        activeDebtsCount: {type: integer}
+        pendingInstallmentsCount: {type: integer}
+        highestRateCreditor: {type: string}
+    PayInstallmentRequest:
+      type: object
+      properties:
+        paidAmount: {type: number, minimum: 0.01, multipleOf: 0.01}
+        paymentDate: {type: string, format: date}
+        notes: {type: string, maxLength: 255}
     BusinessAccountRequest:
       type: object
       required: [name, openingBalance, openingDate]

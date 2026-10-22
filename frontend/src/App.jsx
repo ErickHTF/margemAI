@@ -13,7 +13,8 @@ import {
   ChevronRight,
   ShoppingBag,
   CreditCard,
-  BarChart3
+  BarChart3,
+  Scale
 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
@@ -27,6 +28,7 @@ import SalesManager from './components/SalesManager'
 import PaymentMethodSettings from './components/PaymentMethodSettings'
 import MonthlyFlowDashboard from './components/MonthlyFlowDashboard'
 import BusinessAccounts from './components/BusinessAccounts'
+import DebtManager from './components/DebtManager'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -52,6 +54,7 @@ const NAV_GROUPS = [
       { key: 'accounts', label: 'Contas Empresariais', Icon: Landmark },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
+      { key: 'debts', label: 'Dívidas e Quitação', Icon: Scale },
       { key: 'costs', label: 'Custos', Icon: Wallet },
       { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator }
     ]
@@ -261,6 +264,8 @@ export default function App() {
         return <MonthlyFlowDashboard onNavigate={navigateContext} />
       case 'payment-methods':
         return <PaymentMethodSettings />
+      case 'debts':
+        return <DebtManager onNavigate={navigateContext} />
       case 'costs':
         return <CostsDashboard />
       case 'pricing':
