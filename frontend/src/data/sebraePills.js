@@ -43,6 +43,15 @@ export const SEBRAE_PILLS = [
     summary: 'Vender a prazo e comprar à vista cria um buraco no caixa que pode levar o MEI ao endividamento.',
     content: 'Se você paga seu fornecedor em 15 dias, mas recebe de seus clientes em 30 ou 60 dias, precisará de capital de giro próprio para financiar essa diferença de tempo.',
     tip: 'Tente sempre negociar prazos com fornecedores maiores ou iguais aos prazos que concede a seus clientes.'
+  },
+  {
+    id: 'debt-avalanche',
+    category: 'debts',
+    categoryLabel: 'Gestão de Dívidas',
+    title: 'Priorize a quitação das dívidas mais caras (Método SEBRAE)',
+    summary: 'Quitar primeiro a dívida com maior taxa de juros estanca o vazamento financeiro do seu negócio.',
+    content: 'Nem todas as dívidas pesam igual. Um empréstimo com taxa de 5% a.m. consome muito mais caixa do que um de 1,5% a.m. No método recomendado pelo SEBRAE, o MEI deve pagar as parcelas normais de todas e direcionar qualquer folga ou reserva de caixa para abater ou antecipar as parcelas da dívida com maior taxa de juros (Método Avalanche), usufruindo do desconto proporcional obrigatório por lei (CDC Art. 52, § 2º).',
+    tip: 'Sempre exija o abatimento proporcional de juros futuros ao antecipar parcelas de financiamentos.'
   }
 ]
 
@@ -71,6 +80,11 @@ export function selectContextualPill({
   fixedCostPercent = 0,
   variableCostPercent = 0
 } = {}) {
+  // 0. Gestão de dívidas e quitação antecipada
+  if (action === 'debts') {
+    return getPillById('debt-avalanche')
+  }
+
   // 1. Simulação ou concessão de desconto
   if (action === 'discount' || discountActive) {
     return getPillById('discount-danger')

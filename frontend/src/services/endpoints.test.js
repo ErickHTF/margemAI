@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import api from './api'
 import { accountService } from './accountService'
 import alertService from './alertService'
+import { debtService } from './debtService'
 import { categoryService } from './categoryService'
 import dashboardService from './dashboardService'
 import fixedCostService from './fixedCostService'
@@ -33,6 +34,16 @@ const CASES = [
   { label: 'accountService.history sem conta não envia filtro', call: () => accountService.history(''), verb: 'get', args: ['/accounts/movements', { params: { accountId: undefined } }] },
   { label: 'accountService.create', call: () => accountService.create(payload), verb: 'post', args: ['/accounts', payload] },
   { label: 'accountService.movement', call: () => accountService.movement(payload), verb: 'post', args: ['/accounts/movements', payload] },
+  // Dívidas e simulação de quitação
+  { label: 'debtService.list', call: () => debtService.list(), verb: 'get', args: ['/debts'] },
+  { label: 'debtService.get', call: () => debtService.get('d-1'), verb: 'get', args: ['/debts/d-1'] },
+  { label: 'debtService.getSummary', call: () => debtService.getSummary(), verb: 'get', args: ['/debts/summary'] },
+  { label: 'debtService.getSchedule', call: () => debtService.getSchedule({ status: 'PENDING' }), verb: 'get', args: ['/debts/schedule', { params: { status: 'PENDING' } }] },
+  { label: 'debtService.create', call: () => debtService.create(payload), verb: 'post', args: ['/debts', payload] },
+  { label: 'debtService.update', call: () => debtService.update('d-1', payload), verb: 'put', args: ['/debts/d-1', payload] },
+  { label: 'debtService.remove', call: () => debtService.remove('d-1'), verb: 'delete', args: ['/debts/d-1'], returns: 'void' },
+  { label: 'debtService.simulatePayoff', call: () => debtService.simulatePayoff('d-1', payload), verb: 'post', args: ['/debts/d-1/simulate-payoff', payload] },
+  { label: 'debtService.payInstallment', call: () => debtService.payInstallment('inst-1', payload), verb: 'post', args: ['/debts/installments/inst-1/pay', payload] },
   // Alertas e dashboard
   { label: 'alertService.getMeiCapStatus', call: () => alertService.getMeiCapStatus({ accumulatedRevenue: 50000 }), verb: 'get', args: ['/alerts/mei-cap', { params: { accumulatedRevenue: 50000 } }] },
   { label: 'dashboardService.getMonthlyFlow', call: () => dashboardService.getMonthlyFlow({ months: 6 }), verb: 'get', args: ['/dashboard/monthly-flow', { params: { months: 6 } }] },
