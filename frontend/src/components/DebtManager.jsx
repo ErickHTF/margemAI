@@ -33,7 +33,7 @@ import { getPillById } from '../data/sebraePills'
 import useApiResource from '../hooks/useApiResource'
 import { debtService } from '../services/debtService'
 import { calculateDebtCost, calculatePmt, sortDebtsBySebraePriority } from '../utils/debts'
-import { formatCurrencyBRL, formatDateBR } from '../utils/formatters'
+import { formatCurrencyBRL, formatDateBR, maskCurrency, unmaskCurrency, currencyToDigits } from '../utils/formatters'
 
 const today = () => {
   const d = new Date()
@@ -45,7 +45,7 @@ const emptyDebtForm = () => ({
   description: '',
   principalAmount: '',
   monthlyInterestRate: '',
-  fixedFeesAmount: '0.00',
+  fixedFeesAmount: '',
   totalInstallments: '',
   installmentAmount: '',
   firstDueDate: today()
@@ -134,12 +134,12 @@ export default function DebtManager() {
 
   // Cálculo prévio em tempo real para o formulário
   const previewCost = useMemo(() => {
-    const principal = Number(formData.principalAmount) || 0
+    const principal = unmaskCurrency(formData.principalAmount) || 0
     const rate = Number(formData.monthlyInterestRate) || 0
     const totalInst = Number(formData.totalInstallments) || 0
-    const fees = Number(formData.fixedFeesAmount) || 0
+    const fees = unmaskCurrency(formData.fixedFeesAmount) || 0
 
-    let instAmount = Number(formData.installmentAmount) || 0
+    let instAmount = unmaskCurrency(formData.installmentAmount) || 0
     if (!instAmount && principal > 0 && totalInst > 0) {
       instAmount = calculatePmt({
         principalAmount: principal,
@@ -162,7 +162,7 @@ export default function DebtManager() {
   }
 
   const handleAutoCalcPmt = () => {
-    const principal = Number(formData.principalAmount) || 0
+    const principal = unmaskCurrency(formData.principalAmount) || 0
     const rate = Number(formData.monthlyInterestRate) || 0
     const totalInst = Number(formData.totalInstallments) || 0
     if (principal > 0 && totalInst > 0) {
@@ -171,7 +171,7 @@ export default function DebtManager() {
         monthlyInterestRate: rate,
         totalInstallments: totalInst
       })
-      setFormData((prev) => ({ ...prev, installmentAmount: pmt.toFixed(2) }))
+      setFormData((prev) => ({ ...prev, installmentAmount: currencyToDigits(pmt) }))
     }
   }
 
@@ -181,14 +181,15 @@ export default function DebtManager() {
     setFailure('')
     setFeedback('')
     try {
+      const instVal = unmaskCurrency(formData.installmentAmount)
       const payload = {
         creditor: formData.creditor.trim(),
         description: formData.description.trim() || undefined,
-        principalAmount: Number(formData.principalAmount),
+        principalAmount: unmaskCurrency(formData.principalAmount),
         monthlyInterestRate: Number(formData.monthlyInterestRate),
-        fixedFeesAmount: formData.fixedFeesAmount ? Number(formData.fixedFeesAmount) : 0,
+        fixedFeesAmount: unmaskCurrency(formData.fixedFeesAmount),
         totalInstallments: Number(formData.totalInstallments),
-        installmentAmount: formData.installmentAmount ? Number(formData.installmentAmount) : undefined,
+        installmentAmount: instVal > 0 ? instVal : undefined,
         firstDueDate: formData.firstDueDate
       }
       await debtService.create(payload)
@@ -249,7 +250,7 @@ export default function DebtManager() {
       if (simMode === 'installments' && simInstallmentsCount) {
         payload.installmentsToAnticipate = Number(simInstallmentsCount)
       } else if (simMode === 'budget' && simBudgetAmount) {
-        payload.amortizeAmount = Number(simBudgetAmount)
+        payload.amortizeAmount = unmaskCurrency(simBudgetAmount)
       }
 
       const res = await debtService.simulatePayoff(simDebtId, payload)
@@ -263,7 +264,7 @@ export default function DebtManager() {
 
   const handleOpenPayModal = (installment) => {
     setPayingInstallment(installment)
-    setPayAmount(String(installment.amount))
+    setPayAmount(currencyToDigits(installment.amount))
     setPayDate(today())
     setPayNotes('')
     setFailure('')
@@ -278,7 +279,7 @@ export default function DebtManager() {
     setFeedback('')
     try {
       await debtService.payInstallment(payingInstallment.id, {
-        paidAmount: Number(payAmount),
+        paidAmount: unmaskCurrency(payAmount),
         paymentDate: payDate,
         notes: payNotes.trim() || undefined
       })
@@ -418,11 +419,11 @@ export default function DebtManager() {
                 <Field label="Valor Principal Tomado (R$)">
                   <Input
                     required
-                    type="number"
-                    step="0.01"
-                    min="0.01"
+                    type="text"
+                    inputMode="numeric"
+                    prefix="R$"
                     name="principalAmount"
-                    value={formData.principalAmount}
+                    value={maskCurrency(formData.principalAmount)}
                     onChange={handleFormChange}
                     placeholder="0,00"
                   />
@@ -443,11 +444,11 @@ export default function DebtManager() {
 
                 <Field label="Tarifas e Taxas Fixas (R$)" hint="TAC, IOF ou tarifas embutidas no contrato">
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    prefix="R$"
                     name="fixedFeesAmount"
-                    value={formData.fixedFeesAmount}
+                    value={maskCurrency(formData.fixedFeesAmount)}
                     onChange={handleFormChange}
                     placeholder="0,00"
                   />
@@ -472,13 +473,13 @@ export default function DebtManager() {
                 >
                   <div className="flex gap-2">
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                      type="text"
+                      inputMode="numeric"
+                      prefix="R$"
                       name="installmentAmount"
-                      value={formData.installmentAmount}
+                      value={maskCurrency(formData.installmentAmount)}
                       onChange={handleFormChange}
-                      placeholder="Valor no carnê/boleto"
+                      placeholder="0,00"
                       className="flex-1"
                     />
                     <Button variant="soft" size="sm" onClick={handleAutoCalcPmt} title="Calcular parcela">
@@ -799,12 +800,12 @@ export default function DebtManager() {
               ) : (
                 <Field label="Valor Disponível (R$)" hint="Calcula quantas parcelas finais cabem">
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={simBudgetAmount}
+                    type="text"
+                    inputMode="numeric"
+                    prefix="R$"
+                    value={maskCurrency(simBudgetAmount)}
                     onChange={(e) => setSimBudgetAmount(e.target.value)}
-                    placeholder="Ex.: 2500,00"
+                    placeholder="0,00"
                     required
                   />
                 </Field>
@@ -1014,10 +1015,11 @@ export default function DebtManager() {
             <Field label="Valor Pago Efetivo (R$)">
               <Input
                 required
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={payAmount}
+                type="text"
+                inputMode="numeric"
+                prefix="R$"
+                placeholder="0,00"
+                value={maskCurrency(payAmount)}
                 onChange={(e) => setPayAmount(e.target.value)}
               />
             </Field>
