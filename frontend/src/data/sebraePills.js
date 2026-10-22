@@ -52,6 +52,15 @@ export const SEBRAE_PILLS = [
     summary: 'Vender a prazo e comprar à vista cria um buraco no caixa que pode levar o MEI ao endividamento.',
     content: 'Se você paga seu fornecedor em 15 dias, mas recebe de seus clientes em 30 ou 60 dias, precisará de capital de giro próprio para financiar essa diferença de tempo.',
     tip: 'Tente sempre negociar prazos com fornecedores maiores ou iguais aos prazos que concede a seus clientes.'
+  },
+  {
+    id: 'financial-reserve',
+    category: 'reserves',
+    categoryLabel: 'Reserva Financeira',
+    title: 'Quanto guardar na reserva de emergência do MEI?',
+    summary: 'O SEBRAE recomenda manter de 3 a 6 meses dos seus custos fixos guardados para atravessar imprevistos e meses fracos sem recorrer a empréstimos caros.',
+    content: 'Separar o saldo reservado do dinheiro livre das contas empresariais evita que o colchão de segurança seja consumido nas despesas do dia a dia. Além disso, aportes e resgates na reserva são transferências internas do patrimônio e não devem ser confundidos com faturamento de vendas.',
+    tip: 'Comece com uma meta de 3 meses dos seus custos fixos mensais e faça aportes regulares sempre que fechar o mês no azul.'
   }
 ]
 
