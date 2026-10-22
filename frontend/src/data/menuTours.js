@@ -24,6 +24,12 @@ export const MENU_TOURS = {
     step('flow-summary', 'Receitas e despesas lado a lado', 'Compare receitas, despesas e resultado. Este painel não é seu saldo bancário.'),
     step('flow-chart', 'Encontre o ritmo do negócio', 'Compare os meses no gráfico.', 'Use os meses mais fracos como referência ao planejar despesas.')
   ],
+  debts: [
+    step('debts-summary', 'Raio-X do seu endividamento', 'Veja o saldo devedor total, parcelas do mês e o ranking de prioridade.'),
+    step('debts-new', 'Contratou um empréstimo?', 'Cadastre a dívida informando taxa, parcelas e credor.'),
+    step('debts-simulation', 'Simule a quitação com desconto', 'Veja quanto economiza de juros ao antecipar parcelas finais (CDC Art. 52).'),
+    step('debts-schedule', 'Acompanhe os vencimentos', 'Dê baixa nas parcelas pagas sem duplicar seus custos fixos.')
+  ],
   costs: [
     step('costs-tabs', 'Cada custo no seu lugar', 'Separe despesas fixas de custos variáveis.'),
     step('costs-content', 'Mudou o valor? Atualize', 'Revise aluguel, insumos e pró-labore regularmente.', 'Uma despesa esquecida pode fazer o preço parecer lucrativo sem ser.')
