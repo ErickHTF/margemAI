@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import api from './api'
 import { accountService } from './accountService'
+import { reserveService } from './reserveService'
 import alertService from './alertService'
 import assistantService from './assistantService'
 import { categoryService } from './categoryService'
@@ -38,6 +39,10 @@ const CASES = [
   { label: 'assistantService.getStatus', call: () => assistantService.getStatus(), verb: 'get', args: ['/assistant/status'] },
   { label: 'assistantService.sendMessage envia o histórico', call: () => assistantService.sendMessage([{ role: 'user', content: 'Oi' }]), verb: 'post', args: ['/assistant/messages', { messages: [{ role: 'user', content: 'Oi' }] }] },
   { label: 'assistantService.sendMessage informa a tela atual', call: () => assistantService.sendMessage([{ role: 'user', content: 'Esse preço está bom?' }], 'pricing'), verb: 'post', args: ['/assistant/messages', { messages: [{ role: 'user', content: 'Esse preço está bom?' }], screen: 'pricing' }] },
+  // Reserva financeira
+  { label: 'reserveService.getSummary', call: () => reserveService.getSummary(), verb: 'get', args: ['/reserves'] },
+  { label: 'reserveService.updateGoal', call: () => reserveService.updateGoal(payload), verb: 'put', args: ['/reserves/goal', payload] },
+  { label: 'reserveService.createMovement', call: () => reserveService.createMovement(payload), verb: 'post', args: ['/reserves/movements', payload] },
   // Alertas e dashboard
   { label: 'alertService.getMeiCapStatus', call: () => alertService.getMeiCapStatus({ accumulatedRevenue: 50000 }), verb: 'get', args: ['/alerts/mei-cap', { params: { accumulatedRevenue: 50000 } }] },
   { label: 'dashboardService.getMonthlyFlow', call: () => dashboardService.getMonthlyFlow({ months: 6 }), verb: 'get', args: ['/dashboard/monthly-flow', { params: { months: 6 } }] },

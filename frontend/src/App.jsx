@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Landmark,
+  PiggyBank,
   Sparkles,
   LogOut,
   CheckCircle2,
@@ -31,6 +32,7 @@ import AssistantChat from './components/AssistantChat'
 import AssistantProvider from './components/AssistantProvider'
 import AssistantBubble from './components/AssistantBubble'
 import BusinessAccounts from './components/BusinessAccounts'
+import FinancialReserveManager from './components/FinancialReserveManager'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -55,6 +57,7 @@ const NAV_GROUPS = [
     items: [
       { key: 'assistant', label: 'Margô IA', Icon: BotMessageSquare },
       { key: 'accounts', label: 'Contas Empresariais', Icon: Landmark },
+      { key: 'reserves', label: 'Reserva Financeira', Icon: PiggyBank },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
       { key: 'costs', label: 'Custos', Icon: Wallet },
@@ -260,6 +263,8 @@ export default function App() {
         return <CategoryManager />
       case 'accounts':
         return <BusinessAccounts />
+      case 'reserves':
+        return <FinancialReserveManager onNavigate={navigateContext} />
       case 'sales':
         return <SalesManager key={userKey} onNavigate={navigateContext} draft={currentDraft} onDraftChange={saveSaleDraft} onBusyChange={setSaleBusy} />
       case 'assistant':
