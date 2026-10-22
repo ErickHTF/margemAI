@@ -61,6 +61,15 @@ export const SEBRAE_PILLS = [
     summary: 'O SEBRAE recomenda manter de 3 a 6 meses dos seus custos fixos guardados para atravessar imprevistos e meses fracos sem recorrer a empréstimos caros.',
     content: 'Separar o saldo reservado do dinheiro livre das contas empresariais evita que o colchão de segurança seja consumido nas despesas do dia a dia. Além disso, aportes e resgates na reserva são transferências internas do patrimônio e não devem ser confundidos com faturamento de vendas.',
     tip: 'Comece com uma meta de 3 meses dos seus custos fixos mensais e faça aportes regulares sempre que fechar o mês no azul.'
+  },
+  {
+    id: 'receivables-control',
+    category: 'working_capital',
+    categoryLabel: 'Contas a Receber',
+    title: 'A diferença crucial entre Venda Realizada e Dinheiro no Caixa',
+    summary: 'Vender no crédito parcelado gera faturamento contábil imediato, mas o dinheiro real entra aos poucos segundo o prazo da operadora.',
+    content: 'Acompanhar as datas de liquidação e dar baixa nas parcelas recebidas evita que o MEI conte com um dinheiro que ainda não caiu na conta bancária. Além disso, monitorar parcelas atrasadas permite agir rápido para renegociar ou cobrar o cliente.',
+    tip: 'Compare o valor líquido das parcelas com seu extrato bancário para garantir que nenhuma taxa indevida foi descontada pela maquininha.'
   }
 ]
 
@@ -73,7 +82,7 @@ export const getPillsByCategory = (category) =>
  * Seleciona a pílula educativa do SEBRAE mais adequada para o contexto atual do usuário.
  *
  * @param {Object} context
- * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing' | 'margin_avoided'
+ * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing' | 'margin_avoided' | 'receivables'
  * @param {boolean} [context.discountActive] - Se está simulando desconto
  * @param {string} [context.paymentMethod] - Forma de pagamento (ex: 'CREDIT_CARD', 'INSTALLMENTS', 'CARD')
  * @param {boolean} [context.isTermSale] - Se é venda a prazo
@@ -110,17 +119,22 @@ export function selectContextualPill({
     return getPillById('card-fees')
   }
 
-  // 3. Vendas a prazo ou impacto no capital de giro
+  // 3. Contas a receber
+  if (action === 'receivables') {
+    return getPillById('receivables-control')
+  }
+
+  // 4. Vendas a prazo ou impacto no capital de giro
   if (action === 'working_capital' || isTermSale) {
     return getPillById('working-capital')
   }
 
-  // 4. Custos fixos elevados / pró-labore
+  // 5. Custos fixos elevados / pró-labore
   if (action === 'fixed_costs' || Number(fixedCostPercent) >= 25) {
     return getPillById('pro-labore')
   }
 
-  // 5. Formação de preço padrão (Markup Divisor SEBRAE)
+  // 6. Formação de preço padrão (Markup Divisor SEBRAE)
   return getPillById('markup-divisor')
 }
 

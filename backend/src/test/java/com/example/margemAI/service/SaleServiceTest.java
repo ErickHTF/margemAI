@@ -3,6 +3,8 @@ package com.example.margemAI.service;
 import com.example.margemAI.dto.request.SaleRequest;
 import com.example.margemAI.dto.response.SaleResponse;
 import com.example.margemAI.dto.response.SaleSummaryResponse;
+import com.example.margemAI.event.SaleDeletedEvent;
+import com.example.margemAI.event.SaleRegisteredEvent;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.ItemType;
@@ -11,10 +13,10 @@ import com.example.margemAI.model.Product;
 import com.example.margemAI.model.Sale;
 import com.example.margemAI.model.User;
 import com.example.margemAI.model.VariableCost;
-import com.example.margemAI.repository.VariableCostRepository;
 import com.example.margemAI.repository.ProductRepository;
 import com.example.margemAI.repository.SaleRepository;
 import com.example.margemAI.repository.UserRepository;
+import com.example.margemAI.repository.VariableCostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,6 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -39,7 +42,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,6 +59,9 @@ class SaleServiceTest {
 
     @Mock
     private VariableCostRepository variableCostRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @Spy
     private PaymentFeeCalculator paymentFeeCalculator = new PaymentFeeCalculator();
@@ -86,7 +91,6 @@ class SaleServiceTest {
                 .name("Consultoria MEI")
                 .type(ItemType.SERVICO)
                 .sellingPrice(new BigDecimal("150.00"))
-                .active(true)
                 .build();
     }
 
@@ -121,6 +125,7 @@ class SaleServiceTest {
         assertEquals(new BigDecimal("9.60"), response.getFeeAmount());
         assertEquals(new BigDecimal("290.40"), response.getNetAmount());
         verify(saleRepository).save(any(Sale.class));
+        verify(eventPublisher).publishEvent(any(SaleRegisteredEvent.class));
     }
 
     @Test
@@ -150,18 +155,25 @@ class SaleServiceTest {
         assertEquals(new BigDecimal("50.00"), response.getGrossAmount());
         assertEquals(new BigDecimal("0.00"), response.getFeeAmount());
         assertEquals(new BigDecimal("50.00"), response.getNetAmount());
+        verify(eventPublisher).publishEvent(any(SaleRegisteredEvent.class));
     }
 
     @Test
-    @DisplayName("Deve falhar ao tentar registrar venda para produto inexistente ou de outro usuário")
-    void shouldThrowWhenProductNotFound() {
+    @DisplayName("Deve lançar exceção ao tentar criar venda para usuário inexistente")
+    void shouldThrowExceptionWhenUserNotFoundOnCreate() {
         // Arrange
-        SaleRequest request = SaleRequest.builder()
-                .productId(productId)
-                .quantity(new BigDecimal("1.00"))
-                .paymentMethod(PaymentMethod.DINHEIRO)
-                .build();
+        SaleRequest request = SaleRequest.builder().build();
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class, () -> saleService.create(userId, request));
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção quando produto vinculado não for encontrado")
+    void shouldThrowExceptionWhenProductNotFoundOnCreate() {
+        // Arrange
+        SaleRequest request = SaleRequest.builder().productId(productId).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(productRepository.findByIdAndUserId(productId, userId)).thenReturn(Optional.empty());
 
@@ -170,15 +182,13 @@ class SaleServiceTest {
     }
 
     @Test
-    @DisplayName("Deve falhar se nem produto nem descrição forem fornecidos")
-    void shouldThrowWhenNoProductAndNoDescriptionProvided() {
+    @DisplayName("Deve lançar exceção ao tentar criar venda avulsa sem descrição")
+    void shouldThrowExceptionWhenDescriptionMissingForStandaloneSale() {
         // Arrange
         SaleRequest request = SaleRequest.builder()
-                .quantity(new BigDecimal("1.00"))
+                .quantity(BigDecimal.ONE)
                 .unitPrice(new BigDecimal("10.00"))
-                .paymentMethod(PaymentMethod.DINHEIRO)
                 .build();
-
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
 
         // Act & Assert
@@ -186,8 +196,8 @@ class SaleServiceTest {
     }
 
     @Test
-    @DisplayName("Deve listar vendas com consolidação financeira dos totais")
-    void shouldFindAllSalesWithSummaryTotals() {
+    @DisplayName("Deve calcular resumo de vendas corretamente com múltiplos itens")
+    void shouldCalculateSummaryCorrectly() {
         // Arrange
         Sale sale1 = Sale.builder()
                 .id(UUID.randomUUID())
@@ -196,7 +206,7 @@ class SaleServiceTest {
                 .quantity(BigDecimal.ONE)
                 .unitPrice(new BigDecimal("100.00"))
                 .grossAmount(new BigDecimal("100.00"))
-                .paymentMethod(PaymentMethod.PIX)
+                .paymentMethod(PaymentMethod.DINHEIRO)
                 .feePercentage(BigDecimal.ZERO)
                 .feeAmount(BigDecimal.ZERO)
                 .netAmount(new BigDecimal("100.00"))
@@ -293,6 +303,7 @@ class SaleServiceTest {
 
         // Assert
         verify(saleRepository).delete(sale);
+        verify(eventPublisher).publishEvent(any(SaleDeletedEvent.class));
     }
 
     @Test

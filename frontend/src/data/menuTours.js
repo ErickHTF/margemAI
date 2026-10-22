@@ -24,6 +24,11 @@ export const MENU_TOURS = {
     step('reserves-goal', 'Defina sua meta de segurança', 'Escolha um valor fixo em reais ou dimensione por meses dos seus custos fixos ativos.', 'O SEBRAE recomenda guardar de 3 a 6 meses de custos fixos para imprevistos.'),
     step('reserves-movement', 'Registre aportes e resgates', 'Guarde parte da sobra mensal ou resgate em emergências sem gerar receita fictícia no faturamento.')
   ],
+  receivables: [
+    step('receivables-summary', 'O que entrou e o que falta', 'Acompanhe o faturamento emitido, o caixa recebido e valores em atraso.', 'Diferencie a venda no papel do dinheiro efetivamente no bolso.'),
+    step('receivables-filter', 'Encontre o que precisa', 'Filtre por status para focar em cobranças pendentes ou atrasadas.'),
+    step('receivables-list', 'Dê baixa nas parcelas', 'Registre quando a operadora liquidar a parcela ou estorne se necessário.', 'Manter as baixas em dia garante que seu fluxo de caixa reflita a realidade.')
+  ],
   sales: [
     step('sales-form', 'Vendeu? Registre aqui', 'Confira item, preço e pagamento neste formulário.', 'Vendas esquecidas deixam seu faturamento incompleto.'),
     step('sales-metrics', 'Veja o que sobra', 'O valor líquido desconta as taxas do faturamento.', 'Compare as formas de pagamento para entender o peso das taxas.'),
