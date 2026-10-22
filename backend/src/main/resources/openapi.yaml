@@ -2146,6 +2146,88 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /obligations:
+    get:
+      tags:
+        - Alerts
+      summary: Get MEI obligations schedule (DAS and DASN-SIMEI)
+      description: |
+        Returns the annual schedule of MEI obligations (12 monthly DAS and 1 annual DASN-SIMEI),
+        configurable reminder settings, verified official links, and explicit disclaimer that manual
+        declaration does not attest fiscal regularity before Receita Federal.
+      operationId: getMeiObligationSchedule
+      parameters:
+        - name: year
+          in: query
+          description: Reference year for the obligations schedule
+          schema:
+            type: integer
+            minimum: 2020
+            maximum: 2100
+      responses:
+        '200':
+          description: MEI obligations schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeiObligationScheduleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /obligations/{id}/status:
+    patch:
+      tags:
+        - Alerts
+      summary: Update MEI obligation status with manual receipt identification
+      operationId: updateMeiObligationStatus
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeiObligationStatusUpdateRequest'
+      responses:
+        '200':
+          description: Obligation updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeiObligationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /obligations/reminders:
+    patch:
+      tags:
+        - Alerts
+      summary: Configure reminder advance days for MEI obligations
+      operationId: updateMeiObligationReminders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeiObligationReminderRequest'
+      responses:
+        '200':
+          description: Updated obligations schedule with new reminder settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeiObligationScheduleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -4283,3 +4365,150 @@ components:
           type: boolean
           description: Indica se o custo é obrigatório (sempre false; sugestões nunca são obrigatórias)
           example: false
+
+    MeiObligationType:
+      type: string
+      enum:
+        - DAS_MENSAL
+        - DASN_SIMEI_ANUAL
+
+    MeiObligationStatus:
+      type: string
+      enum:
+        - PENDING
+        - PAID_DECLARED
+        - OVERDUE
+
+    MeiOfficialLinkResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+          format: uri
+        verified:
+          type: boolean
+
+    MeiObligationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        obligationType:
+          $ref: '#/components/schemas/MeiObligationType'
+        title:
+          type: string
+        referenceYear:
+          type: integer
+        competency:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/MeiObligationStatus'
+        manualReceiptCode:
+          type: string
+          nullable: true
+        paidAt:
+          type: string
+          format: date
+          nullable: true
+        reminderDaysBefore:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+        dueSoon:
+          type: boolean
+        overdue:
+          type: boolean
+        daysUntilDue:
+          type: integer
+        officialUrl:
+          type: string
+          format: uri
+        officialPortalLabel:
+          type: string
+        verificationSource:
+          type: string
+          example: "MANUAL_DECLARATION"
+        regularityGuaranteed:
+          type: boolean
+          example: false
+        regularityDisclaimer:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    MeiObligationScheduleResponse:
+      type: object
+      properties:
+        year:
+          type: integer
+        reminderDaysBefore:
+          type: integer
+        verificationSource:
+          type: string
+          example: "MANUAL_DECLARATION"
+        regularityGuaranteed:
+          type: boolean
+          example: false
+        regularityDisclaimer:
+          type: string
+        totalCount:
+          type: integer
+        paidDeclaredCount:
+          type: integer
+        pendingCount:
+          type: integer
+        overdueCount:
+          type: integer
+        dueSoonCount:
+          type: integer
+        officialLinks:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeiOfficialLinkResponse'
+        obligations:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeiObligationResponse'
+
+    MeiObligationStatusUpdateRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/MeiObligationStatus'
+        manualReceiptCode:
+          type: string
+          maxLength: 120
+        paidAt:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 500
+
+    MeiObligationReminderRequest:
+      type: object
+      required:
+        - reminderDaysBefore
+      properties:
+        reminderDaysBefore:
+          type: integer
+          minimum: 1
+          maximum: 30
+        year:
+          type: integer
+          minimum: 2020
+          maximum: 2100

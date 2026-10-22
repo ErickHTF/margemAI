@@ -4,6 +4,7 @@ import { accountService } from './accountService'
 import { reserveService } from './reserveService'
 import alertService from './alertService'
 import assistantService from './assistantService'
+import { obligationService } from './obligationService'
 import { categoryService } from './categoryService'
 import dashboardService from './dashboardService'
 import fixedCostService from './fixedCostService'
@@ -44,8 +45,11 @@ const CASES = [
   { label: 'reserveService.getSummary', call: () => reserveService.getSummary(), verb: 'get', args: ['/reserves'] },
   { label: 'reserveService.updateGoal', call: () => reserveService.updateGoal(payload), verb: 'put', args: ['/reserves/goal', payload] },
   { label: 'reserveService.createMovement', call: () => reserveService.createMovement(payload), verb: 'post', args: ['/reserves/movements', payload] },
-  // Alertas e dashboard
+  // Alertas, obrigações MEI e dashboard
   { label: 'alertService.getMeiCapStatus', call: () => alertService.getMeiCapStatus({ accumulatedRevenue: 50000 }), verb: 'get', args: ['/alerts/mei-cap', { params: { accumulatedRevenue: 50000 } }] },
+  { label: 'obligationService.getSchedule', call: () => obligationService.getSchedule({ year: 2026 }), verb: 'get', args: ['/obligations', { params: { year: 2026 } }] },
+  { label: 'obligationService.updateStatus', call: () => obligationService.updateStatus('ob-1', payload), verb: 'patch', args: ['/obligations/ob-1/status', payload] },
+  { label: 'obligationService.updateReminders', call: () => obligationService.updateReminders({ reminderDaysBefore: 7, year: 2026 }), verb: 'patch', args: ['/obligations/reminders', { reminderDaysBefore: 7, year: 2026 }] },
   { label: 'dashboardService.getMonthlyFlow', call: () => dashboardService.getMonthlyFlow({ months: 6 }), verb: 'get', args: ['/dashboard/monthly-flow', { params: { months: 6 } }] },
   { label: 'dashboardService.getMonthlyFlow sem filtros', call: () => dashboardService.getMonthlyFlow(), verb: 'get', args: ['/dashboard/monthly-flow', { params: {} }] },
   // Categorias
