@@ -18,6 +18,15 @@ export const SEBRAE_PILLS = [
     tip: 'Prefira oferecer bônus, serviços agregados ou brindes de baixo custo unitário em vez de reduzir o preço nominal do produto.'
   },
   {
+    id: 'margin-avoided',
+    category: 'discount',
+    categoryLabel: 'Preservação de Margem',
+    title: 'Decisão de Margem Evitada: Proteja seu Lucro',
+    summary: 'Ajustar o desconto a tempo evita operar no prejuízo e preserva a margem de contribuição do negócio.',
+    content: 'Cada ponto percentual de desconto concedido é retirado diretamente do lucro líquido da empresa. Ao recuar de um desconto prejudicial, você garante que o preço praticado cubra integralmente os custos e gere margem real para manter o negócio saudável.',
+    tip: 'Lembre-se: Vender abaixo do custo é pagar para trabalhar. Prefira agregar valor com pequenos diferenciais ou melhores condições em vez de reduzir o preço nominal.'
+  },
+  {
     id: 'pro-labore',
     category: 'costs',
     categoryLabel: 'Custos Fixos',
@@ -55,7 +64,7 @@ export const getPillsByCategory = (category) =>
  * Seleciona a pílula educativa do SEBRAE mais adequada para o contexto atual do usuário.
  *
  * @param {Object} context
- * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing'
+ * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing' | 'margin_avoided'
  * @param {boolean} [context.discountActive] - Se está simulando desconto
  * @param {string} [context.paymentMethod] - Forma de pagamento (ex: 'CREDIT_CARD', 'INSTALLMENTS', 'CARD')
  * @param {boolean} [context.isTermSale] - Se é venda a prazo
@@ -71,6 +80,11 @@ export function selectContextualPill({
   fixedCostPercent = 0,
   variableCostPercent = 0
 } = {}) {
+  // 0. Decisão de margem evitada
+  if (action === 'margin_avoided') {
+    return getPillById('margin-avoided') || getPillById('discount-danger')
+  }
+
   // 1. Simulação ou concessão de desconto
   if (action === 'discount' || discountActive) {
     return getPillById('discount-danger')
