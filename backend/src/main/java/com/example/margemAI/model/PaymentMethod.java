@@ -26,4 +26,12 @@ public enum PaymentMethod {
         int requested = installments == null || installments < 1 ? 1 : installments;
         return this == CREDITO_PARCELADO ? Math.max(MIN_INSTALLMENTS_PARCELADO, requested) : requested;
     }
+
+    public int getDefaultSettlementDays() {
+        return switch (this) {
+            case DINHEIRO, PIX -> 0;
+            case DEBITO -> 1;
+            case CREDITO_A_VISTA, CREDITO_PARCELADO -> 30;
+        };
+    }
 }
