@@ -312,6 +312,39 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /segments/guidance:
+    get:
+      tags:
+        - MEI Profile
+      summary: Obter orientações e sugestões de custos por segmento do MEI
+      description: Retorna regras versionadas, resumo SEBRAE e sugestões opcionais de custos fixos e variáveis para o segmento do MEI autenticado ou para o segmento informado, aplicando fallback genérico quando necessário.
+      operationId: getSegmentGuidance
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: segmentId
+          in: query
+          description: ID opcional do segmento para consulta direcionada
+          schema:
+            type: string
+            format: uuid
+        - name: segmentName
+          in: query
+          description: Código ou nome opcional do segmento para consulta direcionada
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Orientações e sugestões do segmento retornadas com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentGuidanceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /costs/fixed:
     get:
       tags:
@@ -3670,3 +3703,75 @@ components:
         defaultSettlementDays:
           type: integer
           example: 30
+
+    SegmentGuidanceResponse:
+      type: object
+      required:
+        - ruleVersion
+        - segmentCode
+        - segmentName
+        - fallbackUsed
+        - sebraeGuidanceSummary
+        - costSuggestions
+      properties:
+        ruleVersion:
+          type: string
+          description: Versão explícita do catálogo de regras por segmento
+          example: "2026.1"
+        segmentCode:
+          type: string
+          example: "COMERCIO"
+        segmentName:
+          type: string
+          example: "Comércio Varejista e Atacadista"
+        fallbackUsed:
+          type: boolean
+          description: Verdadeiro quando o catálogo geral de fallback foi utilizado
+          example: false
+        sebraeGuidanceSummary:
+          type: string
+          description: Resumo didático de orientação SEBRAE para o segmento
+        costSuggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SegmentCostSuggestionResponse'
+
+    SegmentCostSuggestionResponse:
+      type: object
+      required:
+        - code
+        - name
+        - costType
+        - category
+        - whyItMatters
+        - mandatory
+      properties:
+        code:
+          type: string
+          example: "COM_EMB_01"
+        name:
+          type: string
+          example: "Embalagens, sacolas e etiquetas"
+        costType:
+          type: string
+          enum: [FIXED, VARIABLE]
+          example: "VARIABLE"
+        category:
+          type: string
+          example: "EMBALAGEM"
+        suggestedAmount:
+          type: number
+          x-currency: BRL
+          nullable: true
+          example: 1.50
+        suggestedPercent:
+          type: number
+          nullable: true
+          example: 3.00
+        whyItMatters:
+          type: string
+          description: Explicação didática do motivo pelo qual o custo costuma ocorrer no segmento
+        mandatory:
+          type: boolean
+          description: Indica se o custo é obrigatório (sempre false; sugestões nunca são obrigatórias)
+          example: false
