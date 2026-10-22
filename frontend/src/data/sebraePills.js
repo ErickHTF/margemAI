@@ -108,7 +108,7 @@ export function selectContextualPill({
     return getPillById('discount-danger')
   }
 
-  // 2. Meios de pagamento e taxas de maquininha/cartão
+  // 3. Meios de pagamento e taxas de maquininha/cartão
   if (
     action === 'payment' ||
     paymentMethod === 'CREDIT_CARD' ||
@@ -119,17 +119,17 @@ export function selectContextualPill({
     return getPillById('card-fees')
   }
 
-  // 3. Vendas a prazo ou impacto no capital de giro
+  // 4. Vendas a prazo ou impacto no capital de giro
   if (action === 'working_capital' || isTermSale) {
     return getPillById('working-capital')
   }
 
-  // 4. Custos fixos elevados / pró-labore
+  // 5. Custos fixos elevados / pró-labore
   if (action === 'fixed_costs' || Number(fixedCostPercent) >= 25) {
     return getPillById('pro-labore')
   }
 
-  // 5. Formação de preço padrão (Markup Divisor SEBRAE)
+  // 6. Formação de preço padrão (Markup Divisor SEBRAE)
   return getPillById('markup-divisor')
 }
 

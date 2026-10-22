@@ -55,6 +55,8 @@ tags:
     description: Cash flow and financial summary panel
   - name: Alerts
     description: MEI cap monitoring and alerts
+  - name: Payables
+    description: Payable accounts and disbursement management
 
 security:
   - bearerAuth: []
