@@ -37,7 +37,13 @@ const KIND_META = {
 
 const PAGE_SIZE = 50
 
-export default function CostManager({ kind, service, categories, products = [] }) {
+export default function CostManager({
+  kind,
+  service,
+  categories,
+  products = [],
+  initialDraft = null
+}) {
   const { guard } = useDraft(null)
   const meta = KIND_META[kind]
   const amountKey = meta.amountKey
@@ -52,8 +58,8 @@ export default function CostManager({ kind, service, categories, products = [] }
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [formVersion, setFormVersion] = useState(0)
-  const [showForm, setShowForm] = useState(false)
-  const [editingCost, setEditingCost] = useState(null)
+  const [showForm, setShowForm] = useState(Boolean(initialDraft))
+  const [editingCost, setEditingCost] = useState(initialDraft)
   const formRef = useRef(null)
   const [pendingDelete, setPendingDelete] = useState(null)
   const [deleteError, setDeleteError] = useState(null)

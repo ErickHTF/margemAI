@@ -5,6 +5,12 @@ export const getSegments = async () => {
   return response.data
 }
 
+export const getSegmentGuidance = async (params = {}) => {
+  const response = await api.get('/segments/guidance', { params })
+  return response.data
+}
+
 export default {
-  getSegments
+  getSegments,
+  getSegmentGuidance
 }
