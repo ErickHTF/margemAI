@@ -29,7 +29,13 @@ import { SEBRAE_PILLS } from '../data/sebraePills'
 import useApiResource from '../hooks/useApiResource'
 import useDraft from '../hooks/useDraft'
 import { receivableService } from '../services/receivableService'
-import { formatCurrencyBRL, formatDateBR } from '../utils/formatters'
+import {
+  formatCurrencyBRL,
+  formatDateBR,
+  maskCurrency,
+  unmaskCurrency,
+  currencyToDigits
+} from '../utils/formatters'
 import {
   RECEIVABLE_STATUS_LABELS,
   RECEIVABLE_STATUS_TONES,
@@ -101,13 +107,18 @@ export default function ReceivablesManager() {
 
   const handleCreateReceivable = async (e) => {
     e.preventDefault()
+    const grossAmountValue = unmaskCurrency(formData.grossAmount)
+    if (grossAmountValue <= 0) {
+      setFailure('Informe um valor bruto maior que zero.')
+      return
+    }
     setBusy(true)
     setFailure('')
     setFeedback('')
     try {
       await receivableService.create({
         description: formData.description.trim(),
-        grossAmount: Number(formData.grossAmount),
+        grossAmount: grossAmountValue,
         paymentMethod: formData.paymentMethod,
         installments: formData.paymentMethod === 'CREDITO_PARCELADO' ? Math.max(2, Number(formData.installments) || 2) : 1,
         issuedAt: formData.issuedAt || today(),
@@ -125,14 +136,19 @@ export default function ReceivablesManager() {
   }
 
   const handleSettle = async (e) => {
-    e.preventDefault()
+    e?.preventDefault()
     if (!settleModal) return
+    const settleAmountValue = unmaskCurrency(settleModal.amount)
+    if (settleAmountValue <= 0) {
+      setFailure('Informe um valor de baixa maior que zero.')
+      return
+    }
     setBusy(true)
     setFailure('')
     setFeedback('')
     try {
       const payload = {
-        amount: settleModal.amount ? Number(settleModal.amount) : undefined,
+        amount: settleAmountValue,
         receivedAt: settleModal.receivedAt || today(),
         notes: settleModal.notes?.trim() || undefined
       }
@@ -260,14 +276,12 @@ export default function ReceivablesManager() {
 
             <Field label="Valor bruto (R$)">
               <Input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0.01"
+                type="text"
+                inputMode="numeric"
                 required
                 prefix="R$"
                 placeholder="0,00"
-                value={formData.grossAmount}
+                value={maskCurrency(formData.grossAmount)}
                 onChange={(e) => setFormData({ ...formData, grossAmount: e.target.value })}
               />
             </Field>
@@ -322,7 +336,7 @@ export default function ReceivablesManager() {
           <div className="flex justify-end gap-3 pt-2">
             <Button
               type="submit"
-              disabled={busy || !formData.description.trim() || !formData.grossAmount}
+              disabled={busy || !formData.description.trim() || unmaskCurrency(formData.grossAmount) <= 0}
               className="w-full sm:w-auto"
             >
               Salvar Título
@@ -493,7 +507,7 @@ export default function ReceivablesManager() {
                                       setSettleModal({
                                         installment: inst,
                                         receivable: rec,
-                                        amount: String(inst.remainingAmount || inst.netAmount),
+                                        amount: currencyToDigits(inst.remainingAmount || inst.netAmount),
                                         receivedAt: today(),
                                         notes: ''
                                       })
@@ -528,17 +542,61 @@ export default function ReceivablesManager() {
         )}
       </section>
 
-      {/* Modal / Diálogo de Baixa */}
+      {/* Modal / Diálogo de Baixa (Parcial ou Total) */}
       {settleModal && (
-        <ConfirmDialog
-          open={Boolean(settleModal)}
-          title={`Liquidar Parcela ${settleModal.installment.installmentNumber}/${settleModal.installment.totalInstallments}`}
-          message={`Confirme a baixa no valor de até ${formatCurrencyBRL(settleModal.installment.remainingAmount)} referente ao título "${settleModal.receivable.description}".`}
-          confirmLabel="Confirmar Baixa"
-          cancelLabel="Cancelar"
-          onCancel={() => setSettleModal(null)}
-          onConfirm={handleSettle}
-        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs"
+        >
+          <Card as="form" onSubmit={handleSettle} padding="lg" className="w-full max-w-md space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">
+              Liquidar Parcela {settleModal.installment.installmentNumber}/{settleModal.installment.totalInstallments}
+            </h3>
+            <p className="text-xs text-slate-500">
+              {settleModal.receivable.description} · Saldo em aberto: {formatCurrencyBRL(settleModal.installment.remainingAmount)}
+            </p>
+
+            <Field label="Valor recebido (R$)" hint="Você pode registrar baixa total ou parcial.">
+              <Input
+                type="text"
+                inputMode="numeric"
+                required
+                prefix="R$"
+                placeholder="0,00"
+                value={maskCurrency(settleModal.amount)}
+                onChange={(e) => setSettleModal({ ...settleModal, amount: e.target.value })}
+              />
+            </Field>
+
+            <Field label="Data do recebimento">
+              <Input
+                type="date"
+                required
+                value={settleModal.receivedAt}
+                onChange={(e) => setSettleModal({ ...settleModal, receivedAt: e.target.value })}
+              />
+            </Field>
+
+            <Field label="Observações (opcional)">
+              <Input
+                maxLength={500}
+                placeholder="Ex.: Recebido na conta PJ"
+                value={settleModal.notes}
+                onChange={(e) => setSettleModal({ ...settleModal, notes: e.target.value })}
+              />
+            </Field>
+
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setSettleModal(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" loading={busy} disabled={busy || unmaskCurrency(settleModal.amount) <= 0}>
+                Confirmar Baixa
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
 
       {/* Modal / Diálogo de Estorno */}
