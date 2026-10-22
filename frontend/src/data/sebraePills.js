@@ -88,6 +88,15 @@ export const SEBRAE_PILLS = [
     summary: 'Registrar a conta quando ela chega (competência) evita surpresas no dia em que o dinheiro sai do caixa (desembolso).',
     content: 'No regime de competência, a despesa pertence ao mês do consumo (energia, aluguel, DAS-MEI). No regime de caixa, o desembolso ocorre na data do pagamento efetivo. Acompanhar contas a pagar com antecedência protege o MEI contra juros e multas por atraso.',
     tip: 'Gere os títulos recorrentes no início de cada mês e registre baixas parciais ou totais assim que efetuar o pagamento.'
+  },
+  {
+    id: 'debt-avalanche',
+    category: 'debts',
+    categoryLabel: 'Gestão de Dívidas',
+    title: 'Priorize a quitação das dívidas mais caras (Método SEBRAE)',
+    summary: 'Quitar primeiro a dívida com maior taxa de juros estanca o vazamento financeiro do seu negócio.',
+    content: 'Nem todas as dívidas pesam igual. Um empréstimo com taxa de 5% a.m. consome muito mais caixa do que um de 1,5% a.m. No método recomendado pelo SEBRAE, o MEI deve pagar as parcelas normais de todas e direcionar qualquer folga ou reserva de caixa para abater ou antecipar as parcelas da dívida com maior taxa de juros (Método Avalanche), usufruindo do desconto proporcional obrigatório por lei (CDC Art. 52, § 2º).',
+    tip: 'Sempre exija o abatimento proporcional de juros futuros ao antecipar parcelas de financiamentos.'
   }
 ]
 
@@ -126,12 +135,17 @@ export function selectContextualPill({
     return getPillById('payables-management')
   }
 
-  // 2. Simulação ou concessão de desconto
+  // 2. Gestão de dívidas e quitação antecipada
+  if (action === 'debts') {
+    return getPillById('debt-avalanche')
+  }
+
+  // 3. Simulação ou concessão de desconto
   if (action === 'discount' || discountActive) {
     return getPillById('discount-danger')
   }
 
-  // 3. Meios de pagamento e taxas de maquininha/cartão
+  // 4. Meios de pagamento e taxas de maquininha/cartão
   if (
     action === 'payment' ||
     paymentMethod === 'CREDIT_CARD' ||
@@ -142,22 +156,22 @@ export function selectContextualPill({
     return getPillById('card-fees')
   }
 
-  // 4. Contas a receber
+  // 5. Contas a receber
   if (action === 'receivables') {
     return getPillById('receivables-control')
   }
 
-  // 5. Vendas a prazo ou impacto no capital de giro
+  // 6. Vendas a prazo ou impacto no capital de giro
   if (action === 'working_capital' || isTermSale) {
     return getPillById('working-capital')
   }
 
-  // 6. Custos fixos elevados / pró-labore
+  // 7. Custos fixos elevados / pró-labore
   if (action === 'fixed_costs' || Number(fixedCostPercent) >= 25) {
     return getPillById('pro-labore')
   }
 
-  // 7. Formação de preço padrão (Markup Divisor SEBRAE)
+  // 8. Formação de preço padrão (Markup Divisor SEBRAE)
   return getPillById('markup-divisor')
 }
 

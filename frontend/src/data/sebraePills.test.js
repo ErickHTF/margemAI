@@ -37,6 +37,11 @@ describe('sebraePills', () => {
   })
 
   describe('selectContextualPill', () => {
+    it('deve selecionar pílula de dívidas ao gerenciar dívidas', () => {
+      const pillByDebts = selectContextualPill({ action: 'debts' })
+      expect(pillByDebts.id).toBe('debt-avalanche')
+    })
+
     it('deve selecionar pílula de desconto ao simular ou alterar desconto', () => {
       const pillByAction = selectContextualPill({ action: 'discount' })
       expect(pillByAction.id).toBe('discount-danger')

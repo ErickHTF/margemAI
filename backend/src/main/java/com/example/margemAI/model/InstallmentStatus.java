@@ -4,5 +4,7 @@ public enum InstallmentStatus {
     PENDING,
     PARTIAL,
     RECEIVED,
-    OVERDUE
+    OVERDUE,
+    PAID,
+    PAID_EARLY
 }
