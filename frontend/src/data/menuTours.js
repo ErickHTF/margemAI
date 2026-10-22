@@ -14,6 +14,17 @@ export const MENU_TOURS = {
     step('accounts-movement', 'Entrou ou saiu? Registre', 'Lance aportes, retiradas, pró-labore ou transferências.', 'Confira também as vendas e despesas: elas ainda não entram automaticamente nestas contas.'),
     step('accounts-filter', 'Olhe uma conta de cada vez', 'Escolha uma conta para conferir saldo e movimentos.', 'Conferir com o extrato ajuda a encontrar registros esquecidos.')
   ],
+  receivables: [
+    step('receivables-summary', 'O que entrou e o que falta', 'Acompanhe o faturamento emitido, o caixa recebido e valores em atraso.', 'Diferencie a venda no papel do dinheiro efetivamente no bolso.'),
+    step('receivables-filter', 'Encontre o que precisa', 'Filtre por status para focar em cobranças pendentes ou atrasadas.'),
+    step('receivables-list', 'Dê baixa nas parcelas', 'Registre quando a operadora liquidar a parcela ou estorne se necessário.', 'Manter as baixas em dia garante que seu fluxo de caixa reflita a realidade.')
+  ],
+  payables: [
+    step('payables-summary', 'Despesa vs. Desembolso', 'Acompanhe compromissos do mês e o que já foi efetivamente pago no caixa.', 'Separar despesa de desembolso evita surpresas na hora de pagar as contas.'),
+    step('payables-generate', 'Custos Fixos viram Títulos', 'Gere as contas do mês automaticamente a partir dos custos fixos com um clique.', 'A geração é idempotente: você nunca terá contas duplicadas.'),
+    step('payables-new', 'Despesas pontuais', 'Cadastre boletos avulsos, compras de insumos e contas extras.'),
+    step('payables-list', 'Dê baixa ou estorne', 'Registre pagamentos parciais, quitações ou estornos com total rastreabilidade.')
+  ],
   reserves: [
     step('reserves-summary', 'Reserva separada do caixa livre', 'Veja quanto já está guardado na reserva e quanto continua livre nas contas empresariais.'),
     step('reserves-goal', 'Defina sua meta de segurança', 'Escolha um valor fixo em reais ou dimensione por meses dos seus custos fixos ativos.', 'O SEBRAE recomenda guardar de 3 a 6 meses de custos fixos para imprevistos.'),
