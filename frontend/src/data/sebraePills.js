@@ -43,6 +43,15 @@ export const SEBRAE_PILLS = [
     summary: 'Vender a prazo e comprar à vista cria um buraco no caixa que pode levar o MEI ao endividamento.',
     content: 'Se você paga seu fornecedor em 15 dias, mas recebe de seus clientes em 30 ou 60 dias, precisará de capital de giro próprio para financiar essa diferença de tempo.',
     tip: 'Tente sempre negociar prazos com fornecedores maiores ou iguais aos prazos que concede a seus clientes.'
+  },
+  {
+    id: 'receivables-control',
+    category: 'working_capital',
+    categoryLabel: 'Contas a Receber',
+    title: 'A diferença crucial entre Venda Realizada e Dinheiro no Caixa',
+    summary: 'Vender no crédito parcelado gera faturamento contábil imediato, mas o dinheiro real entra aos poucos segundo o prazo da operadora.',
+    content: 'Acompanhar as datas de liquidação e dar baixa nas parcelas recebidas evita que o MEI conte com um dinheiro que ainda não caiu na conta bancária. Além disso, monitorar parcelas atrasadas permite agir rápido para renegociar ou cobrar o cliente.',
+    tip: 'Compare o valor líquido das parcelas com seu extrato bancário para garantir que nenhuma taxa indevida foi descontada pela maquininha.'
   }
 ]
 
@@ -55,7 +64,7 @@ export const getPillsByCategory = (category) =>
  * Seleciona a pílula educativa do SEBRAE mais adequada para o contexto atual do usuário.
  *
  * @param {Object} context
- * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing'
+ * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing' | 'receivables'
  * @param {boolean} [context.discountActive] - Se está simulando desconto
  * @param {string} [context.paymentMethod] - Forma de pagamento (ex: 'CREDIT_CARD', 'INSTALLMENTS', 'CARD')
  * @param {boolean} [context.isTermSale] - Se é venda a prazo
@@ -87,17 +96,22 @@ export function selectContextualPill({
     return getPillById('card-fees')
   }
 
-  // 3. Vendas a prazo ou impacto no capital de giro
+  // 3. Contas a receber
+  if (action === 'receivables') {
+    return getPillById('receivables-control')
+  }
+
+  // 4. Vendas a prazo ou impacto no capital de giro
   if (action === 'working_capital' || isTermSale) {
     return getPillById('working-capital')
   }
 
-  // 4. Custos fixos elevados / pró-labore
+  // 5. Custos fixos elevados / pró-labore
   if (action === 'fixed_costs' || Number(fixedCostPercent) >= 25) {
     return getPillById('pro-labore')
   }
 
-  // 5. Formação de preço padrão (Markup Divisor SEBRAE)
+  // 6. Formação de preço padrão (Markup Divisor SEBRAE)
   return getPillById('markup-divisor')
 }
 
