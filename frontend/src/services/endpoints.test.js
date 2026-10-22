@@ -8,6 +8,7 @@ import { obligationService } from './obligationService'
 import { categoryService } from './categoryService'
 import dashboardService from './dashboardService'
 import fixedCostService from './fixedCostService'
+import payableService from './payableService'
 import { paymentMethodService } from './paymentMethodService'
 import { calculatePricing, simulateDiscount, calculateBreakEven } from './pricingService'
 import { productService } from './productService'
@@ -73,6 +74,15 @@ const CASES = [
   { label: 'variableCostService.update', call: () => variableCostService.update('8', payload), verb: 'put', args: ['/costs/variable/8', payload] },
   { label: 'variableCostService.patch', call: () => variableCostService.patch('8', payload), verb: 'patch', args: ['/costs/variable/8', payload] },
   { label: 'variableCostService.remove', call: () => variableCostService.remove('8'), verb: 'delete', args: ['/costs/variable/8'] },
+  // Contas a pagar
+  { label: 'payableService.list', call: () => payableService.list({ competency: '2026-10' }), verb: 'get', args: ['/payables', { params: { competency: '2026-10' } }] },
+  { label: 'payableService.get', call: () => payableService.get('pay-1'), verb: 'get', args: ['/payables/pay-1'] },
+  { label: 'payableService.create', call: () => payableService.create(payload), verb: 'post', args: ['/payables', payload] },
+  { label: 'payableService.update', call: () => payableService.update('pay-1', payload), verb: 'put', args: ['/payables/pay-1', payload] },
+  { label: 'payableService.remove', call: () => payableService.remove('pay-1'), verb: 'delete', args: ['/payables/pay-1'] },
+  { label: 'payableService.pay', call: () => payableService.pay('pay-1', payload), verb: 'post', args: ['/payables/pay-1/pay', payload] },
+  { label: 'payableService.reverse', call: () => payableService.reverse('pay-1'), verb: 'post', args: ['/payables/pay-1/reverse'] },
+  { label: 'payableService.generateRecurring', call: () => payableService.generateRecurring(payload), verb: 'post', args: ['/payables/generate-recurring', payload] },
   // Taxas de pagamento
   { label: 'paymentMethodService.getPaymentMethodConfigs', call: () => paymentMethodService.getPaymentMethodConfigs(), verb: 'get', args: ['/settings/financial/payment-methods'] },
   { label: 'paymentMethodService.updatePaymentMethodConfigs', call: () => paymentMethodService.updatePaymentMethodConfigs([payload]), verb: 'put', args: ['/settings/financial/payment-methods', [payload]] },

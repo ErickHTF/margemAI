@@ -17,7 +17,8 @@ import {
   Receipt,
   BarChart3,
   BotMessageSquare,
-  CalendarCheck
+  CalendarCheck,
+  FileSpreadsheet
 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
@@ -36,6 +37,7 @@ import AssistantBubble from './components/AssistantBubble'
 import BusinessAccounts from './components/BusinessAccounts'
 import FinancialReserveManager from './components/FinancialReserveManager'
 import ReceivablesManager from './components/ReceivablesManager'
+import PayablesManager from './components/PayablesManager'
 import MeiObligationsManager from './components/MeiObligationsManager'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
@@ -63,6 +65,7 @@ const NAV_GROUPS = [
       { key: 'accounts', label: 'Contas Empresariais', Icon: Landmark },
       { key: 'reserves', label: 'Reserva Financeira', Icon: PiggyBank },
       { key: 'receivables', label: 'Contas a Receber', Icon: Receipt },
+      { key: 'payables', label: 'Contas a Pagar', Icon: FileSpreadsheet },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
       { key: 'costs', label: 'Custos', Icon: Wallet },
@@ -273,6 +276,8 @@ export default function App() {
         return <FinancialReserveManager onNavigate={navigateContext} />
       case 'receivables':
         return <ReceivablesManager onNavigate={navigateContext} />
+      case 'payables':
+        return <PayablesManager onNavigate={navigateContext} />
       case 'sales':
         return <SalesManager key={userKey} onNavigate={navigateContext} draft={currentDraft} onDraftChange={saveSaleDraft} onBusyChange={setSaleBusy} />
       case 'assistant':

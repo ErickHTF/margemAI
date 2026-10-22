@@ -79,6 +79,15 @@ export const SEBRAE_PILLS = [
     summary: 'O pagamento do DAS vence todo dia 20 e a declaração anual DASN-SIMEI deve ser entregue até 31 de maio nos portais oficiais da Receita Federal.',
     content: 'Mesmo sem faturamento no mês, o MEI precisa emitir e pagar o DAS no PGMEI e entregar a DASN-SIMEI anual. Guardar o código do comprovante no sistema ajuda na sua organização interna, mas a situação fiscal oficial deve ser sempre conferida diretamente no PGMEI ou e-CAC.',
     tip: 'Inclua o valor fixo do DAS nos seus Custos Fixos mensais e consulte periodicamente o extrato oficial no PGMEI.'
+  },
+  {
+    id: 'payables-management',
+    category: 'payables',
+    categoryLabel: 'Contas a Pagar',
+    title: 'Despesa vs. Desembolso: controle a competência e o caixa',
+    summary: 'Registrar a conta quando ela chega (competência) evita surpresas no dia em que o dinheiro sai do caixa (desembolso).',
+    content: 'No regime de competência, a despesa pertence ao mês do consumo (energia, aluguel, DAS-MEI). No regime de caixa, o desembolso ocorre na data do pagamento efetivo. Acompanhar contas a pagar com antecedência protege o MEI contra juros e multas por atraso.',
+    tip: 'Gere os títulos recorrentes no início de cada mês e registre baixas parciais ou totais assim que efetuar o pagamento.'
   }
 ]
 
@@ -91,7 +100,7 @@ export const getPillsByCategory = (category) =>
  * Seleciona a pílula educativa do SEBRAE mais adequada para o contexto atual do usuário.
  *
  * @param {Object} context
- * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing' | 'margin_avoided' | 'receivables'
+ * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing' | 'margin_avoided' | 'receivables' | 'payables'
  * @param {boolean} [context.discountActive] - Se está simulando desconto
  * @param {string} [context.paymentMethod] - Forma de pagamento (ex: 'CREDIT_CARD', 'INSTALLMENTS', 'CARD')
  * @param {boolean} [context.isTermSale] - Se é venda a prazo
@@ -112,12 +121,17 @@ export function selectContextualPill({
     return getPillById('margin-avoided') || getPillById('discount-danger')
   }
 
-  // 1. Simulação ou concessão de desconto
+  // 1. Contas a pagar e gestão de despesas
+  if (action === 'payables') {
+    return getPillById('payables-management')
+  }
+
+  // 2. Simulação ou concessão de desconto
   if (action === 'discount' || discountActive) {
     return getPillById('discount-danger')
   }
 
-  // 2. Meios de pagamento e taxas de maquininha/cartão
+  // 3. Meios de pagamento e taxas de maquininha/cartão
   if (
     action === 'payment' ||
     paymentMethod === 'CREDIT_CARD' ||
@@ -128,22 +142,22 @@ export function selectContextualPill({
     return getPillById('card-fees')
   }
 
-  // 3. Contas a receber
+  // 4. Contas a receber
   if (action === 'receivables') {
     return getPillById('receivables-control')
   }
 
-  // 4. Vendas a prazo ou impacto no capital de giro
+  // 5. Vendas a prazo ou impacto no capital de giro
   if (action === 'working_capital' || isTermSale) {
     return getPillById('working-capital')
   }
 
-  // 5. Custos fixos elevados / pró-labore
+  // 6. Custos fixos elevados / pró-labore
   if (action === 'fixed_costs' || Number(fixedCostPercent) >= 25) {
     return getPillById('pro-labore')
   }
 
-  // 6. Formação de preço padrão (Markup Divisor SEBRAE)
+  // 7. Formação de preço padrão (Markup Divisor SEBRAE)
   return getPillById('markup-divisor')
 }
 

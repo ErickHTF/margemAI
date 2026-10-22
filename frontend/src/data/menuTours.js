@@ -29,6 +29,12 @@ export const MENU_TOURS = {
     step('receivables-filter', 'Encontre o que precisa', 'Filtre por status para focar em cobranças pendentes ou atrasadas.'),
     step('receivables-list', 'Dê baixa nas parcelas', 'Registre quando a operadora liquidar a parcela ou estorne se necessário.', 'Manter as baixas em dia garante que seu fluxo de caixa reflita a realidade.')
   ],
+  payables: [
+    step('payables-summary', 'Despesa vs. Desembolso', 'Acompanhe compromissos do mês e o que já foi efetivamente pago no caixa.', 'Separar despesa de desembolso evita surpresas na hora de pagar as contas.'),
+    step('payables-generate', 'Custos Fixos viram Títulos', 'Gere as contas do mês automaticamente a partir dos custos fixos com um clique.', 'A geração é idempotente: você nunca terá contas duplicadas.'),
+    step('payables-new', 'Despesas pontuais', 'Cadastre boletos avulsos, compras de insumos e contas extras.'),
+    step('payables-list', 'Dê baixa ou estorne', 'Registre pagamentos parciais, quitações ou estornos com total rastreabilidade.')
+  ],
   sales: [
     step('sales-form', 'Vendeu? Registre aqui', 'Confira item, preço e pagamento neste formulário.', 'Vendas esquecidas deixam seu faturamento incompleto.'),
     step('sales-metrics', 'Veja o que sobra', 'O valor líquido desconta as taxas do faturamento.', 'Compare as formas de pagamento para entender o peso das taxas.'),
