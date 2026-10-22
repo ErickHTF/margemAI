@@ -43,6 +43,15 @@ export const SEBRAE_PILLS = [
     summary: 'Vender a prazo e comprar à vista cria um buraco no caixa que pode levar o MEI ao endividamento.',
     content: 'Se você paga seu fornecedor em 15 dias, mas recebe de seus clientes em 30 ou 60 dias, precisará de capital de giro próprio para financiar essa diferença de tempo.',
     tip: 'Tente sempre negociar prazos com fornecedores maiores ou iguais aos prazos que concede a seus clientes.'
+  },
+  {
+    id: 'mei-obligations',
+    category: 'obligations',
+    categoryLabel: 'Obrigações Fiscais MEI',
+    title: 'DAS mensal e DASN-SIMEI anual: como manter o CNPJ protegido',
+    summary: 'O pagamento do DAS vence todo dia 20 e a declaração anual DASN-SIMEI deve ser entregue até 31 de maio nos portais oficiais da Receita Federal.',
+    content: 'Mesmo sem faturamento no mês, o MEI precisa emitir e pagar o DAS no PGMEI e entregar a DASN-SIMEI anual. Guardar o código do comprovante no sistema ajuda na sua organização interna, mas a situação fiscal oficial deve ser sempre conferida diretamente no PGMEI ou e-CAC.',
+    tip: 'Inclua o valor fixo do DAS nos seus Custos Fixos mensais e consulte periodicamente o extrato oficial no PGMEI.'
   }
 ]
 
