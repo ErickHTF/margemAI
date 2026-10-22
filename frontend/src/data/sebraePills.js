@@ -61,6 +61,15 @@ export const SEBRAE_PILLS = [
     summary: 'O SEBRAE recomenda manter de 3 a 6 meses dos seus custos fixos guardados para atravessar imprevistos e meses fracos sem recorrer a empréstimos caros.',
     content: 'Separar o saldo reservado do dinheiro livre das contas empresariais evita que o colchão de segurança seja consumido nas despesas do dia a dia. Além disso, aportes e resgates na reserva são transferências internas do patrimônio e não devem ser confundidos com faturamento de vendas.',
     tip: 'Comece com uma meta de 3 meses dos seus custos fixos mensais e faça aportes regulares sempre que fechar o mês no azul.'
+  },
+  {
+    id: 'mei-obligations',
+    category: 'obligations',
+    categoryLabel: 'Obrigações Fiscais MEI',
+    title: 'DAS mensal e DASN-SIMEI anual: como manter o CNPJ protegido',
+    summary: 'O pagamento do DAS vence todo dia 20 e a declaração anual DASN-SIMEI deve ser entregue até 31 de maio nos portais oficiais da Receita Federal.',
+    content: 'Mesmo sem faturamento no mês, o MEI precisa emitir e pagar o DAS no PGMEI e entregar a DASN-SIMEI anual. Guardar o código do comprovante no sistema ajuda na sua organização interna, mas a situação fiscal oficial deve ser sempre conferida diretamente no PGMEI ou e-CAC.',
+    tip: 'Inclua o valor fixo do DAS nos seus Custos Fixos mensais e consulte periodicamente o extrato oficial no PGMEI.'
   }
 ]
 
