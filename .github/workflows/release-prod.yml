@@ -12,53 +12,44 @@ on:
         default: ''
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
   build-and-release-prod:
     name: Build & Publish Production Release
+    needs: ci
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
+      # Publica exatamente o que o CI testou, em vez de compilar de novo.
+      - name: Download Backend Artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          distribution: 'temurin'
-          java-version: '21'
-          cache: 'maven'
+          name: backend-jar
+          path: artifacts/backend
 
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: ./frontend/package-lock.json
+          name: frontend-dist
+          path: artifacts/frontend
 
-      - name: Grant execute permission for mvnw
-        run: chmod +x backend/mvnw
-
-      - name: Run Backend Tests
-        working-directory: ./backend
-        run: ./mvnw test
-
-      - name: Build Backend Production Package
-        working-directory: ./backend
+      - name: Package Release Assets
         run: |
-          ./mvnw clean package -DskipTests
-          mv target/*.jar ../margemai-backend-production.jar
-
-      - name: Build Frontend Production Bundle
-        working-directory: ./frontend
-        run: |
-          npm ci
-          npm run lint
-          npm run build
-          cd dist && zip -r ../../margemai-frontend-production.zip .
+          mv artifacts/backend/*.jar margemai-backend-production.jar
+          (cd artifacts/frontend && zip -qr ../../margemai-frontend-production.zip .)
 
       - name: Determine Semantic Release Version
         id: versioning
@@ -73,7 +64,7 @@ jobs:
           echo "release_name=Margem.AI Release ${TAG}" >> $GITHUB_OUTPUT
 
       - name: Create Official GitHub Production Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ steps.versioning.outputs.tag_name }}
           name: ${{ steps.versioning.outputs.release_name }}
