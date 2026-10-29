@@ -11,6 +11,7 @@ import com.example.margemAI.model.BusinessAccount;
 import com.example.margemAI.model.FinancialReserve;
 import com.example.margemAI.model.FinancialReserve.GoalMode;
 import com.example.margemAI.model.ReserveMovement;
+import com.example.margemAI.model.User;
 import com.example.margemAI.repository.AccountMovementRepository;
 import com.example.margemAI.repository.BusinessAccountRepository;
 import com.example.margemAI.repository.FinancialReserveRepository;
@@ -116,15 +117,20 @@ public class FinancialReserveService {
         return toMovementResponse(saved, currentBalance);
     }
 
+    // Row lock serializes concurrent goal/movement writes; the user lock covers the first creation.
     private FinancialReserve getOrCreate(UUID userId) {
-        return reserveRepository.findByUserId(userId)
-                .orElseGet(() -> FinancialReserve.builder()
-                        .user(userRepository.getReferenceById(userId))
-                        .goalMode(GoalMode.FIXED_AMOUNT)
-                        .targetAmount(Money.ZERO)
-                        .targetMonths(0)
-                        .currentBalance(Money.ZERO)
-                        .build());
+        return reserveRepository.findByUserIdForUpdate(userId).orElseGet(() -> {
+            User user = userRepository.findByIdForUpdate(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado."));
+            return reserveRepository.findByUserIdForUpdate(userId)
+                    .orElseGet(() -> reserveRepository.saveAndFlush(FinancialReserve.builder()
+                            .user(user)
+                            .goalMode(GoalMode.FIXED_AMOUNT)
+                            .targetAmount(Money.ZERO)
+                            .targetMonths(0)
+                            .currentBalance(Money.ZERO)
+                            .build()));
+        });
     }
 
     private FinancialReserveResponse buildSummaryResponse(UUID userId, FinancialReserve reserve) {

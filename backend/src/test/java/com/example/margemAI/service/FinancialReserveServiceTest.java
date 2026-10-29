@@ -125,7 +125,7 @@ class FinancialReserveServiceTest {
                 .currentBalance(new BigDecimal("1350.00"))
                 .build();
 
-        when(reserveRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
+        when(reserveRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(existing));
         when(reserveRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(fixedCostRepository.sumActiveAmountByUserId(userId)).thenReturn(new BigDecimal("1800.00"));
         when(businessAccountRepository.findByUserIdOrderByName(userId)).thenReturn(List.of());
@@ -185,7 +185,7 @@ class FinancialReserveServiceTest {
                 .openingDate(LocalDate.of(2026, 1, 1))
                 .build();
 
-        when(reserveRepository.findByUserId(userId)).thenReturn(Optional.of(reserve));
+        when(reserveRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(reserve));
         when(businessAccountRepository.findByIdAndUserId(account.getId(), userId)).thenReturn(Optional.of(account));
         when(reserveRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(movementRepository.save(any())).thenAnswer(i -> {
@@ -224,7 +224,7 @@ class FinancialReserveServiceTest {
                 .currentBalance(new BigDecimal("450.00"))
                 .build();
 
-        when(reserveRepository.findByUserId(userId)).thenReturn(Optional.of(reserve));
+        when(reserveRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(reserve));
 
         ReserveMovementRequest request = new ReserveMovementRequest(
                 Type.WITHDRAWAL,
@@ -248,7 +248,7 @@ class FinancialReserveServiceTest {
                 .build();
         UUID foreignAccountId = UUID.randomUUID();
 
-        when(reserveRepository.findByUserId(userId)).thenReturn(Optional.of(reserve));
+        when(reserveRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(reserve));
         when(businessAccountRepository.findByIdAndUserId(foreignAccountId, userId)).thenReturn(Optional.empty());
 
         ReserveMovementRequest request = new ReserveMovementRequest(
