@@ -1,6 +1,24 @@
 import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import MeiObligationsManager from './MeiObligationsManager'
+import { DraftContext } from './DraftContext'
+
+const captured = vi.hoisted(() => ({ selects: [], buttons: [] }))
+
+vi.mock('./ui', async (importOriginal) => {
+  const original = await importOriginal()
+  return {
+    ...original,
+    Select: (props) => {
+      captured.selects.push(props)
+      return original.Select(props)
+    },
+    Button: (props) => {
+      captured.buttons.push(props)
+      return original.Button(props)
+    }
+  }
+})
 
 vi.mock('../hooks/useApiResource', () => ({
   default: () => ({
@@ -100,5 +118,44 @@ describe('MeiObligationsManager', () => {
     expect(html).toContain(
       'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Identificacao'
     )
+  })
+
+  const renderWithGuard = () => {
+    captured.selects.length = 0
+    captured.buttons.length = 0
+    const guard = vi.fn()
+    renderToStaticMarkup(
+      <DraftContext.Provider value={{ register: () => {}, guard }}>
+        <MeiObligationsManager />
+      </DraftContext.Provider>
+    )
+    return guard
+  }
+
+  it('pede confirmação antes de trocar o ano da agenda com alterações não salvas', () => {
+    const guard = renderWithGuard()
+    const yearSelect = captured.selects.find((props) => props['aria-label'] === 'Ano da agenda')
+
+    yearSelect.onChange({ target: { value: '2025' } })
+
+    expect(guard).toHaveBeenCalledTimes(1)
+    expect(guard).toHaveBeenCalledWith(expect.any(Function))
+  })
+
+  it('vincula o seletor de ano ao estado de gravação para bloquear a troca durante o salvamento', () => {
+    renderWithGuard()
+    const yearSelect = captured.selects.find((props) => props['aria-label'] === 'Ano da agenda')
+
+    expect(yearSelect).toHaveProperty('disabled', false)
+  })
+
+  it('pede confirmação antes de abrir outro comprovante com alterações não salvas', () => {
+    const guard = renderWithGuard()
+    const openButton = captured.buttons.find((props) => props.children === 'Informar comprovante')
+
+    openButton.onClick()
+
+    expect(guard).toHaveBeenCalledTimes(1)
+    expect(guard).toHaveBeenCalledWith(expect.any(Function))
   })
 })
