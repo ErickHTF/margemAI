@@ -1,4 +1,4 @@
-name: Release Produção (Main Merge)
+name: Release de produção
 
 on:
   push:
