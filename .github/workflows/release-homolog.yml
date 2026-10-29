@@ -1,4 +1,4 @@
-name: Release Homologação (Pre-Release)
+name: Release de homologação
 
 on:
   push:

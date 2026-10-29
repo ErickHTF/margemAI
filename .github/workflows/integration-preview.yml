@@ -1,4 +1,4 @@
-name: Prévia de Integração (PRs abertos)
+name: Prévia de integração
 
 # Cada PR passa no CI sozinho, mas PRs abertos ao mesmo tempo podem quebrar quando juntos.
 # Este workflow junta develop + todos os PRs abertos para develop e roda a mesma validação do CI,
