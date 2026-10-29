@@ -30,6 +30,7 @@ import {
 } from './ui'
 import { selectContextualPill } from '../data/sebraePills'
 import useApiResource from '../hooks/useApiResource'
+import useDraft from '../hooks/useDraft'
 import payableService from '../services/payableService'
 import {
   formatCurrencyBRL,
@@ -83,6 +84,7 @@ export default function PayablesManager() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState(() => emptyForm(currentYearMonth()))
+  const [formBaseline, setFormBaseline] = useState(null)
 
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [payingAccount, setPayingAccount] = useState(null)
@@ -117,22 +119,26 @@ export default function PayablesManager() {
   }
 
   const handleOpenNew = () => {
+    const initial = emptyForm(competency)
     setEditingId(null)
-    setFormData(emptyForm(competency))
+    setFormData(initial)
+    setFormBaseline(initial)
     setFailure('')
     setFormOpen(true)
   }
 
   const handleOpenEdit = (acc) => {
-    setEditingId(acc.id)
-    setFormData({
+    const initial = {
       description: acc.description || '',
       category: acc.category || 'OUTRO',
       dueDate: acc.dueDate || '',
       totalAmount: currencyToDigits(acc.totalAmount),
       competency: acc.competency || competency,
       notes: acc.notes || ''
-    })
+    }
+    setEditingId(acc.id)
+    setFormData(initial)
+    setFormBaseline(initial)
     setFailure('')
     setFormOpen(true)
   }
@@ -340,19 +346,20 @@ export default function PayablesManager() {
               Mês Atual
             </Button>
           )}
-          <input
+          <Input
             type="month"
+            size="sm"
             aria-label="Selecionar mês"
+            className="w-40"
             value={competency}
             onChange={(e) => e.target.value && setCompetency(e.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
       </Card>
 
       {/* Indicadores Separando Regime de Competência e Regime de Caixa */}
       <div data-tour="payables-summary" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card padding="md" tone="white" className="border-l-4 border-l-indigo-600 space-y-1">
+        <Card padding="md" tone="indigo" className="space-y-1">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-semibold uppercase tracking-wider">Despesa Compromissada</span>
             <Badge tone="indigo">Competência</Badge>
@@ -363,7 +370,7 @@ export default function PayablesManager() {
           <p className="text-xs text-slate-500">Total gerado para o mês</p>
         </Card>
 
-        <Card padding="md" tone="white" className="border-l-4 border-l-emerald-600 space-y-1">
+        <Card padding="md" tone="emerald" className="space-y-1">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-semibold uppercase tracking-wider">Desembolso Efetivo</span>
             <Badge tone="emerald">Caixa</Badge>
@@ -371,10 +378,10 @@ export default function PayablesManager() {
           <p className="text-2xl font-bold text-emerald-700">
             {formatCurrencyBRL(summary.totalEffectiveDisbursement)}
           </p>
-          <p className="text-xs text-slate-500">Total já pago e baixado</p>
+          <p className="text-xs text-slate-500">Pagamentos feitos neste mês</p>
         </Card>
 
-        <Card padding="md" tone="white" className="border-l-4 border-l-amber-500 space-y-1">
+        <Card padding="md" tone="amber" className="space-y-1">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-semibold uppercase tracking-wider">Saldo em Aberto</span>
             <Badge tone="amber">A Pagar</Badge>
@@ -385,7 +392,7 @@ export default function PayablesManager() {
           <p className="text-xs text-slate-500">Compromissos pendentes</p>
         </Card>
 
-        <Card padding="md" tone="white" className="border-l-4 border-l-rose-500 space-y-1">
+        <Card padding="md" tone="rose" className="space-y-1">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-semibold uppercase tracking-wider">Total Vencido</span>
             <Badge tone="rose">Atrasado</Badge>
@@ -553,98 +560,17 @@ export default function PayablesManager() {
         )}
       </div>
 
-      {/* Modal / Dialog de Cadastro e Edição */}
       {formOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setFormOpen(false)} />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`${formId}-title`}
-            className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-100 p-6 space-y-4"
-          >
-            <h2 id={`${formId}-title`} className="text-lg font-bold text-slate-900">
-              {editingId ? 'Editar Conta a Pagar' : 'Nova Conta a Pagar'}
-            </h2>
-
-            <form onSubmit={handleSaveAccount} className="space-y-4">
-              <Field label="Descrição da Despesa" hint="Ex.: Aluguel do ponto, DAS-MEI, Fornecedor">
-                <Input
-                  required
-                  maxLength={200}
-                  placeholder="Nome ou descrição da conta"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </Field>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Categoria">
-                  <Select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  >
-                    {PAYABLE_CATEGORIES.map((c) => (
-                      <option key={c.value} value={c.value}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-
-                <Field label="Competência (Mês)">
-                  <Input
-                    required
-                    type="month"
-                    value={formData.competency}
-                    onChange={(e) => setFormData({ ...formData, competency: e.target.value })}
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Data de Vencimento">
-                  <Input
-                    required
-                    type="date"
-                    value={formData.dueDate}
-                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                  />
-                </Field>
-
-                <Field label="Valor Total (R$)">
-                  <Input
-                    required
-                    type="text"
-                    inputMode="numeric"
-                    prefix="R$"
-                    placeholder="0,00"
-                    value={maskCurrency(formData.totalAmount)}
-                    onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                  />
-                </Field>
-              </div>
-
-              <Field label="Observações (Opcional)">
-                <Input
-                  maxLength={500}
-                  placeholder="Detalhes, boleto, linha digitável ou pix"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                />
-              </Field>
-
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 pt-2">
-                <Button variant="secondary" onClick={() => setFormOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" loading={busy}>
-                  {editingId ? 'Salvar Alterações' : 'Cadastrar Conta'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <PayableFormDialog
+          formId={formId}
+          editing={Boolean(editingId)}
+          value={formData}
+          baseline={formBaseline}
+          onChange={setFormData}
+          onSubmit={handleSaveAccount}
+          onCancel={() => setFormOpen(false)}
+          busy={busy}
+        />
       )}
 
       {/* Modal / Dialog de Baixa / Pagamento */}
@@ -687,6 +613,23 @@ export default function PayablesManager() {
                 </span>
               </div>
             </Card>
+
+            {payingAccount.payments?.length > 0 && (
+              <div className="space-y-1.5 text-xs">
+                <p className="font-semibold text-slate-700">Pagamentos registrados</p>
+                <ul className="space-y-1">
+                  {payingAccount.payments.map((payment) => (
+                    <li key={payment.id} className="flex items-center justify-between gap-2">
+                      <span className="text-slate-500">{formatDateBR(payment.paidAt?.slice(0, 10))}</span>
+                      <span className="flex items-center gap-1.5 font-medium text-slate-900">
+                        {formatCurrencyBRL(payment.amount)}
+                        {payment.reversedAt && <Badge tone="slate">Estornado</Badge>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <form onSubmit={handleConfirmPay} className="space-y-4">
               <Field label="Valor do Pagamento (R$)" hint="Você pode registrar quitação total ou parcial.">
@@ -744,6 +687,97 @@ export default function PayablesManager() {
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteConfirmAccount(null)}
       />
+    </div>
+  )
+}
+
+export function PayableFormDialog({ formId, editing, value, baseline, onChange, onSubmit, onCancel, busy }) {
+  const { dirty, changes, guard } = useDraft(value, baseline)
+  const cancel = () => guard(onCancel)
+  const set = (field) => (e) => onChange({ ...value, [field]: e.target.value })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={cancel} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${formId}-title`}
+        className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-100 p-6 space-y-4"
+      >
+        <h2 id={`${formId}-title`} className="text-lg font-bold text-slate-900">
+          {editing ? 'Editar Conta a Pagar' : 'Nova Conta a Pagar'}
+        </h2>
+        {dirty && (
+          <p role="status" className="text-sm text-amber-700">
+            {changes} {changes === 1 ? 'alteração não salva' : 'alterações não salvas'}
+          </p>
+        )}
+
+        <form onSubmit={onSubmit} className="space-y-4">
+          <Field label="Descrição da Despesa" hint="Ex.: Aluguel do ponto, DAS-MEI, Fornecedor">
+            <Input
+              required
+              maxLength={200}
+              placeholder="Nome ou descrição da conta"
+              value={value.description}
+              onChange={set('description')}
+            />
+          </Field>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Categoria">
+              <Select value={value.category} onChange={set('category')}>
+                {PAYABLE_CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Competência (Mês)">
+              <Input required type="month" value={value.competency} onChange={set('competency')} />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Data de Vencimento">
+              <Input required type="date" value={value.dueDate} onChange={set('dueDate')} />
+            </Field>
+
+            <Field label="Valor Total (R$)">
+              <Input
+                required
+                type="text"
+                inputMode="numeric"
+                prefix="R$"
+                placeholder="0,00"
+                value={maskCurrency(value.totalAmount)}
+                onChange={set('totalAmount')}
+              />
+            </Field>
+          </div>
+
+          <Field label="Observações (Opcional)">
+            <Input
+              maxLength={500}
+              placeholder="Detalhes, boleto, linha digitável ou pix"
+              value={value.notes}
+              onChange={set('notes')}
+            />
+          </Field>
+
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 pt-2">
+            <Button variant="secondary" className="w-full sm:w-auto" onClick={cancel}>
+              Cancelar
+            </Button>
+            <Button type="submit" className="w-full sm:w-auto" loading={busy} disabled={!dirty}>
+              {editing ? 'Salvar Alterações' : 'Cadastrar Conta'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
