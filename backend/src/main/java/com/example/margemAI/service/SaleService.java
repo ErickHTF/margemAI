@@ -6,6 +6,7 @@ import com.example.margemAI.dto.response.SaleResponse;
 import com.example.margemAI.dto.response.SaleSummaryResponse;
 import com.example.margemAI.event.SaleDeletedEvent;
 import com.example.margemAI.event.SaleRegisteredEvent;
+import com.example.margemAI.event.SaleUpdatedEvent;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.PaymentMethod;
@@ -182,6 +183,9 @@ public class SaleService {
         sale.setNotes(request.getNotes());
 
         Sale saved = saleRepository.save(sale);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new SaleUpdatedEvent(saved));
+        }
         return toResponse(saved);
     }
 

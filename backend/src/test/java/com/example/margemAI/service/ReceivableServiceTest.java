@@ -43,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -373,5 +374,144 @@ class ReceivableServiceTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> receivableService.settle(userId, installmentId, SettleInstallmentRequest.builder().build()));
+    }
+
+    @Test
+    @DisplayName("Divide R$ 0,06 em 12x sem parcela negativa e sem ultrapassar o total")
+    void shouldSplitSmallAmountWithoutNegativeInstallments() {
+        List<BigDecimal> parts = ReceivableService.splitCents(new BigDecimal("0.06"), 12);
+
+        assertEquals(12, parts.size());
+        assertTrue(parts.stream().allMatch(part -> part.signum() >= 0));
+        assertEquals(new BigDecimal("0.00"), parts.get(0));
+        assertEquals(new BigDecimal("0.01"), parts.get(11));
+        assertEquals(new BigDecimal("0.06"), parts.stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+    }
+
+    @Test
+    @DisplayName("Ignora configuração inativa no prazo de liquidação e usa o prazo recomendado")
+    void shouldIgnoreInactiveConfigForSettlementDays() {
+        Sale sale = Sale.builder()
+                .id(UUID.randomUUID())
+                .user(testUser)
+                .description("Venda no crédito")
+                .grossAmount(new BigDecimal("80.00"))
+                .feeAmount(new BigDecimal("2.56"))
+                .netAmount(new BigDecimal("77.44"))
+                .paymentMethod(PaymentMethod.CREDITO_A_VISTA)
+                .installments(1)
+                .soldAt(LocalDateTime.of(2026, 4, 1, 10, 0))
+                .build();
+
+        when(receivableRepository.findBySaleIdAndUserId(sale.getId(), userId)).thenReturn(Optional.empty());
+        when(paymentMethodConfigService.resolveConfig(eq(userId), eq(PaymentMethod.CREDITO_A_VISTA), eq(1)))
+                .thenReturn(Optional.of(PaymentMethodConfig.builder().settlementDays(90).isActive(false).build()));
+        when(receivableRepository.save(any(Receivable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Receivable receivable = receivableService.createFromSale(sale);
+
+        assertEquals(LocalDate.of(2026, 5, 1), receivable.getInstallmentList().get(0).getDueDate());
+    }
+
+    @Test
+    @DisplayName("Gera novamente as parcelas quando a venda sem recebimentos muda de valor e parcelas")
+    void shouldRegenerateInstallmentsWhenSaleChangesWithoutReceipts() {
+        Receivable receivable = receivableForSale(new BigDecimal("0.00"));
+        Sale sale = receivable.getSale();
+        sale.setGrossAmount(new BigDecimal("90.00"));
+        sale.setFeeAmount(new BigDecimal("4.50"));
+        sale.setNetAmount(new BigDecimal("85.50"));
+        sale.setPaymentMethod(PaymentMethod.CREDITO_PARCELADO);
+        sale.setInstallments(3);
+        sale.setSoldAt(LocalDateTime.of(2026, 6, 10, 9, 0));
+
+        when(receivableRepository.findBySaleIdAndUserId(sale.getId(), userId)).thenReturn(Optional.of(receivable));
+        when(paymentMethodConfigService.resolveConfig(eq(userId), eq(PaymentMethod.CREDITO_PARCELADO), eq(3)))
+                .thenReturn(Optional.empty());
+        when(receivableRepository.save(any(Receivable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Receivable synced = receivableService.syncFromSale(sale);
+
+        List<ReceivableInstallment> installments = synced.getInstallmentList();
+        assertAll(
+                () -> assertEquals(new BigDecimal("85.50"), synced.getNetAmount()),
+                () -> assertEquals(PaymentMethod.CREDITO_PARCELADO, synced.getPaymentMethod()),
+                () -> assertEquals(3, installments.size()),
+                () -> assertEquals(new BigDecimal("28.50"), installments.get(2).getNetAmount()),
+                () -> assertEquals(new BigDecimal("1.50"), installments.get(0).getFeeAmount()),
+                () -> assertEquals(LocalDate.of(2026, 7, 10), installments.get(0).getDueDate())
+        );
+    }
+
+    @Test
+    @DisplayName("Bloqueia alteração de valor da venda quando o título já tem recebimentos")
+    void shouldBlockFinancialChangeWhenReceivableHasReceipts() {
+        Receivable receivable = receivableForSale(new BigDecimal("20.00"));
+        Sale sale = receivable.getSale();
+        sale.setGrossAmount(new BigDecimal("90.00"));
+        sale.setNetAmount(new BigDecimal("90.00"));
+
+        when(receivableRepository.findBySaleIdAndUserId(sale.getId(), userId)).thenReturn(Optional.of(receivable));
+
+        assertThrows(InvalidRequestException.class, () -> receivableService.syncFromSale(sale));
+        assertEquals(new BigDecimal("50.00"), receivable.getInstallmentList().get(0).getNetAmount());
+        verify(receivableRepository, never()).save(any(Receivable.class));
+    }
+
+    @Test
+    @DisplayName("Atualiza só a descrição do título quando a venda com recebimentos não muda valores")
+    void shouldUpdateDescriptionOnlyWhenSaleWithReceiptsKeepsTerms() {
+        Receivable receivable = receivableForSale(new BigDecimal("20.00"));
+        Sale sale = receivable.getSale();
+        sale.setDescription("Bolo de cenoura");
+
+        when(receivableRepository.findBySaleIdAndUserId(sale.getId(), userId)).thenReturn(Optional.of(receivable));
+        when(receivableRepository.save(any(Receivable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Receivable synced = receivableService.syncFromSale(sale);
+
+        assertEquals("Bolo de cenoura", synced.getDescription());
+        assertEquals(new BigDecimal("20.00"), synced.getInstallmentList().get(0).getReceivedAmount());
+        assertEquals(2, synced.getInstallmentList().size());
+    }
+
+    private Receivable receivableForSale(BigDecimal firstReceived) {
+        Sale sale = Sale.builder()
+                .id(UUID.randomUUID())
+                .user(testUser)
+                .description("Bolo de chocolate")
+                .grossAmount(new BigDecimal("100.00"))
+                .feeAmount(BigDecimal.ZERO)
+                .netAmount(new BigDecimal("100.00"))
+                .paymentMethod(PaymentMethod.CREDITO_PARCELADO)
+                .installments(2)
+                .soldAt(LocalDateTime.of(2026, 4, 1, 10, 0))
+                .build();
+        Receivable receivable = Receivable.builder()
+                .id(UUID.randomUUID())
+                .user(testUser)
+                .sale(sale)
+                .description(sale.getDescription())
+                .grossAmount(new BigDecimal("100.00"))
+                .feeAmount(BigDecimal.ZERO)
+                .netAmount(new BigDecimal("100.00"))
+                .paymentMethod(PaymentMethod.CREDITO_PARCELADO)
+                .installments(2)
+                .issuedAt(LocalDate.of(2026, 4, 1))
+                .build();
+        for (int i = 1; i <= 2; i++) {
+            receivable.getInstallmentList().add(ReceivableInstallment.builder()
+                    .receivable(receivable)
+                    .installmentNumber(i)
+                    .totalInstallments(2)
+                    .dueDate(LocalDate.of(2026, 4, 1).plusDays(30L * i))
+                    .grossAmount(new BigDecimal("50.00"))
+                    .feeAmount(BigDecimal.ZERO)
+                    .netAmount(new BigDecimal("50.00"))
+                    .receivedAmount(i == 1 ? firstReceived : BigDecimal.ZERO)
+                    .status(InstallmentStatus.PENDING)
+                    .build());
+        }
+        return receivable;
     }
 }

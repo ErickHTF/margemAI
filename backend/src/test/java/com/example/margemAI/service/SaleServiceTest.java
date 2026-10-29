@@ -5,6 +5,7 @@ import com.example.margemAI.dto.response.SaleResponse;
 import com.example.margemAI.dto.response.SaleSummaryResponse;
 import com.example.margemAI.event.SaleDeletedEvent;
 import com.example.margemAI.event.SaleRegisteredEvent;
+import com.example.margemAI.event.SaleUpdatedEvent;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.ItemType;
@@ -288,6 +289,7 @@ class SaleServiceTest {
         assertEquals(new BigDecimal("6.00"), response.getFeeAmount());
         assertEquals(new BigDecimal("394.00"), response.getNetAmount());
         verify(saleRepository).save(existingSale);
+        verify(eventPublisher).publishEvent(any(SaleUpdatedEvent.class));
     }
 
     @Test
