@@ -1351,6 +1351,9 @@ paths:
       tags:
         - Sales
       summary: Update sale
+      description: >-
+        Reconciles the linked receivable. Without receipts its installments are regenerated; with receipts, changing
+        amount, payment method, installments or sale date returns 400 until the receipts are reversed.
       operationId: updateSale
       parameters:
         - $ref: '#/components/parameters/IdParam'

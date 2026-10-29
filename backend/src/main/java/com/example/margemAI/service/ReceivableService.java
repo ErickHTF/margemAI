@@ -33,12 +33,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -48,6 +48,9 @@ public class ReceivableService {
     private static final String USER_NOT_FOUND_MESSAGE = "Usuário não encontrado.";
     private static final String RECEIVABLE_NOT_FOUND_MESSAGE = "Título a receber não encontrado.";
     private static final String INSTALLMENT_NOT_FOUND_MESSAGE = "Parcela não encontrada.";
+    private static final String SALE_WITH_RECEIPTS_MESSAGE =
+            "Esta venda já tem parcelas recebidas em Contas a Receber. Estorne os recebimentos antes de alterar "
+                    + "valor, forma de pagamento, parcelas ou data da venda.";
     private static final String INVALID_PAGINATION_MESSAGE =
             "Parâmetros de paginação inválidos. page deve ser >= 0 e size entre 1 e 100.";
 
@@ -63,13 +66,10 @@ public class ReceivableService {
             return null;
         }
 
-        UUID userId = sale.getUser().getId();
-        if (receivableRepository.findBySaleIdAndUserId(sale.getId(), userId).isPresent()) {
-            return receivableRepository.findBySaleIdAndUserId(sale.getId(), userId).get();
+        Optional<Receivable> existing = receivableRepository.findBySaleIdAndUserId(sale.getId(), sale.getUser().getId());
+        if (existing.isPresent()) {
+            return existing.get();
         }
-
-        LocalDate baseDate = sale.getSoldAt() != null ? sale.getSoldAt().toLocalDate() : LocalDate.now();
-        int installments = sale.getInstallments() != null ? sale.getInstallments() : 1;
 
         return generateAndSaveReceivable(
                 sale.getUser(),
@@ -79,10 +79,54 @@ public class ReceivableService {
                 sale.getFeeAmount(),
                 sale.getNetAmount(),
                 sale.getPaymentMethod(),
-                installments,
-                baseDate,
+                saleInstallments(sale),
+                saleBaseDate(sale),
                 sale.getNotes()
         );
+    }
+
+    /**
+     * Reconcilia o título com a venda alterada. Sem recebimentos, as parcelas são geradas de novo;
+     * com recebimentos, só descrição e observações acompanham a venda e mudanças de valor, forma de
+     * pagamento, parcelas ou data são bloqueadas até o estorno, para não reescrever baixas já feitas.
+     */
+    @Transactional
+    public Receivable syncFromSale(Sale sale) {
+        if (sale == null || sale.getUser() == null) {
+            return null;
+        }
+
+        Optional<Receivable> existing = receivableRepository.findBySaleIdAndUserId(sale.getId(), sale.getUser().getId());
+        if (existing.isEmpty()) {
+            return createFromSale(sale);
+        }
+
+        Receivable receivable = existing.get();
+        int installments = saleInstallments(sale);
+        LocalDate baseDate = saleBaseDate(sale);
+
+        receivable.setDescription(sale.getDescription());
+        receivable.setNotes(sale.getNotes());
+
+        if (!financialTermsChanged(receivable, sale, installments, baseDate)) {
+            return receivableRepository.save(receivable);
+        }
+
+        if (hasReceipts(receivable)) {
+            throw new InvalidRequestException(SALE_WITH_RECEIPTS_MESSAGE);
+        }
+
+        receivable.setGrossAmount(sale.getGrossAmount());
+        receivable.setFeeAmount(sale.getFeeAmount());
+        receivable.setNetAmount(sale.getNetAmount());
+        receivable.setPaymentMethod(sale.getPaymentMethod());
+        receivable.setInstallments(installments);
+        receivable.setIssuedAt(baseDate);
+        receivable.getInstallmentList().clear();
+        receivable.getInstallmentList().addAll(buildInstallments(receivable));
+        receivable.recalculateTotals();
+
+        return receivableRepository.save(receivable);
     }
 
     @Transactional
@@ -322,10 +366,6 @@ public class ReceivableService {
             LocalDate baseDate,
             String notes
     ) {
-        int settlementDays = paymentMethodConfigService.resolveConfig(user.getId(), paymentMethod, installments)
-                .map(PaymentMethodConfig::getSettlementDays)
-                .orElseGet(paymentMethod::getDefaultSettlementDays);
-
         Receivable receivable = Receivable.builder()
                 .user(user)
                 .sale(sale)
@@ -341,49 +381,82 @@ public class ReceivableService {
                 .notes(notes)
                 .build();
 
-        List<ReceivableInstallment> installmentList = new ArrayList<>();
-        BigDecimal grossAcc = BigDecimal.ZERO;
-        BigDecimal feeAcc = BigDecimal.ZERO;
-        BigDecimal netAcc = BigDecimal.ZERO;
-
-        for (int i = 1; i <= installments; i++) {
-            BigDecimal gross, fee, net;
-            if (i < installments) {
-                gross = Money.round(grossAmount.divide(BigDecimal.valueOf(installments), 2, RoundingMode.HALF_UP));
-                fee = Money.round(feeAmount.divide(BigDecimal.valueOf(installments), 2, RoundingMode.HALF_UP));
-                net = Money.round(netAmount.divide(BigDecimal.valueOf(installments), 2, RoundingMode.HALF_UP));
-                grossAcc = grossAcc.add(gross);
-                feeAcc = feeAcc.add(fee);
-                netAcc = netAcc.add(net);
-            } else {
-                gross = grossAmount.subtract(grossAcc);
-                fee = feeAmount.subtract(feeAcc);
-                net = netAmount.subtract(netAcc);
-            }
-
-            long daysToAdd = (long) settlementDays + (long) (i - 1) * 30L;
-            LocalDate dueDate = baseDate.plusDays(daysToAdd);
-
-            ReceivableInstallment installment = ReceivableInstallment.builder()
-                    .receivable(receivable)
-                    .installmentNumber(i)
-                    .totalInstallments(installments)
-                    .dueDate(dueDate)
-                    .grossAmount(gross)
-                    .feeAmount(fee)
-                    .netAmount(net)
-                    .receivedAmount(BigDecimal.ZERO)
-                    .status(InstallmentStatus.PENDING)
-                    .notes(notes)
-                    .build();
-
-            installmentList.add(installment);
-        }
-
-        receivable.setInstallmentList(installmentList);
+        receivable.setInstallmentList(new ArrayList<>(buildInstallments(receivable)));
         receivable.recalculateTotals();
 
         return receivableRepository.save(receivable);
+    }
+
+    private List<ReceivableInstallment> buildInstallments(Receivable receivable) {
+        int installments = receivable.getInstallments();
+        int settlementDays = paymentMethodConfigService
+                .resolveConfig(receivable.getUser().getId(), receivable.getPaymentMethod(), installments)
+                .filter(config -> Boolean.TRUE.equals(config.getIsActive()))
+                .map(PaymentMethodConfig::getSettlementDays)
+                .orElseGet(receivable.getPaymentMethod()::getDefaultSettlementDays);
+
+        List<BigDecimal> grossParts = splitCents(receivable.getGrossAmount(), installments);
+        List<BigDecimal> feeParts = splitCents(receivable.getFeeAmount(), installments);
+        List<BigDecimal> netParts = splitCents(receivable.getNetAmount(), installments);
+
+        List<ReceivableInstallment> installmentList = new ArrayList<>();
+        for (int i = 1; i <= installments; i++) {
+            long daysToAdd = (long) settlementDays + (long) (i - 1) * 30L;
+
+            installmentList.add(ReceivableInstallment.builder()
+                    .receivable(receivable)
+                    .installmentNumber(i)
+                    .totalInstallments(installments)
+                    .dueDate(receivable.getIssuedAt().plusDays(daysToAdd))
+                    .grossAmount(grossParts.get(i - 1))
+                    .feeAmount(feeParts.get(i - 1))
+                    .netAmount(netParts.get(i - 1))
+                    .receivedAmount(BigDecimal.ZERO)
+                    .status(InstallmentStatus.PENDING)
+                    .notes(receivable.getNotes())
+                    .build());
+        }
+        return installmentList;
+    }
+
+    static List<BigDecimal> splitCents(BigDecimal total, int installments) {
+        long totalCents = Money.round(total).movePointRight(2).longValueExact();
+        long quotient = totalCents / installments;
+        long remainder = totalCents % installments;
+
+        List<BigDecimal> parts = new ArrayList<>(installments);
+        for (int i = 1; i <= installments; i++) {
+            long cents = quotient + (i > installments - remainder ? 1 : 0);
+            parts.add(BigDecimal.valueOf(cents, 2));
+        }
+        return parts;
+    }
+
+    private static int saleInstallments(Sale sale) {
+        return sale.getInstallments() != null ? sale.getInstallments() : 1;
+    }
+
+    private static LocalDate saleBaseDate(Sale sale) {
+        return sale.getSoldAt() != null ? sale.getSoldAt().toLocalDate() : LocalDate.now();
+    }
+
+    private static boolean financialTermsChanged(Receivable receivable, Sale sale, int installments, LocalDate baseDate) {
+        return !sameAmount(receivable.getGrossAmount(), sale.getGrossAmount())
+                || !sameAmount(receivable.getFeeAmount(), sale.getFeeAmount())
+                || !sameAmount(receivable.getNetAmount(), sale.getNetAmount())
+                || receivable.getPaymentMethod() != sale.getPaymentMethod()
+                || !Objects.equals(receivable.getInstallments(), installments)
+                || !Objects.equals(receivable.getIssuedAt(), baseDate);
+    }
+
+    private static boolean sameAmount(BigDecimal a, BigDecimal b) {
+        return a != null && b != null ? a.compareTo(b) == 0 : a == b;
+    }
+
+    private static boolean hasReceipts(Receivable receivable) {
+        return receivable.getInstallmentList().stream()
+                .map(ReceivableInstallment::getReceivedAmount)
+                .anyMatch(amount -> amount != null && amount.compareTo(BigDecimal.ZERO) > 0);
     }
 
     public ReceivableResponse toResponse(Receivable receivable) {
