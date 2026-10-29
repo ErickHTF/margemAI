@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import DebtManager from './DebtManager'
+import useDraft from '../hooks/useDraft'
+
+vi.mock('../hooks/useDraft', () => ({
+  default: vi.fn(() => ({ dirty: false, changes: 0, markSaved: vi.fn(), guard: (action) => action() }))
+}))
 
 vi.mock('../services/debtService', () => ({
   debtService: {
@@ -77,5 +82,12 @@ describe('DebtManager (Tela de Dívidas e Quitação)', () => {
   it('exibe o formulário de cadastro com campos para taxa, parcelas e credor', () => {
     const markup = renderToStaticMarkup(<DebtManager />)
     expect(markup).toContain('Novo Empréstimo')
+  })
+
+  it('registra o formulário de nova dívida na proteção de rascunhos', () => {
+    renderToStaticMarkup(<DebtManager />)
+    expect(useDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ creditor: '', principalAmount: '', totalInstallments: '' })
+    )
   })
 })

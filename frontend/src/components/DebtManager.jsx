@@ -31,8 +31,15 @@ import {
 } from './ui'
 import { getPillById } from '../data/sebraePills'
 import useApiResource from '../hooks/useApiResource'
+import useDraft from '../hooks/useDraft'
 import { debtService } from '../services/debtService'
-import { calculateDebtCost, calculatePmt, sortDebtsBySebraePriority } from '../utils/debts'
+import {
+  calculateDebtCost,
+  calculatePmt,
+  filterScheduleByStatus,
+  scheduleParamsFor,
+  sortDebtsBySebraePriority
+} from '../utils/debts'
 import { formatCurrencyBRL, formatDateBR, maskCurrency, unmaskCurrency, currencyToDigits } from '../utils/formatters'
 
 const today = () => {
@@ -61,7 +68,10 @@ export default function DebtManager() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showNewForm, setShowNewForm] = useState(false)
   const [formData, setFormData] = useState(emptyDebtForm)
+  const { dirty: formDirty, changes: formChanges, markSaved, guard } = useDraft(formData)
   const [expandedDebtId, setExpandedDebtId] = useState(null)
+  const [installmentsByDebt, setInstallmentsByDebt] = useState({})
+  const [loadingInstallmentsId, setLoadingInstallmentsId] = useState(null)
   const [pendingDelete, setPendingDelete] = useState(null)
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState('')
@@ -111,10 +121,7 @@ export default function DebtManager() {
     error: errorSchedule,
     reload: reloadSchedule
   } = useApiResource(
-    () =>
-      debtService.getSchedule(
-        scheduleStatusFilter !== 'ALL' ? { status: scheduleStatusFilter } : {}
-      ),
+    () => debtService.getSchedule(scheduleParamsFor(scheduleStatusFilter)),
     [scheduleStatusFilter],
     {
       initialData: [],
@@ -126,11 +133,44 @@ export default function DebtManager() {
     return sortDebtsBySebraePriority(debtsData || [])
   }, [debtsData])
 
+  const schedule = useMemo(
+    () => filterScheduleByStatus(scheduleData || [], scheduleStatusFilter),
+    [scheduleData, scheduleStatusFilter]
+  )
+
+  const loadDebtInstallments = useCallback(async (debtId) => {
+    setLoadingInstallmentsId(debtId)
+    try {
+      const detail = await debtService.get(debtId)
+      setInstallmentsByDebt((prev) => ({ ...prev, [debtId]: detail.installments || [] }))
+    } catch (err) {
+      setFailure(err.response?.data?.message || 'Erro ao carregar as parcelas do contrato.')
+    } finally {
+      setLoadingInstallmentsId((current) => (current === debtId ? null : current))
+    }
+  }, [])
+
   const reloadAll = useCallback(() => {
     reloadDebts()
     reloadSummary()
     reloadSchedule()
-  }, [reloadDebts, reloadSummary, reloadSchedule])
+    setInstallmentsByDebt({})
+    if (expandedDebtId) loadDebtInstallments(expandedDebtId)
+  }, [reloadDebts, reloadSummary, reloadSchedule, expandedDebtId, loadDebtInstallments])
+
+  const handleToggleInstallments = (debtId) => {
+    if (expandedDebtId === debtId) {
+      setExpandedDebtId(null)
+      return
+    }
+    setExpandedDebtId(debtId)
+    if (!installmentsByDebt[debtId]) loadDebtInstallments(debtId)
+  }
+
+  const closeNewForm = () => guard(() => {
+    setFormData(emptyDebtForm())
+    setShowNewForm(false)
+  })
 
   // Cálculo prévio em tempo real para o formulário
   const previewCost = useMemo(() => {
@@ -194,7 +234,9 @@ export default function DebtManager() {
       }
       await debtService.create(payload)
       setFeedback('Dívida cadastrada e parcelas geradas com sucesso!')
-      setFormData(emptyDebtForm())
+      const cleanForm = emptyDebtForm()
+      setFormData(cleanForm)
+      markSaved(cleanForm)
       setShowNewForm(false)
       reloadAll()
     } catch (err) {
@@ -389,7 +431,7 @@ export default function DebtManager() {
                   <Coins className="w-5 h-5 text-indigo-600" />
                   Cadastrar Dívida ou Financiamento
                 </h2>
-                <Button variant="ghost" size="sm" onClick={() => setShowNewForm(false)}>
+                <Button variant="ghost" size="sm" onClick={closeNewForm}>
                   Cancelar
                 </Button>
               </div>
@@ -501,7 +543,7 @@ export default function DebtManager() {
 
               {/* Painel comparativo de custo em tempo real */}
               {previewCost.totalContractedCost > 0 && (
-                <div className="rounded-xl bg-slate-50 p-4 border border-slate-200 grid gap-3 sm:grid-cols-4">
+                <Card inset tone="muted" padding="sm" className="grid gap-3 sm:grid-cols-4">
                   <div>
                     <span className="text-xs text-slate-500 font-medium">Custo Total Contratado:</span>
                     <p className="text-sm font-bold text-slate-900">
@@ -526,13 +568,19 @@ export default function DebtManager() {
                       +{previewCost.effectiveCostPercent}%
                     </p>
                   </div>
-                </div>
+                </Card>
+              )}
+
+              {formDirty && (
+                <p role="status" className="text-sm text-amber-700">
+                  {formChanges} {formChanges === 1 ? 'alteração não salva' : 'alterações não salvas'}
+                </p>
               )}
 
               <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
                 <Button
                   variant="ghost"
-                  onClick={() => setShowNewForm(false)}
+                  onClick={closeNewForm}
                   className="w-full sm:w-auto"
                 >
                   Cancelar
@@ -541,7 +589,7 @@ export default function DebtManager() {
                   type="submit"
                   variant="primary"
                   loading={busy}
-                  disabled={busy || !formData.creditor.trim() || !formData.principalAmount}
+                  disabled={busy || !formDirty || !formData.creditor.trim() || !formData.principalAmount}
                   className="w-full sm:w-auto"
                 >
                   Salvar Dívida e Gerar Parcelas
@@ -572,6 +620,8 @@ export default function DebtManager() {
             <div className="grid gap-4">
               {debts.map((debt) => {
                 const isExpanded = expandedDebtId === debt.id
+                const installments = installmentsByDebt[debt.id]
+                const installmentsPanelId = `debt-installments-${debt.id}`
                 const isPriority1 = debt.priorityRank === 1
 
                 return (
@@ -604,7 +654,7 @@ export default function DebtManager() {
                       </div>
 
                       {/* Métricas do Contrato */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <Card inset tone="muted" padding="sm" className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
                           <span className="text-[11px] text-slate-500 font-medium">Saldo Restante</span>
                           <p className="text-sm font-bold text-slate-900">
@@ -629,7 +679,7 @@ export default function DebtManager() {
                             {debt.effectiveCostMultiple}x (+{debt.effectiveCostPercent}%)
                           </p>
                         </div>
-                      </div>
+                      </Card>
 
                       {/* Ações */}
                       <div className="flex flex-wrap items-center gap-2">
@@ -647,7 +697,9 @@ export default function DebtManager() {
                           variant="ghost"
                           size="sm"
                           Icon={isExpanded ? ChevronUp : ChevronDown}
-                          onClick={() => setExpandedDebtId(isExpanded ? null : debt.id)}
+                          aria-expanded={isExpanded}
+                          aria-controls={installmentsPanelId}
+                          onClick={() => handleToggleInstallments(debt.id)}
                         >
                           {isExpanded ? 'Ocultar' : 'Parcelas'}
                         </Button>
@@ -662,8 +714,11 @@ export default function DebtManager() {
                     </div>
 
                     {/* Expansão das parcelas deste contrato */}
-                    {isExpanded && debt.installments && (
-                      <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+                    {isExpanded && !installments && loadingInstallmentsId === debt.id && (
+                      <EmptyState loading title="Carregando parcelas..." />
+                    )}
+                    {isExpanded && installments && (
+                      <div id={installmentsPanelId} className="mt-4 pt-4 border-t border-slate-100 space-y-2">
                         <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                           Parcelas de {debt.creditor}
                         </h4>
@@ -680,7 +735,7 @@ export default function DebtManager() {
                               </tr>
                             </thead>
                             <tbody>
-                              {debt.installments.map((inst) => (
+                              {installments.map((inst) => (
                                 <tr key={inst.id} className="border-b border-slate-100 hover:bg-slate-50/50">
                                   <td className="py-2 px-2 font-medium">
                                     {inst.installmentNumber}/{debt.totalInstallments}
@@ -936,7 +991,7 @@ export default function DebtManager() {
 
           {loadingSchedule ? (
             <EmptyState loading title="Carregando cronograma..." />
-          ) : scheduleData.length === 0 ? (
+          ) : schedule.length === 0 ? (
             <EmptyState
               Icon={Calendar}
               title="Nenhuma parcela encontrada"
@@ -944,7 +999,7 @@ export default function DebtManager() {
             />
           ) : (
             <div className="grid gap-3">
-              {scheduleData.map((inst) => (
+              {schedule.map((inst) => (
                 <Card
                   key={inst.id}
                   padding="sm"
