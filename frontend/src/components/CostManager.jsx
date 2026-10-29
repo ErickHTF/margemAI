@@ -42,7 +42,8 @@ export default function CostManager({
   service,
   categories,
   products = [],
-  initialDraft = null
+  initialDraft = null,
+  onInitialDraftConsumed
 }) {
   const { guard } = useDraft(null)
   const meta = KIND_META[kind]
@@ -70,6 +71,11 @@ export default function CostManager({
     }
   }, [showForm, editingCost])
   const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    if (initialDraft) onInitialDraftConsumed?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     let cancelled = false

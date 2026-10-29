@@ -132,3 +132,15 @@ export function suggestionToCostDraft(suggestion) {
     }
   }
 }
+
+export function costManagerSlot(pendingSuggestion, kind) {
+  const isTarget = pendingSuggestion?.kind === kind
+  return {
+    key: isTarget ? `${kind}-${pendingSuggestion.nonce}` : kind,
+    initialDraft: isTarget ? pendingSuggestion.draft ?? null : null
+  }
+}
+
+export function consumeSuggestionDraft(pendingSuggestion) {
+  return pendingSuggestion ? { ...pendingSuggestion, draft: null } : null
+}

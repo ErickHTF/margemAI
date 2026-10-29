@@ -3,7 +3,9 @@ import {
   DEFAULT_RULE_VERSION,
   GENERIC_SEGMENT_FALLBACK,
   normalizeSegmentGuidance,
-  suggestionToCostDraft
+  suggestionToCostDraft,
+  costManagerSlot,
+  consumeSuggestionDraft
 } from './segmentGuidance'
 
 describe('orientações e sugestões de custos por segmento (segmentGuidance)', () => {
@@ -111,5 +113,17 @@ describe('orientações e sugestões de custos por segmento (segmentGuidance)', 
   it('mantém catálogo de fallback genérico sem custos obrigatórios', () => {
     expect(GENERIC_SEGMENT_FALLBACK.fallbackUsed).toBe(true)
     expect(GENERIC_SEGMENT_FALLBACK.costSuggestions.every((item) => item.mandatory === false)).toBe(true)
+  })
+
+  it('entrega a sugestão só uma vez: depois de consumida, a aba reabre sem formulário e sem duplicar o custo', () => {
+    const pending = { nonce: 1, kind: 'fixed', draft: { name: 'DAS', amount: 76.9 } }
+
+    expect(costManagerSlot(pending, 'fixed')).toEqual({ key: 'fixed-1', initialDraft: pending.draft })
+    expect(costManagerSlot(pending, 'variable')).toEqual({ key: 'variable', initialDraft: null })
+
+    const consumed = consumeSuggestionDraft(pending)
+
+    expect(costManagerSlot(consumed, 'fixed')).toEqual({ key: 'fixed-1', initialDraft: null })
+    expect(consumeSuggestionDraft(null)).toBeNull()
   })
 })
