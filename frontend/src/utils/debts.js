@@ -211,3 +211,15 @@ export function sortDebtsBySebraePriority(debts = []) {
 
   return [...active, ...paidOff]
 }
+
+const PAID_STATUSES = ['PAID', 'PAID_EARLY']
+
+export function scheduleParamsFor(filter) {
+  return filter === 'PENDING' ? { status: 'PENDING' } : {}
+}
+
+export function filterScheduleByStatus(installments = [], filter) {
+  if (filter === 'PAID') return installments.filter((inst) => PAID_STATUSES.includes(inst.status))
+  if (filter === 'PENDING') return installments.filter((inst) => inst.status === 'PENDING')
+  return installments
+}

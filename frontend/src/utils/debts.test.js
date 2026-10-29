@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   calculateDebtCost,
   calculatePmt,
+  filterScheduleByStatus,
+  scheduleParamsFor,
   simulateDebtPayoff,
   sortDebtsBySebraePriority
 } from './debts'
@@ -103,5 +105,22 @@ describe('Utilitários de Dívidas e Quitação (debts.js)', () => {
     expect(sorted[2].priorityRank).toBe(3)
     expect(sorted[3].creditor).toBe('Quitada D')
     expect(sorted[3].priorityRank).toBeNull()
+  })
+
+  describe('filtro do cronograma de parcelas', () => {
+    const schedule = [
+      { id: 'a', status: 'PENDING' },
+      { id: 'b', status: 'PAID' },
+      { id: 'c', status: 'PAID_EARLY' }
+    ]
+
+    it.each([
+      ['ALL', {}, ['a', 'b', 'c']],
+      ['PENDING', { status: 'PENDING' }, ['a']],
+      ['PAID', {}, ['b', 'c']]
+    ])('filtro %s consulta %o e exibe %o', (filter, params, ids) => {
+      expect(scheduleParamsFor(filter)).toEqual(params)
+      expect(filterScheduleByStatus(schedule, filter).map((inst) => inst.id)).toEqual(ids)
+    })
   })
 })
