@@ -10,7 +10,12 @@ import variableCostService from '../services/variableCostService'
 import productService from '../services/productService'
 import segmentService from '../services/segmentService'
 import { formatCurrencyBRL } from '../utils/formatters'
-import { normalizeSegmentGuidance, suggestionToCostDraft } from '../utils/segmentGuidance'
+import {
+  consumeSuggestionDraft,
+  costManagerSlot,
+  normalizeSegmentGuidance,
+  suggestionToCostDraft
+} from '../utils/segmentGuidance'
 import { FIXED_COST_CATEGORIES, VARIABLE_COST_CATEGORIES, costCategoryLabel } from '../constants/costCategories'
 
 export default function CostsDashboard() {
@@ -81,10 +86,9 @@ export default function CostsDashboard() {
     }
   ]
 
-  const fixedDraft = pendingSuggestion?.kind === 'fixed' ? pendingSuggestion.draft : null
-  const variableDraft = pendingSuggestion?.kind === 'variable' ? pendingSuggestion.draft : null
-  const fixedKey = pendingSuggestion?.kind === 'fixed' ? `fixed-${pendingSuggestion.nonce}` : 'fixed'
-  const variableKey = pendingSuggestion?.kind === 'variable' ? `variable-${pendingSuggestion.nonce}` : 'variable'
+  const fixedSlot = costManagerSlot(pendingSuggestion, 'fixed')
+  const variableSlot = costManagerSlot(pendingSuggestion, 'variable')
+  const consumeSuggestion = () => setPendingSuggestion(consumeSuggestionDraft)
 
   return (
     <div className="w-full space-y-6">
@@ -173,21 +177,23 @@ export default function CostsDashboard() {
       <div data-tour="costs-content">
       {activeTab === 'fixed' && (
         <CostManager
-          key={fixedKey}
+          key={fixedSlot.key}
           kind="fixed"
           service={fixedCostService}
           categories={FIXED_COST_CATEGORIES}
-          initialDraft={fixedDraft}
+          initialDraft={fixedSlot.initialDraft}
+          onInitialDraftConsumed={consumeSuggestion}
         />
       )}
       {activeTab === 'variable' && (
         <CostManager
-          key={variableKey}
+          key={variableSlot.key}
           kind="variable"
           service={variableCostService}
           categories={VARIABLE_COST_CATEGORIES}
           products={products}
-          initialDraft={variableDraft}
+          initialDraft={variableSlot.initialDraft}
+          onInitialDraftConsumed={consumeSuggestion}
         />
       )}
       </div>
