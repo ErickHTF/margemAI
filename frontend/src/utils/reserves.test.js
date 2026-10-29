@@ -70,6 +70,17 @@ describe('Regras de reserva financeira (reserves.js)', () => {
     expect(exceeded.remainingAmount).toBe(0)
   })
 
+  it('preserva o total negativo das contas empresariais e mantém o saldo livre em zero', () => {
+    const overdrawn = computeReserveSnapshot({
+      goalMode: GOAL_MODES.FIXED_AMOUNT,
+      targetAmount: 3000,
+      reservedBalance: 450,
+      totalBusinessAccountsBalance: '-1234.56'
+    })
+    expect(overdrawn.totalBusinessAccountsBalance).toBe(-1234.56)
+    expect(overdrawn.freeBalance).toBe(0)
+  })
+
   it('valida resgate acima do saldo reservado e dados obrigatórios da movimentação', () => {
     expect(
       validateReserveMovement({

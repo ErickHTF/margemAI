@@ -59,7 +59,7 @@ export const computeReserveSnapshot = ({
 } = {}) => {
   const normalizedCosts = Math.max(0, roundMoney(monthlyFixedCosts))
   const normalizedReserved = Math.max(0, roundMoney(reservedBalance))
-  const normalizedTotalAccounts = Math.max(0, roundMoney(totalBusinessAccountsBalance))
+  const normalizedTotalAccounts = roundMoney(totalBusinessAccountsBalance)
   const missingFixedCostsForMonthsGoal =
     goalMode === GOAL_MODES.MONTHS_OF_COSTS && normalizedCosts <= 0
 
