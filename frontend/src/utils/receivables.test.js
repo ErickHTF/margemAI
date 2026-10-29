@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import {
-  divideByIntegerHalfUp,
   splitIntoInstallments,
   isInstallmentOverdue,
   getEffectiveInstallmentStatus,
@@ -8,22 +7,6 @@ import {
 } from './receivables'
 
 describe('Regras de negócio de Contas a Receber (frontend)', () => {
-  describe('divideByIntegerHalfUp', () => {
-    it('divide 100 em 3 com arredondamento HALF_UP para 33.33', () => {
-      expect(divideByIntegerHalfUp(100, 3)).toBe(33.33)
-    })
-
-    it('divide 5 em 3 com arredondamento HALF_UP para 1.67', () => {
-      expect(divideByIntegerHalfUp(5, 3)).toBe(1.67)
-    })
-
-    it('retorna 0 para entradas inválidas ou zero', () => {
-      expect(divideByIntegerHalfUp(0, 3)).toBe(0)
-      expect(divideByIntegerHalfUp(100, 0)).toBe(0)
-      expect(divideByIntegerHalfUp(null, 2)).toBe(0)
-    })
-  })
-
   describe('splitIntoInstallments — divisão exata de centavos', () => {
     it('divide R$ 100,00 em 3x gerando 33,33 + 33,33 + 33,34', () => {
       const installments = splitIntoInstallments({
@@ -50,6 +33,21 @@ describe('Regras de negócio de Contas a Receber (frontend)', () => {
       expect(installments[0].dueDate).toBe('2026-03-31')
       expect(installments[1].dueDate).toBe('2026-04-30')
       expect(installments[2].dueDate).toBe('2026-05-30')
+    })
+
+    it('divide R$ 0,06 em 12x sem parcela negativa e sem ultrapassar o total', () => {
+      const installments = splitIntoInstallments({
+        grossAmount: 0.06,
+        feeAmount: 0,
+        netAmount: 0.06,
+        installmentsCount: 12,
+        baseDate: '2026-03-01'
+      })
+
+      const netAmounts = installments.map((i) => i.netAmount)
+      expect(netAmounts.every((amount) => amount >= 0)).toBe(true)
+      expect(netAmounts.slice(0, 6)).toEqual([0, 0, 0, 0, 0, 0])
+      expect(netAmounts.slice(6)).toEqual([0.01, 0.01, 0.01, 0.01, 0.01, 0.01])
     })
 
     it('aplica prazos imediatos para Pix (0 dias)', () => {

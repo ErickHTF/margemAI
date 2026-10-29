@@ -1,16 +1,14 @@
 import { toDecimal, roundHalfUp, toNumber, roundMoney } from './decimal'
 
-const pow10 = (exponent) => 10n ** BigInt(exponent)
-
-export const divideByIntegerHalfUp = (value, n, scale = 2) => {
-  const dec = toDecimal(value)
-  if (!dec || n <= 0) return 0
-  const extra = pow10(scale + 6)
-  const factor = pow10(dec.scale)
-  const bigNumerator = (dec.digits * extra) / factor
-  const bigQuotient = bigNumerator / BigInt(n)
-  const intermediate = { digits: bigQuotient, scale: scale + 6 }
-  return toNumber(roundHalfUp(intermediate, scale))
+export const splitCents = (total, count) => {
+  const cents = roundHalfUp(toDecimal(total) ?? { digits: 0n, scale: 0 }, 2).digits
+  const n = BigInt(count)
+  const quotient = cents / n
+  const remainder = cents % n
+  return Array.from({ length: count }, (_, index) => {
+    const extra = BigInt(index) >= n - remainder ? 1n : 0n
+    return toNumber({ digits: quotient + extra, scale: 2 })
+  })
 }
 
 export const formatDateISO = (date) => {
@@ -55,26 +53,12 @@ export const splitIntoInstallments = ({
   const totalFee = roundMoney(feeAmount)
   const totalNet = roundMoney(netAmount !== undefined ? netAmount : totalGross - totalFee)
 
+  const grossParts = splitCents(totalGross, count)
+  const feeParts = splitCents(totalFee, count)
+  const netParts = splitCents(totalNet, count)
+
   const installments = []
-  let grossAcc = 0
-  let feeAcc = 0
-  let netAcc = 0
-
   for (let i = 1; i <= count; i++) {
-    let gross, fee, net
-    if (i < count) {
-      gross = divideByIntegerHalfUp(totalGross, count)
-      fee = divideByIntegerHalfUp(totalFee, count)
-      net = divideByIntegerHalfUp(totalNet, count)
-      grossAcc = roundMoney(grossAcc + gross)
-      feeAcc = roundMoney(feeAcc + fee)
-      netAcc = roundMoney(netAcc + net)
-    } else {
-      gross = roundMoney(totalGross - grossAcc)
-      fee = roundMoney(totalFee - feeAcc)
-      net = roundMoney(totalNet - netAcc)
-    }
-
     const daysToAdd = Number(settlementDays) + (i - 1) * 30
     const dueDate = addDays(baseDate, daysToAdd)
 
@@ -82,11 +66,11 @@ export const splitIntoInstallments = ({
       installmentNumber: i,
       totalInstallments: count,
       dueDate,
-      grossAmount: gross,
-      feeAmount: fee,
-      netAmount: net,
+      grossAmount: grossParts[i - 1],
+      feeAmount: feeParts[i - 1],
+      netAmount: netParts[i - 1],
       receivedAmount: 0,
-      remainingAmount: net,
+      remainingAmount: netParts[i - 1],
       status: 'PENDING',
       overdue: isInstallmentOverdue({ dueDate, status: 'PENDING' })
     })
