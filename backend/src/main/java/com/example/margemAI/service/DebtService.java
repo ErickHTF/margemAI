@@ -358,10 +358,11 @@ public class DebtService {
         if (monthlyRatePercent == null || monthlyRatePercent.compareTo(BigDecimal.ZERO) == 0) {
             return principal.divide(BigDecimal.valueOf(n), 2, RoundingMode.HALF_UP);
         }
-        double p = principal.doubleValue();
-        double i = monthlyRatePercent.doubleValue() / 100.0;
-        double pmt = p * (i * Math.pow(1.0 + i, n)) / (Math.pow(1.0 + i, n) - 1.0);
-        return Money.round(BigDecimal.valueOf(pmt));
+        BigDecimal i = monthlyRatePercent.divide(BigDecimal.valueOf(100), MathContext.DECIMAL128);
+        BigDecimal factor = BigDecimal.ONE.add(i).pow(n, MathContext.DECIMAL128);
+        BigDecimal pmt = principal.multiply(i).multiply(factor)
+                .divide(factor.subtract(BigDecimal.ONE), MathContext.DECIMAL128);
+        return Money.round(pmt);
     }
 
     public static BigDecimal calculatePresentValue(BigDecimal amount, BigDecimal monthlyRatePercent, LocalDate fromDate, LocalDate dueDate) {

@@ -20,6 +20,8 @@ import com.example.margemAI.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -276,5 +278,17 @@ class DebtServiceTest {
         assertEquals("Banco A (Cartão)", summary.getHighestRateCreditor());
         assertEquals(new BigDecimal("2300.00"), summary.getTotalOutstandingBalance());
         assertEquals(new BigDecimal("2300.00"), summary.getTotalMonthlyCommitment());
+    }
+
+    @ParameterizedTest(name = "R$ {0} a {1}% em {2}x = R$ {3}")
+    @CsvSource({
+            "100.05, 10, 1, 110.06",
+            "10000.00, 2.5, 12, 974.87",
+            "1500.00, 0, 4, 375.00"
+    })
+    @DisplayName("Calcula parcela pela Tabela Price em BigDecimal com arredondamento HALF_UP só no final")
+    void calculatePmtRoundsHalfUpWithoutFloatingPointError(String principal, String rate, int installments, String expected) {
+        assertEquals(new BigDecimal(expected),
+                DebtService.calculatePmt(new BigDecimal(principal), new BigDecimal(rate), installments));
     }
 }
