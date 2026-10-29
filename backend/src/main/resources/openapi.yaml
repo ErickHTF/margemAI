@@ -2444,6 +2444,12 @@ components:
           readOnly: true
           description: Effective variable sales cost percentage (explicit or inherited from the category)
           example: 5.00
+        maxDiscountAllowed:
+          type: number
+          nullable: true
+          readOnly: true
+          description: Effective maximum discount allowed (inherited from the category)
+          example: 10.00
         active:
           type: boolean
           default: true

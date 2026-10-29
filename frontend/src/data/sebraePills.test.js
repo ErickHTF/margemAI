@@ -75,6 +75,11 @@ describe('sebraePills', () => {
       expect(pillByFixedCostsAction.id).toBe('pro-labore')
     })
 
+    it('deve priorizar a pílula de margem evitada mesmo durante a simulação de desconto', () => {
+      const pill = selectContextualPill({ action: 'margin_avoided', discountActive: true })
+      expect(pill.id).toBe('margin-avoided')
+    })
+
     it('deve selecionar pílula de markup divisor para alteração padrão de custos, margem ou markup', () => {
       const pillDefault = selectContextualPill()
       expect(pillDefault.id).toBe('markup-divisor')

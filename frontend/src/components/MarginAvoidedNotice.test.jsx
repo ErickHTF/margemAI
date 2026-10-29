@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import MarginAvoidedNotice from './MarginAvoidedNotice'
+import { Card } from './ui'
 
 const sampleAvoidedData = {
   triggered: true,
@@ -32,6 +33,16 @@ function findNodeByProp(node, prop, value) {
     }
   }
   return null
+}
+
+function findNodesByType(node, type, found = []) {
+  if (!node || typeof node !== 'object') return found
+  if (node.type === type) found.push(node)
+  const children = node.props?.children
+  if (children) {
+    for (const child of Array.isArray(children) ? children : [children]) findNodesByType(child, type, found)
+  }
+  return found
 }
 
 describe('MarginAvoidedNotice', () => {
@@ -90,11 +101,20 @@ describe('MarginAvoidedNotice', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
-  it('renderiza o TipButton acessível quando a pílula SEBRAE estiver presente', () => {
+  it('não embute TipButton: a pílula SEBRAE fica só no PageHeader', () => {
     const html = renderToStaticMarkup(
       <MarginAvoidedNotice avoidedData={sampleAvoidedData} onDismiss={() => {}} />
     )
 
-    expect(html).toContain('aria-label="Dica: Decisão de Margem Evitada"')
+    expect(html).not.toContain('aria-label="Dica:')
+    expect(html).toContain('Saiba mais na dica SEBRAE no topo da tela.')
+  })
+
+  it('usa Card do kit para os resumos financeiros', () => {
+    const tree = MarginAvoidedNotice({ avoidedData: sampleAvoidedData, onDismiss: () => {} })
+    const cards = findNodesByType(tree, Card)
+
+    expect(cards).toHaveLength(2)
+    cards.forEach((card) => expect(card.props.className).toBeUndefined())
   })
 })

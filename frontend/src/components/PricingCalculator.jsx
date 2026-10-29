@@ -140,7 +140,7 @@ export default function PricingCalculator({ onNavigate }) {
   const contextualPill = selectedPillId
     ? getPillById(selectedPillId)
     : selectContextualPill({
-        action: activeContextAction,
+        action: marginAvoidedData ? 'margin_avoided' : activeContextAction,
         discountActive: activeContextAction === 'discount',
         fixedCostPercent: effectiveFixedPercent,
         variableCostPercent: effectiveVariablePercent
@@ -317,7 +317,7 @@ export default function PricingCalculator({ onNavigate }) {
         discountedProfit: data.discountedProfit,
         discountedMargin: data.discountedMargin,
         viable: data.viable,
-        maxDiscountPercentage: selectedProduct?.maxDiscountAllowed ?? selectedProduct?.maxDiscountPercentage
+        maxDiscountPercentage: selectedProduct?.maxDiscountAllowed
       }
 
       if (previousScenarioRef.current) {
