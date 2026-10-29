@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,9 +30,12 @@ import java.util.UUID;
 @Table(
     name = "payable_accounts",
     indexes = {
-        @Index(name = "idx_payable_user_id", columnList = "user_id"),
-        @Index(name = "idx_payable_user_fixed_cost_competency", columnList = "user_id, fixed_cost_id, competency")
-    }
+        @Index(name = "idx_payable_user_id", columnList = "user_id")
+    },
+    uniqueConstraints = @UniqueConstraint(
+        name = "uk_payable_user_fixed_cost_competency",
+        columnNames = {"user_id", "fixed_cost_id", "competency"}
+    )
 )
 @Getter
 @Setter
