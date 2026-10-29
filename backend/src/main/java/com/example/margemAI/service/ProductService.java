@@ -218,6 +218,7 @@ public class ProductService {
         BigDecimal effectiveMargin = product.getTargetProfitMargin();
         BigDecimal effectiveTaxRate = null;
         BigDecimal effectiveVariableCostPercent = null;
+        BigDecimal effectiveMaxDiscount = null;
         boolean marginInherited = false;
         Category category = product.getCategory();
         if (category != null) {
@@ -228,6 +229,7 @@ public class ProductService {
             }
             effectiveTaxRate = parameters.taxRate();
             effectiveVariableCostPercent = parameters.variableCostPercent();
+            effectiveMaxDiscount = parameters.maxDiscountAllowed();
         }
 
         return ProductResponse.builder()
@@ -247,6 +249,7 @@ public class ProductService {
                 .marginInheritedFromCategory(marginInherited)
                 .taxRate(effectiveTaxRate)
                 .variableCostPercent(effectiveVariableCostPercent)
+                .maxDiscountAllowed(effectiveMaxDiscount)
                 .active(product.getActive())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())

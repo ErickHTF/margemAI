@@ -267,7 +267,7 @@ public class ProductServiceTest {
         when(productRepository.findByIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(Optional.of(product));
         when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId)).thenReturn(List.of());
         when(categoryService.resolveParameters(category))
-                .thenReturn(new CategoryParameters(new BigDecimal("20.00"), new BigDecimal("6.00"), null, new BigDecimal("12.00")));
+                .thenReturn(new CategoryParameters(new BigDecimal("20.00"), new BigDecimal("6.00"), new BigDecimal("15.00"), new BigDecimal("12.00")));
 
         ProductResponse response = productService.findById(userId, productId);
 
@@ -277,6 +277,7 @@ public class ProductServiceTest {
         assertEquals("Bebidas", response.getCategoryName());
         assertEquals(new BigDecimal("6.00"), response.getTaxRate());
         assertEquals(new BigDecimal("12.00"), response.getVariableCostPercent());
+        assertEquals(new BigDecimal("15.00"), response.getMaxDiscountAllowed());
     }
 
     @Test

@@ -124,7 +124,7 @@ surfaces in a screen; if the kit lacks a variant, add it to the kit.
 |---|---|
 | `Button` | `variant` primary·secondary·soft·danger·ghost·link, `size` sm·md, `Icon`, `TrailingIcon`, `loading`, `fullWidth` (`type` defaults to `"button"`) |
 | `IconButton` | `label` (required → `aria-label`), `Icon`, `tone` slate·indigo·emerald·amber·rose, `size` sm·md·lg |
-| `Card` | `as`, `tone` white·muted·indigo·emerald·sky·amber·rose, `padding` none·sm·md·lg, `inset` (nested panel) |
+| `Card` | `as`, `tone` white·muted·indigo·emerald·sky·amber·rose, `padding` none·xs·sm·md·lg, `inset` (nested panel) |
 | `Field` | `label`, `hint`, `error`, `size`, `htmlFor` (only for compound children) — wires `id`, `aria-invalid`, `aria-describedby` |
 | `Input` · `Select` · `Textarea` | `size` sm·md, `Icon` (leading), `prefix`/`suffix` (`"R$"`, `"%"`), `TrailingIcon`, `action` |
 | `Checkbox` | native checkbox props |

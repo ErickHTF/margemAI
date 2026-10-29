@@ -33,6 +33,7 @@ public class ProductResponse {
     private Boolean marginInheritedFromCategory;
     private BigDecimal taxRate;
     private BigDecimal variableCostPercent;
+    private BigDecimal maxDiscountAllowed;
     private Boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

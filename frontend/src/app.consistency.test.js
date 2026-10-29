@@ -76,6 +76,20 @@ describe('Consistência do menu e das telas', () => {
   })
 })
 
+describe('Pílulas SEBRAE só no cabeçalho', () => {
+  it('TipButton só aparece em telas com PageHeader, passado pela prop tip', () => {
+    const offenders = listFiles('components', '.jsx')
+      .filter((path) => !path.startsWith('components/ui/') && path !== 'components/TipButton.jsx')
+      .filter((path) => {
+        const source = read(path)
+        const total = source.match(/<TipButton\b/g)?.length ?? 0
+        const inHeader = source.match(/tip=\{\s*<TipButton\b/g)?.length ?? 0
+        return total !== inHeader
+      })
+    expect(offenders, 'use <PageHeader tip={<TipButton … />}> em vez de TipButton no meio da tela').toEqual([])
+  })
+})
+
 describe('Confirmações usam ConfirmDialog', () => {
   it('nenhum componente (fora de components/ui) usa window.confirm', () => {
     const offenders = listFiles('components', '.jsx')
