@@ -2282,6 +2282,11 @@ paths:
               schema: {$ref: '#/components/schemas/PayableAccountResponse'}
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
+        '409':
+          description: Já existe conta a pagar deste custo fixo na competência
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
 
   /payables/{id}:
     get:
@@ -2373,7 +2378,7 @@ paths:
       tags:
         - Payables
       summary: Estornar pagamento realizado
-      description: Restaura o paidAmount para 0.00 e o status para PENDING mantendo rastreabilidade.
+      description: Restaura o paidAmount para 0.00 e o status para PENDING; os pagamentos ficam no histórico com reversedAt preenchido.
       security: [{bearerAuth: []}]
       parameters:
         - in: path
@@ -4830,7 +4835,12 @@ components:
           format: date-time
         notes:
           type: string
-          example: Primeira parcela paga via Pix
+          example: Boleto do fornecedor
+        payments:
+          type: array
+          description: Pagamentos registrados no título, em ordem de data; estornados trazem reversedAt.
+          items:
+            $ref: '#/components/schemas/PayablePaymentResponse'
         overdue:
           type: boolean
           example: false
@@ -4840,6 +4850,27 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    PayablePaymentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: float
+          example: 400.00
+        paidAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          example: Primeira parcela paga via Pix
+        reversedAt:
+          type: string
+          format: date-time
+          nullable: true
 
     PayableSummaryResponse:
       type: object
@@ -4851,6 +4882,7 @@ components:
         totalEffectiveDisbursement:
           type: number
           format: float
+          description: Com competency, soma dos pagamentos não estornados feitos dentro do mês, qualquer que seja a competência do título.
           example: 1000.00
         totalOpenPayable:
           type: number

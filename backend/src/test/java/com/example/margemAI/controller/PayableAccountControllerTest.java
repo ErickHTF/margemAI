@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,10 +30,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -205,19 +208,23 @@ public class PayableAccountControllerTest {
     }
 
     @Test
-    @DisplayName("Estorna pagamento realizado restaurando status PENDING e valor pago a zero")
+    @DisplayName("Estorna pagamento mantendo o histórico mesmo com observações no limite de 500 caracteres")
     void deveEstornarPagamentoComSucesso() throws Exception {
+        String fullNotes = "x".repeat(500);
         PayableAccount account = payableAccountRepository.save(PayableAccount.builder()
                 .user(savedUser)
                 .description("Contabilidade Mensal")
                 .category("CONTABILIDADE")
                 .dueDate(LocalDate.of(2026, 10, 15))
                 .totalAmount(new BigDecimal("200.00"))
-                .paidAmount(new BigDecimal("200.00"))
-                .status(PayableStatus.PAID)
+                .paidAmount(BigDecimal.ZERO)
+                .status(PayableStatus.PENDING)
                 .competency("2026-10")
                 .type(PayableType.RECURRING)
+                .notes(fullNotes)
                 .build());
+
+        pay(account, "200.00", LocalDateTime.of(2026, 10, 14, 11, 0), "y".repeat(500));
 
         mockMvc.perform(post("/v1/payables/" + account.getId() + "/reverse")
                         .header("Authorization", bearer()))
@@ -225,35 +232,55 @@ public class PayableAccountControllerTest {
                 .andExpect(jsonPath("$.paidAmount").value(0.00))
                 .andExpect(jsonPath("$.remainingAmount").value(200.00))
                 .andExpect(jsonPath("$.status").value("PENDING"))
-                .andExpect(jsonPath("$.notes").value(org.hamcrest.Matchers.containsString("Estorno de R$ 200.00")));
+                .andExpect(jsonPath("$.notes").value(fullNotes))
+                .andExpect(jsonPath("$.payments.length()").value(1))
+                .andExpect(jsonPath("$.payments[0].amount").value(200.00))
+                .andExpect(jsonPath("$.payments[0].reversedAt").isNotEmpty());
+        payableAccountRepository.flush();
+    }
+
+    private void pay(PayableAccount account, String amount, LocalDateTime paidAt, String notes) throws Exception {
+        PayablePaymentRequest payment = PayablePaymentRequest.builder()
+                .amount(new BigDecimal(amount))
+                .paidAt(paidAt)
+                .notes(notes)
+                .build();
+        mockMvc.perform(post("/v1/payables/" + account.getId() + "/pay")
+                        .header("Authorization", bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payment)))
+                .andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("Lista contas a pagar retornando indicadores de regime de competência e caixa")
     void deveListarContasERetornarIndicadoresSeparados() throws Exception {
-        payableAccountRepository.save(PayableAccount.builder()
+        PayableAccount rent = payableAccountRepository.save(PayableAccount.builder()
                 .user(savedUser)
                 .description("Aluguel")
                 .category("ALUGUEL")
                 .dueDate(LocalDate.now().plusDays(5))
                 .totalAmount(new BigDecimal("1000.00"))
-                .paidAmount(new BigDecimal("400.00"))
-                .status(PayableStatus.PARTIAL)
+                .paidAmount(BigDecimal.ZERO)
+                .status(PayableStatus.PENDING)
                 .competency("2026-10")
                 .type(PayableType.RECURRING)
                 .build());
 
-        payableAccountRepository.save(PayableAccount.builder()
+        PayableAccount das = payableAccountRepository.save(PayableAccount.builder()
                 .user(savedUser)
                 .description("DAS-MEI")
                 .category("DAS_MEI")
                 .dueDate(LocalDate.now().plusDays(2))
                 .totalAmount(new BigDecimal("75.00"))
-                .paidAmount(new BigDecimal("75.00"))
-                .status(PayableStatus.PAID)
+                .paidAmount(BigDecimal.ZERO)
+                .status(PayableStatus.PENDING)
                 .competency("2026-10")
                 .type(PayableType.RECURRING)
                 .build());
+
+        pay(rent, "400.00", LocalDateTime.of(2026, 10, 5, 9, 0), null);
+        pay(das, "75.00", LocalDateTime.of(2026, 10, 20, 9, 0), null);
 
         mockMvc.perform(get("/v1/payables")
                         .header("Authorization", bearer())
@@ -264,6 +291,76 @@ public class PayableAccountControllerTest {
                 .andExpect(jsonPath("$.totalOpenPayable").value(600.00))
                 .andExpect(jsonPath("$.totalOverduePayable").value(0.00))
                 .andExpect(jsonPath("$.items.length()").value(2));
+    }
+
+    @Test
+    @DisplayName("Atribui o desembolso ao mês em que cada pagamento ocorreu, não à competência do título")
+    void deveAtribuirDesembolsoAoMesDoPagamento() throws Exception {
+        PayableAccount october = payableAccountRepository.save(PayableAccount.builder()
+                .user(savedUser)
+                .description("Fornecedor de Outubro")
+                .category("OUTRO")
+                .dueDate(LocalDate.of(2026, 10, 30))
+                .totalAmount(new BigDecimal("900.00"))
+                .paidAmount(BigDecimal.ZERO)
+                .status(PayableStatus.PENDING)
+                .competency("2026-10")
+                .type(PayableType.ONE_OFF)
+                .build());
+
+        pay(october, "250.00", LocalDateTime.of(2026, 10, 31, 23, 59), null);
+        pay(october, "320.00", LocalDateTime.of(2026, 11, 1, 0, 0), null);
+        pay(october, "110.00", LocalDateTime.of(2026, 11, 18, 15, 0), null);
+
+        mockMvc.perform(get("/v1/payables")
+                        .header("Authorization", bearer())
+                        .param("competency", "2026-10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCommittedExpense").value(900.00))
+                .andExpect(jsonPath("$.totalEffectiveDisbursement").value(250.00))
+                .andExpect(jsonPath("$.items[0].payments.length()").value(3));
+
+        mockMvc.perform(get("/v1/payables")
+                        .header("Authorization", bearer())
+                        .param("competency", "2026-11"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCommittedExpense").value(0.00))
+                .andExpect(jsonPath("$.totalEffectiveDisbursement").value(430.00));
+
+        mockMvc.perform(post("/v1/payables/" + october.getId() + "/reverse")
+                        .header("Authorization", bearer()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/v1/payables")
+                        .header("Authorization", bearer())
+                        .param("competency", "2026-11"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalEffectiveDisbursement").value(0.00));
+    }
+
+    @Test
+    @DisplayName("Banco impede dois títulos do mesmo custo fixo na mesma competência")
+    void deveImpedirTituloRecorrenteDuplicadoNoBanco() {
+        UUID fixedCostId = UUID.randomUUID();
+        payableAccountRepository.saveAndFlush(recurringFor(fixedCostId));
+
+        assertThrows(DataIntegrityViolationException.class,
+                () -> payableAccountRepository.saveAndFlush(recurringFor(fixedCostId)));
+    }
+
+    private PayableAccount recurringFor(UUID fixedCostId) {
+        return PayableAccount.builder()
+                .user(savedUser)
+                .fixedCostId(fixedCostId)
+                .description("Aluguel da Loja")
+                .category("ALUGUEL")
+                .dueDate(LocalDate.of(2026, 10, 10))
+                .totalAmount(new BigDecimal("1500.00"))
+                .paidAmount(BigDecimal.ZERO)
+                .status(PayableStatus.PENDING)
+                .competency("2026-10")
+                .type(PayableType.RECURRING)
+                .build();
     }
 
     @Test

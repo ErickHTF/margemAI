@@ -5,16 +5,19 @@ import com.example.margemAI.dto.request.PayableAccountRequest;
 import com.example.margemAI.dto.request.PayablePaymentRequest;
 import com.example.margemAI.dto.response.PayableAccountResponse;
 import com.example.margemAI.dto.response.PayableSummaryResponse;
+import com.example.margemAI.exception.DuplicateResourceException;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.FixedCost;
 import com.example.margemAI.model.FixedCostCategory;
 import com.example.margemAI.model.PayableAccount;
+import com.example.margemAI.model.PayablePayment;
 import com.example.margemAI.model.PayableStatus;
 import com.example.margemAI.model.PayableType;
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.FixedCostRepository;
 import com.example.margemAI.repository.PayableAccountRepository;
+import com.example.margemAI.repository.PayablePaymentRepository;
 import com.example.margemAI.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,6 +58,9 @@ class PayableAccountServiceTest {
 
     @Mock
     private PayableAccountRepository payableAccountRepository;
+
+    @Mock
+    private PayablePaymentRepository payablePaymentRepository;
 
     @Mock
     private FixedCostRepository fixedCostRepository;
@@ -93,7 +100,7 @@ class PayableAccountServiceTest {
                 .user(user)
                 .build();
 
-        when(fixedCostRepository.findByUserId(userId)).thenReturn(List.of(rent));
+        when(fixedCostRepository.findByUserIdForUpdate(userId)).thenReturn(List.of(rent));
         when(userRepository.getReferenceById(userId)).thenReturn(user);
         when(payableAccountRepository.existsByUserIdAndFixedCostIdAndCompetency(userId, fixedCostId, "2026-10"))
                 .thenReturn(false);
@@ -136,7 +143,7 @@ class PayableAccountServiceTest {
                 .user(user)
                 .build();
 
-        when(fixedCostRepository.findByUserId(userId)).thenReturn(List.of(oneOff));
+        when(fixedCostRepository.findByUserIdForUpdate(userId)).thenReturn(List.of(oneOff));
 
         GenerateRecurringPayablesRequest request = GenerateRecurringPayablesRequest.builder()
                 .competency("2026-10")
@@ -162,7 +169,7 @@ class PayableAccountServiceTest {
                 .user(user)
                 .build();
 
-        when(fixedCostRepository.findByUserId(userId)).thenReturn(List.of(cost));
+        when(fixedCostRepository.findByUserIdForUpdate(userId)).thenReturn(List.of(cost));
         when(userRepository.getReferenceById(userId)).thenReturn(user);
         when(payableAccountRepository.existsByUserIdAndFixedCostIdAndCompetency(userId, costId, "2026-10"))
                 .thenReturn(false);
@@ -192,10 +199,12 @@ class PayableAccountServiceTest {
                 .status(PayableStatus.PENDING)
                 .build();
 
-        when(payableAccountRepository.findByIdAndUserId(accountId, userId)).thenReturn(Optional.of(account));
+        when(payableAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)).thenReturn(Optional.of(account));
 
+        LocalDateTime paidInNovember = LocalDateTime.of(2026, 11, 3, 9, 30);
         PayablePaymentRequest paymentRequest = PayablePaymentRequest.builder()
                 .amount(new BigDecimal("400.00"))
+                .paidAt(paidInNovember)
                 .notes("Pago primeira parcela no Pix")
                 .build();
 
@@ -204,8 +213,43 @@ class PayableAccountServiceTest {
         assertEquals(new BigDecimal("400.00"), response.getPaidAmount());
         assertEquals(new BigDecimal("600.00"), response.getRemainingAmount());
         assertEquals(PayableStatus.PARTIAL, response.getStatus());
-        assertNotNull(response.getPaidAt());
-        assertTrue(response.getNotes().contains("Pago primeira parcela no Pix"));
+        assertEquals(paidInNovember, response.getPaidAt());
+
+        ArgumentCaptor<PayablePayment> paymentCaptor = ArgumentCaptor.forClass(PayablePayment.class);
+        verify(payablePaymentRepository).save(paymentCaptor.capture());
+        PayablePayment saved = paymentCaptor.getValue();
+        assertEquals(new BigDecimal("400.00"), saved.getAmount());
+        assertEquals(paidInNovember, saved.getPaidAt());
+        assertEquals("Pago primeira parcela no Pix", saved.getNotes());
+        assertSame(account, saved.getPayable());
+        assertNull(response.getNotes());
+    }
+
+    @Test
+    @DisplayName("Mantém a data do pagamento mais recente quando uma baixa anterior é registrada depois")
+    void deveManterDataDoPagamentoMaisRecente() {
+        UUID accountId = UUID.randomUUID();
+        LocalDateTime latestPayment = LocalDateTime.of(2026, 11, 20, 14, 0);
+        PayableAccount account = PayableAccount.builder()
+                .id(accountId)
+                .user(user)
+                .description("Fornecedor de Linhas")
+                .totalAmount(new BigDecimal("900.00"))
+                .paidAmount(new BigDecimal("300.00"))
+                .paidAt(latestPayment)
+                .dueDate(LocalDate.of(2026, 10, 20))
+                .status(PayableStatus.PARTIAL)
+                .build();
+
+        when(payableAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)).thenReturn(Optional.of(account));
+
+        PayableAccountResponse response = payableAccountService.pay(userId, accountId, PayablePaymentRequest.builder()
+                .amount(new BigDecimal("250.00"))
+                .paidAt(LocalDateTime.of(2026, 10, 28, 8, 0))
+                .build());
+
+        assertEquals(new BigDecimal("550.00"), response.getPaidAmount());
+        assertEquals(latestPayment, response.getPaidAt());
     }
 
     @Test
@@ -222,7 +266,7 @@ class PayableAccountServiceTest {
                 .status(PayableStatus.PARTIAL)
                 .build();
 
-        when(payableAccountRepository.findByIdAndUserId(accountId, userId)).thenReturn(Optional.of(account));
+        when(payableAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)).thenReturn(Optional.of(account));
 
         PayablePaymentRequest secondPayment = PayablePaymentRequest.builder()
                 .amount(new BigDecimal("200.00"))
@@ -250,7 +294,7 @@ class PayableAccountServiceTest {
                 .status(PayableStatus.PARTIAL)
                 .build();
 
-        when(payableAccountRepository.findByIdAndUserId(accountId, userId)).thenReturn(Optional.of(account));
+        when(payableAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)).thenReturn(Optional.of(account));
 
         PayablePaymentRequest excessPayment = PayablePaymentRequest.builder()
                 .amount(new BigDecimal("100.01"))
@@ -278,7 +322,16 @@ class PayableAccountServiceTest {
                 .notes("Pago no aplicativo do banco")
                 .build();
 
-        when(payableAccountRepository.findByIdAndUserId(accountId, userId)).thenReturn(Optional.of(account));
+        when(payableAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)).thenReturn(Optional.of(account));
+
+        PayablePayment payment = PayablePayment.builder()
+                .id(UUID.randomUUID())
+                .payable(account)
+                .user(user)
+                .amount(new BigDecimal("75.00"))
+                .paidAt(LocalDateTime.of(2026, 10, 18, 10, 0))
+                .build();
+        when(payablePaymentRepository.findByPayableIdOrderByPaidAtAsc(accountId)).thenReturn(List.of(payment));
 
         PayableAccountResponse response = payableAccountService.reverse(userId, accountId);
 
@@ -286,8 +339,11 @@ class PayableAccountServiceTest {
         assertEquals(new BigDecimal("75.00"), response.getRemainingAmount());
         assertEquals(PayableStatus.PENDING, response.getStatus());
         assertNull(response.getPaidAt());
-        assertTrue(response.getNotes().contains("Estorno de R$ 75.00"));
-        assertTrue(response.getNotes().contains("Pago no aplicativo do banco"));
+        assertEquals("Pago no aplicativo do banco", response.getNotes());
+        assertNotNull(payment.getReversedAt());
+        assertEquals(1, response.getPayments().size());
+        assertEquals(new BigDecimal("75.00"), response.getPayments().get(0).getAmount());
+        assertNotNull(response.getPayments().get(0).getReversedAt());
     }
 
     @Test
@@ -304,7 +360,7 @@ class PayableAccountServiceTest {
                 .status(PayableStatus.PENDING)
                 .build();
 
-        when(payableAccountRepository.findByIdAndUserId(accountId, userId)).thenReturn(Optional.of(account));
+        when(payableAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)).thenReturn(Optional.of(account));
 
         assertThrows(InvalidRequestException.class, () ->
                 payableAccountService.reverse(userId, accountId)
@@ -358,6 +414,9 @@ class PayableAccountServiceTest {
 
         when(payableAccountRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(list);
         when(payableAccountRepository.findByUserIdAndCompetency(userId, "2026-10")).thenReturn(list);
+        when(payablePaymentRepository.sumActiveAmountByUserIdAndPaidAtBetween(
+                userId, LocalDateTime.of(2026, 10, 1, 0, 0), LocalDateTime.of(2026, 11, 1, 0, 0)))
+                .thenReturn(new BigDecimal("437.50"));
 
         PayableSummaryResponse summary = payableAccountService.findAll(
                 userId, "2026-10", null, null, null, null, null
@@ -366,8 +425,8 @@ class PayableAccountServiceTest {
         // Despesa compromissada na competência (regime de competência): 500 + 300 + 800 = 1600.00
         assertEquals(new BigDecimal("1600.00"), summary.getTotalCommittedExpense());
 
-        // Desembolso efetivo pago (regime de caixa): 0 + 300 + 200 = 500.00
-        assertEquals(new BigDecimal("500.00"), summary.getTotalEffectiveDisbursement());
+        // Desembolso efetivo (regime de caixa): pagamentos feitos dentro do mês, não o valor pago dos títulos da competência
+        assertEquals(new BigDecimal("437.50"), summary.getTotalEffectiveDisbursement());
 
         // Saldo em aberto: 500 + 0 + 600 = 1100.00
         assertEquals(new BigDecimal("1100.00"), summary.getTotalOpenPayable());
@@ -388,8 +447,28 @@ class PayableAccountServiceTest {
                 payableAccountService.findById(userId, accountId)
         );
 
+        when(payableAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)).thenReturn(Optional.empty());
         assertThrows(ResourceNotFoundException.class, () ->
                 payableAccountService.delete(userId, accountId)
         );
+    }
+
+    @Test
+    @DisplayName("Rejeita cadastro manual duplicado do mesmo custo fixo na mesma competência")
+    void deveRejeitarCadastroDuplicadoDeCustoFixoNaCompetencia() {
+        UUID fixedCostId = UUID.randomUUID();
+        when(payableAccountRepository.existsByUserIdAndFixedCostIdAndCompetency(userId, fixedCostId, "2026-10"))
+                .thenReturn(true);
+
+        PayableAccountRequest request = PayableAccountRequest.builder()
+                .description("Aluguel do Ponto")
+                .fixedCostId(fixedCostId)
+                .competency("2026-10")
+                .dueDate(LocalDate.of(2026, 10, 15))
+                .totalAmount(new BigDecimal("1200.00"))
+                .build();
+
+        assertThrows(DuplicateResourceException.class, () -> payableAccountService.create(userId, request));
+        verify(payableAccountRepository, never()).save(any(PayableAccount.class));
     }
 }

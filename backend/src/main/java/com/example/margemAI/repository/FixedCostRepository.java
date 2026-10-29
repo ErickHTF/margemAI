@@ -1,8 +1,10 @@
 package com.example.margemAI.repository;
 
 import com.example.margemAI.model.FixedCost;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -17,6 +19,10 @@ public interface FixedCostRepository extends JpaRepository<FixedCost, UUID>, Jpa
     Optional<FixedCost> findByIdAndUserIdAndActiveTrue(UUID id, UUID userId);
     Optional<FixedCost> findByIdAndUserId(UUID id, UUID userId);
     List<FixedCost> findByUserId(UUID userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select f from FixedCost f where f.user.id = :userId order by f.id")
+    List<FixedCost> findByUserIdForUpdate(@Param("userId") UUID userId);
 
     @Query("select coalesce(sum(f.amount), 0) from FixedCost f where f.user.id = :userId and f.active = true")
     BigDecimal sumActiveAmountByUserId(@Param("userId") UUID userId);

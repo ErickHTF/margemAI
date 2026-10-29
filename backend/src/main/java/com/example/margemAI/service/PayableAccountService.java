@@ -4,15 +4,19 @@ import com.example.margemAI.dto.request.GenerateRecurringPayablesRequest;
 import com.example.margemAI.dto.request.PayableAccountRequest;
 import com.example.margemAI.dto.request.PayablePaymentRequest;
 import com.example.margemAI.dto.response.PayableAccountResponse;
+import com.example.margemAI.dto.response.PayablePaymentResponse;
 import com.example.margemAI.dto.response.PayableSummaryResponse;
+import com.example.margemAI.exception.DuplicateResourceException;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.FixedCost;
 import com.example.margemAI.model.PayableAccount;
+import com.example.margemAI.model.PayablePayment;
 import com.example.margemAI.model.PayableStatus;
 import com.example.margemAI.model.PayableType;
 import com.example.margemAI.repository.FixedCostRepository;
 import com.example.margemAI.repository.PayableAccountRepository;
+import com.example.margemAI.repository.PayablePaymentRepository;
 import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.util.Money;
 import jakarta.persistence.criteria.Predicate;
@@ -28,17 +32,23 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class PayableAccountService {
 
     private static final String NOT_FOUND_MESSAGE = "Conta a pagar não encontrada.";
+    private static final String DUPLICATE_RECURRING_MESSAGE =
+            "Já existe uma conta a pagar deste custo fixo para a competência informada.";
     private static final String INVALID_COMPETENCY_MESSAGE = "Competência inválida. Use o formato AAAA-MM.";
 
     private final PayableAccountRepository payableAccountRepository;
+    private final PayablePaymentRepository payablePaymentRepository;
     private final FixedCostRepository fixedCostRepository;
     private final UserRepository userRepository;
 
@@ -94,7 +104,22 @@ public class PayableAccountService {
         }
 
         PayableSummaryResponse summary = computeSummary(baseForSummary, LocalDate.now());
-        summary.setItems(items.stream().map(this::toResponse).toList());
+        if (parsedCompetency != null) {
+            summary.setTotalEffectiveDisbursement(Money.round(payablePaymentRepository.sumActiveAmountByUserIdAndPaidAtBetween(
+                    userId,
+                    parsedCompetency.atDay(1).atStartOfDay(),
+                    parsedCompetency.plusMonths(1).atDay(1).atStartOfDay()
+            )));
+        }
+
+        Map<UUID, List<PayablePayment>> paymentsByPayable = items.isEmpty()
+                ? Map.of()
+                : payablePaymentRepository.findByPayableIdInOrderByPaidAtAsc(items.stream().map(PayableAccount::getId).toList())
+                        .stream()
+                        .collect(Collectors.groupingBy(payment -> payment.getPayable().getId()));
+        summary.setItems(items.stream()
+                .map(account -> toResponse(account, paymentsByPayable.getOrDefault(account.getId(), List.of())))
+                .toList());
         return summary;
     }
 
@@ -102,7 +127,7 @@ public class PayableAccountService {
     public PayableAccountResponse findById(UUID userId, UUID id) {
         PayableAccount payable = payableAccountRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MESSAGE));
-        return toResponse(payable);
+        return toResponseWithPayments(payable);
     }
 
     @Transactional
@@ -113,6 +138,10 @@ public class PayableAccountService {
             competencyStr = parsed.toString();
         } else {
             competencyStr = YearMonth.from(request.getDueDate()).toString();
+        }
+        if (request.getFixedCostId() != null && payableAccountRepository
+                .existsByUserIdAndFixedCostIdAndCompetency(userId, request.getFixedCostId(), competencyStr)) {
+            throw new DuplicateResourceException(DUPLICATE_RECURRING_MESSAGE);
         }
 
         PayableAccount payable = PayableAccount.builder()
@@ -132,13 +161,12 @@ public class PayableAccountService {
                 .build();
 
         PayableAccount saved = payableAccountRepository.save(payable);
-        return toResponse(saved);
+        return toResponse(saved, List.of());
     }
 
     @Transactional
     public PayableAccountResponse update(UUID userId, UUID id, PayableAccountRequest request) {
-        PayableAccount payable = payableAccountRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MESSAGE));
+        PayableAccount payable = findForUpdate(userId, id);
 
         BigDecimal newTotal = Money.round(request.getTotalAmount());
         if (newTotal.compareTo(payable.getPaidAmount()) < 0) {
@@ -173,20 +201,19 @@ public class PayableAccountService {
             payable.setStatus(PayableStatus.PENDING);
         }
 
-        return toResponse(payable);
+        return toResponseWithPayments(payable);
     }
 
     @Transactional
     public void delete(UUID userId, UUID id) {
-        PayableAccount payable = payableAccountRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MESSAGE));
+        PayableAccount payable = findForUpdate(userId, id);
+        payablePaymentRepository.deleteByPayableId(payable.getId());
         payableAccountRepository.delete(payable);
     }
 
     @Transactional
     public PayableAccountResponse pay(UUID userId, UUID id, PayablePaymentRequest request) {
-        PayableAccount payable = payableAccountRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MESSAGE));
+        PayableAccount payable = findForUpdate(userId, id);
 
         BigDecimal paymentAmount = Money.round(request.getAmount());
         if (paymentAmount.compareTo(BigDecimal.ZERO) <= 0) {
@@ -200,6 +227,15 @@ public class PayableAccountService {
             );
         }
 
+        LocalDateTime paidAt = request.getPaidAt() != null ? request.getPaidAt() : LocalDateTime.now();
+        payablePaymentRepository.save(PayablePayment.builder()
+                .payable(payable)
+                .user(payable.getUser())
+                .amount(paymentAmount)
+                .paidAt(paidAt)
+                .notes(request.getNotes() != null && !request.getNotes().isBlank() ? request.getNotes().trim() : null)
+                .build());
+
         BigDecimal newPaidAmount = Money.round(payable.getPaidAmount().add(paymentAmount));
         payable.setPaidAmount(newPaidAmount);
 
@@ -209,44 +245,39 @@ public class PayableAccountService {
             payable.setStatus(PayableStatus.PARTIAL);
         }
 
-        payable.setPaidAt(request.getPaidAt() != null ? request.getPaidAt() : LocalDateTime.now());
-
-        if (request.getNotes() != null && !request.getNotes().isBlank()) {
-            String note = request.getNotes().trim();
-            payable.setNotes(payable.getNotes() != null && !payable.getNotes().isBlank()
-                    ? payable.getNotes() + " | " + note
-                    : note);
+        if (payable.getPaidAt() == null || paidAt.isAfter(payable.getPaidAt())) {
+            payable.setPaidAt(paidAt);
         }
 
-        return toResponse(payable);
+        return toResponseWithPayments(payable);
     }
 
     @Transactional
     public PayableAccountResponse reverse(UUID userId, UUID id) {
-        PayableAccount payable = payableAccountRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MESSAGE));
+        PayableAccount payable = findForUpdate(userId, id);
 
         if (payable.getPaidAmount().compareTo(BigDecimal.ZERO) <= 0 && payable.getStatus() == PayableStatus.PENDING) {
             throw new InvalidRequestException("Não há pagamento registrado para ser estornado.");
         }
 
-        BigDecimal previousPaid = payable.getPaidAmount();
+        // O estorno marca os pagamentos em vez de apagá-los: a trilha de auditoria fica nos próprios registros.
+        LocalDateTime reversedAt = LocalDateTime.now();
+        payablePaymentRepository.findByPayableIdOrderByPaidAtAsc(payable.getId()).stream()
+                .filter(payment -> payment.getReversedAt() == null)
+                .forEach(payment -> payment.setReversedAt(reversedAt));
+
         payable.setPaidAmount(Money.ZERO);
         payable.setStatus(PayableStatus.PENDING);
         payable.setPaidAt(null);
 
-        String auditNote = "[Estorno de R$ " + previousPaid + " em " + LocalDate.now() + "]";
-        payable.setNotes(payable.getNotes() != null && !payable.getNotes().isBlank()
-                ? payable.getNotes() + " | " + auditNote
-                : auditNote);
-
-        return toResponse(payable);
+        return toResponseWithPayments(payable);
     }
 
     @Transactional
     public List<PayableAccountResponse> generateRecurring(UUID userId, GenerateRecurringPayablesRequest request) {
         YearMonth ym = parseCompetency(request.getCompetency());
-        List<FixedCost> fixedCosts = fixedCostRepository.findByUserId(userId);
+        // Bloquear os custos fixos do usuário serializa gerações simultâneas da mesma competência.
+        List<FixedCost> fixedCosts = fixedCostRepository.findByUserIdForUpdate(userId);
         List<PayableAccount> createdList = new ArrayList<>();
 
         for (FixedCost fixedCost : fixedCosts) {
@@ -258,7 +289,6 @@ public class PayableAccountService {
                 continue;
             }
 
-            // Strict idempotency: skip if already generated for (userId, fixedCostId, competency)
             if (payableAccountRepository.existsByUserIdAndFixedCostIdAndCompetency(userId, fixedCost.getId(), ym.toString())) {
                 continue;
             }
@@ -289,7 +319,7 @@ public class PayableAccountService {
             createdList.add(payableAccountRepository.save(payable));
         }
 
-        return createdList.stream().map(this::toResponse).toList();
+        return createdList.stream().map(account -> toResponse(account, List.of())).toList();
     }
 
     private PayableSummaryResponse computeSummary(List<PayableAccount> accounts, LocalDate today) {
@@ -323,7 +353,16 @@ public class PayableAccountService {
                 .build();
     }
 
-    public PayableAccountResponse toResponse(PayableAccount account) {
+    private PayableAccount findForUpdate(UUID userId, UUID id) {
+        return payableAccountRepository.findByIdAndUserIdForUpdate(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MESSAGE));
+    }
+
+    private PayableAccountResponse toResponseWithPayments(PayableAccount account) {
+        return toResponse(account, payablePaymentRepository.findByPayableIdOrderByPaidAtAsc(account.getId()));
+    }
+
+    private PayableAccountResponse toResponse(PayableAccount account, List<PayablePayment> payments) {
         BigDecimal remaining = account.getTotalAmount().subtract(account.getPaidAmount());
         if (remaining.compareTo(BigDecimal.ZERO) < 0) {
             remaining = Money.ZERO;
@@ -347,6 +386,16 @@ public class PayableAccountService {
                 .status(account.getStatus())
                 .paidAt(account.getPaidAt())
                 .notes(account.getNotes())
+                .payments(payments.stream()
+                        .sorted(Comparator.comparing(PayablePayment::getPaidAt))
+                        .map(payment -> PayablePaymentResponse.builder()
+                                .id(payment.getId())
+                                .amount(payment.getAmount())
+                                .paidAt(payment.getPaidAt())
+                                .notes(payment.getNotes())
+                                .reversedAt(payment.getReversedAt())
+                                .build())
+                        .toList())
                 .overdue(isOverdue)
                 .createdAt(account.getCreatedAt())
                 .updatedAt(account.getUpdatedAt())
