@@ -9,7 +9,11 @@
  *    - Requisições com métodos diferentes de GET NUNCA são interceptadas para cache.
  */
 
-const CACHE_NAME = 'margemai-app-shell-v1';
+// Os bundles versionados do Vite são injetados no build (swPrecache.js); sem eles o app abre em branco offline.
+const BUILD_ID = 'dev';
+const BUILD_ASSETS = [];
+
+const CACHE_NAME = `margemai-app-shell-${BUILD_ID}`;
 
 const PRECACHE_ASSETS = [
   '/',
@@ -17,7 +21,8 @@ const PRECACHE_ASSETS = [
   '/manifest.webmanifest',
   '/favicon.svg',
   '/icon-192.svg',
-  '/icon-512.svg'
+  '/icon-512.svg',
+  ...BUILD_ASSETS
 ];
 
 self.addEventListener('install', (event) => {
@@ -72,6 +77,14 @@ function isSensitiveOrMutating(request, url) {
   return false;
 }
 
+function cacheResponse(request, response) {
+  if (!response || response.status !== 200) {
+    return undefined;
+  }
+  const responseClone = response.clone();
+  return caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
@@ -81,40 +94,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // waitUntil mantém o worker vivo até a gravação no cache terminar, mesmo após respondWith resolver.
+  const networkResponse = fetch(request);
+  event.waitUntil(
+    networkResponse.then((response) => cacheResponse(request, response)).catch(() => undefined)
+  );
+
   // 1. Navegação de páginas HTML (App Shell) -> NetworkFirst com fallback para cache/index.html
   if (request.mode === 'navigate' || (request.headers.get('accept') && request.headers.get('accept').includes('text/html'))) {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(request).then((cachedResponse) => {
-            return cachedResponse || caches.match('/index.html');
-          });
-        })
+      networkResponse.catch(() => {
+        return caches.match(request).then((cachedResponse) => {
+          return cachedResponse || caches.match('/index.html');
+        });
+      })
     );
     return;
   }
 
   // 2. Assets estáticos (JS, CSS, SVGs, fontes) -> StaleWhileRevalidate
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
+    caches.match(request).then((cachedResponse) => cachedResponse || networkResponse)
   );
 });

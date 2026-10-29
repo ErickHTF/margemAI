@@ -1,12 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { runInNewContext } from 'node:vm'
 import {
   shouldCacheRequest,
   validateWebManifest,
   registerServiceWorker,
   updateServiceWorker
 } from './pwa'
+import { injectPrecacheManifest } from '../../swPrecache.js'
 
 const PUBLIC_DIR = join(import.meta.dirname, '../../public')
 
@@ -337,29 +339,148 @@ describe('PWA — Registro e Atualização do Service Worker (registerServiceWor
   })
 })
 
-describe('PWA — Arquivo Service Worker (public/sw.js)', () => {
-  const swPath = join(PUBLIC_DIR, 'sw.js')
+const SW_ORIGIN = 'https://app.margem.ai'
 
-  it('o arquivo sw.js existe fisicamente em public/', () => {
-    expect(existsSync(swPath)).toBe(true)
+function createCacheStorage() {
+  const stores = new Map()
+  const keyOf = (request) => new URL(typeof request === 'string' ? request : request.url, SW_ORIGIN).href
+  const openStore = (name) => {
+    if (!stores.has(name)) stores.set(name, new Map())
+    const entries = stores.get(name)
+    return {
+      put: async (request, response) => {
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        entries.set(keyOf(request), response)
+      },
+      addAll: async (requests) => {
+        requests.forEach((request) => entries.set(keyOf(request), new Response(`precache ${request}`)))
+      },
+      match: async (request) => entries.get(keyOf(request))
+    }
+  }
+  return {
+    stores,
+    open: async (name) => openStore(name),
+    keys: async () => [...stores.keys()],
+    delete: async (name) => stores.delete(name),
+    match: async (request) => {
+      for (const name of stores.keys()) {
+        const found = await openStore(name).match(request)
+        if (found) return found
+      }
+      return undefined
+    },
+    urls: () => [...stores.values()].flatMap((entries) => [...entries.keys()])
+  }
+}
+
+function loadServiceWorker({ source = readFileSync(join(PUBLIC_DIR, 'sw.js'), 'utf8'), fetchImpl } = {}) {
+  const listeners = {}
+  const caches = createCacheStorage()
+  const fetchMock = vi.fn(fetchImpl ?? ((request) => Promise.resolve(new Response(`rede ${request.url}`))))
+  const self = {
+    location: { origin: SW_ORIGIN },
+    addEventListener: (type, listener) => { listeners[type] = listener },
+    skipWaiting: vi.fn(),
+    clients: { claim: vi.fn(() => Promise.resolve()) }
+  }
+  runInNewContext(source, { self, caches, fetch: fetchMock, URL, Response, Promise, setTimeout })
+
+  const dispatch = async (type, extra = {}) => {
+    const lifetime = []
+    let response
+    const event = {
+      ...extra,
+      waitUntil: (promise) => { lifetime.push(promise) },
+      respondWith: vi.fn((promise) => { response = Promise.resolve(promise) })
+    }
+    listeners[type](event)
+    const resolved = response ? await response : undefined
+    await Promise.all(lifetime)
+    return { event, response: resolved }
+  }
+
+  const fetchRequest = ({ path, method = 'GET', mode = 'no-cors', headers = {} }) => dispatch('fetch', {
+    request: { url: new URL(path, SW_ORIGIN).href, method, mode, headers: new Headers(headers) }
   })
 
-  it('implementa o ciclo de vida completo e a segurança dos dados do MEI', () => {
-    const swContent = readFileSync(swPath, 'utf8')
+  return { caches, fetchMock, dispatch, fetchRequest }
+}
 
-    expect(swContent).toContain("addEventListener('install'")
-    expect(swContent).toContain("addEventListener('activate'")
-    expect(swContent).toContain("addEventListener('fetch'")
-    expect(swContent).toContain("addEventListener('message'")
-    expect(swContent).toContain('SKIP_WAITING')
+describe('PWA — Service Worker real (public/sw.js)', () => {
+  it.each([
+    ['POST de venda', { path: '/v1/sales', method: 'POST' }],
+    ['GET da API financeira', { path: '/v1/dashboard/monthly-flow' }],
+    ['GET da raiz da API', { path: '/v1' }],
+    ['GET do actuator', { path: '/actuator/health' }],
+    ['GET de asset com Authorization', { path: '/assets/index-a1.js', headers: { Authorization: 'Bearer jwt-teste' } }],
+    ['PUT em asset same-origin', { path: '/assets/index-a1.js', method: 'PUT' }],
+    ['GET cross-origin', { path: 'https://cdn.exemplo.com/lib.js' }]
+  ])('não intercepta nem grava em cache: %s', async (_, request) => {
+    const sw = loadServiceWorker()
 
-    // Proteção de endpoints sensíveis
-    expect(swContent).toContain('/v1/')
-    expect(swContent).toContain('/actuator/')
-    expect(swContent).toContain('authorization')
+    const { event } = await sw.fetchRequest(request)
 
-    // Estratégias de cache
-    expect(swContent).toContain('caches.open')
-    expect(swContent).toContain('caches.match')
+    expect(event.respondWith).not.toHaveBeenCalled()
+    expect(sw.fetchMock).not.toHaveBeenCalled()
+    expect(sw.caches.urls()).toEqual([])
+  })
+
+  it('grava o asset da rede no cache dentro do tempo de vida do evento', async () => {
+    const sw = loadServiceWorker()
+
+    const { response } = await sw.fetchRequest({ path: '/assets/index-b2.js' })
+
+    expect(await response.text()).toBe(`rede ${SW_ORIGIN}/assets/index-b2.js`)
+    expect(sw.caches.urls()).toEqual([`${SW_ORIGIN}/assets/index-b2.js`])
+  })
+
+  it('responde do cache e revalida o asset antes de o worker encerrar', async () => {
+    const sw = loadServiceWorker()
+    await sw.dispatch('install')
+
+    const { response } = await sw.fetchRequest({ path: '/favicon.svg' })
+
+    expect(await response.text()).toBe('precache /favicon.svg')
+    const [cacheName] = sw.caches.stores.keys()
+    const revalidated = sw.caches.stores.get(cacheName).get(`${SW_ORIGIN}/favicon.svg`)
+    expect(await revalidated.text()).toBe(`rede ${SW_ORIGIN}/favicon.svg`)
+  })
+
+  it('grava a navegação no cache e usa o index.html quando offline', async () => {
+    const online = loadServiceWorker()
+    await online.fetchRequest({ path: '/vendas', mode: 'navigate' })
+    expect(online.caches.urls()).toEqual([`${SW_ORIGIN}/vendas`])
+
+    const offline = loadServiceWorker({ fetchImpl: () => Promise.reject(new TypeError('offline')) })
+    await offline.dispatch('install')
+    const { response } = await offline.fetchRequest({ path: '/precificacao', mode: 'navigate' })
+    expect(await response.text()).toBe('precache /index.html')
+  })
+
+  it('precacheia na instalação os bundles injetados no build', async () => {
+    const assets = ['/assets/index-c3.js', '/assets/index-d4.css']
+    const source = injectPrecacheManifest(readFileSync(join(PUBLIC_DIR, 'sw.js'), 'utf8'), assets)
+    const sw = loadServiceWorker({ source })
+
+    await sw.dispatch('install')
+
+    expect(sw.caches.urls()).toEqual(expect.arrayContaining(assets.map((asset) => `${SW_ORIGIN}${asset}`)))
+  })
+
+  it('muda o nome do cache quando os bundles do build mudam', async () => {
+    const swSource = readFileSync(join(PUBLIC_DIR, 'sw.js'), 'utf8')
+    const cacheNameAfterInstall = async (assets) => {
+      const sw = loadServiceWorker({ source: injectPrecacheManifest(swSource, assets) })
+      await sw.dispatch('install')
+      return [...sw.caches.stores.keys()][0]
+    }
+
+    expect(await cacheNameAfterInstall(['/assets/index-e5.js']))
+      .not.toBe(await cacheNameAfterInstall(['/assets/index-f6.js']))
+  })
+
+  it('falha o build quando o sw.js perde os marcadores de precache', () => {
+    expect(() => injectPrecacheManifest("const CACHE_NAME = 'x';", ['/assets/a.js'])).toThrow(/BUILD_ID\/BUILD_ASSETS/)
   })
 })
