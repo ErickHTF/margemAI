@@ -77,6 +77,7 @@ export default function MeiObligationsManager() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [reminderInput, setReminderInput] = useState(null)
   const [receiptForm, setReceiptForm] = useState(emptyReceiptForm)
+  const [receiptBaseline, setReceiptBaseline] = useState(emptyReceiptForm)
   const [receiptErrors, setReceiptErrors] = useState({})
   const [reopenTarget, setReopenTarget] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -98,14 +99,11 @@ export default function MeiObligationsManager() {
   const baselineReminder = String(schedule?.reminderDaysBefore ?? 5)
   const currentReminderValue = reminderInput !== null ? reminderInput : baselineReminder
   const reminderChanged = reminderInput !== null && reminderInput !== baselineReminder
-  const receiptChanged = Boolean(
-    receiptForm.obligationId &&
-      (receiptForm.manualReceiptCode.trim() !== '' || receiptForm.notes.trim() !== '')
-  )
+  const receiptChanged = JSON.stringify(receiptForm) !== JSON.stringify(receiptBaseline)
 
-  const { dirty } = useDraft(
+  const { dirty, guard } = useDraft(
     { reminder: currentReminderValue, receipt: receiptForm },
-    { reminder: baselineReminder, receipt: emptyReceiptForm() }
+    { reminder: baselineReminder, receipt: receiptBaseline }
   )
 
   const obligations = schedule?.obligations || []
@@ -114,20 +112,35 @@ export default function MeiObligationsManager() {
   const filteredObligations = filterObligations(obligations, { typeFilter, statusFilter })
 
   const openReceiptEditor = (obligation) => {
-    setFeedback('')
-    setActionError('')
-    setReceiptErrors({})
-    setReceiptForm({
-      obligationId: obligation.id,
-      manualReceiptCode: obligation.manualReceiptCode || '',
-      paidAt: obligation.paidAt || todayISO(),
-      notes: obligation.notes || ''
+    if (receiptForm.obligationId === obligation.id) return
+    guard(() => {
+      const form = {
+        obligationId: obligation.id,
+        manualReceiptCode: obligation.manualReceiptCode || '',
+        paidAt: obligation.paidAt || todayISO(),
+        notes: obligation.notes || ''
+      }
+      setFeedback('')
+      setActionError('')
+      setReceiptErrors({})
+      setReceiptForm(form)
+      setReceiptBaseline(form)
     })
   }
 
   const closeReceiptEditor = () => {
+    const empty = emptyReceiptForm()
     setReceiptErrors({})
-    setReceiptForm(emptyReceiptForm())
+    setReceiptForm(empty)
+    setReceiptBaseline(empty)
+  }
+
+  const changeYear = (year) => {
+    guard(() => {
+      setSelectedYear(year)
+      setReminderInput(null)
+      closeReceiptEditor()
+    })
   }
 
   const handleReminderSubmit = async (event) => {
@@ -256,11 +269,8 @@ export default function MeiObligationsManager() {
               <Select
                 aria-label="Ano da agenda"
                 value={selectedYear}
-                onChange={(e) => {
-                  setSelectedYear(Number(e.target.value))
-                  setReminderInput(null)
-                  closeReceiptEditor()
-                }}
+                disabled={busy}
+                onChange={(e) => changeYear(Number(e.target.value))}
               >
                 {yearOptions.map((yr) => (
                   <option key={yr} value={yr}>
