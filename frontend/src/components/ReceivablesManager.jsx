@@ -8,6 +8,8 @@ import {
   Calendar,
   CreditCard,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Search
 } from 'lucide-react'
@@ -69,10 +71,13 @@ const STATUS_OPTIONS = [
   { value: 'RECEIVED', label: 'Recebidos' }
 ]
 
+const PAGE_SIZE = 50
+
 export default function ReceivablesManager() {
   const [statusFilter, setStatusFilter] = useState('')
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
   const [showNewForm, setShowNewForm] = useState(false)
   const [formData, setFormData] = useState(emptyForm)
   const [expandedId, setExpandedId] = useState(null)
@@ -94,14 +99,20 @@ export default function ReceivablesManager() {
         status: statusFilter || undefined,
         paymentMethod: paymentMethodFilter || undefined,
         search: search.trim() || undefined,
-        page: 0,
-        size: 50
+        page,
+        size: PAGE_SIZE
       }),
-    [statusFilter, paymentMethodFilter, search],
+    [statusFilter, paymentMethodFilter, search, page],
     { errorMessage: 'Erro ao carregar contas a receber.' }
   )
 
   const receivables = useMemo(() => data?.receivables?.content || [], [data])
+  const totalPages = data?.receivables?.totalPages || 0
+
+  const changeFilter = (setter) => (value) => {
+    setter(value)
+    setPage(0)
+  }
 
   const pill = SEBRAE_PILLS.find((p) => p.id === 'receivables-control') || SEBRAE_PILLS.find((p) => p.id === 'working-capital')
 
@@ -352,7 +363,7 @@ export default function ReceivablesManager() {
             label="Filtrar por status"
             options={STATUS_OPTIONS}
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={changeFilter(setStatusFilter)}
             size="sm"
           />
 
@@ -360,7 +371,7 @@ export default function ReceivablesManager() {
             <Field label="" className="w-full sm:w-44">
               <Select
                 value={paymentMethodFilter}
-                onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                onChange={(e) => changeFilter(setPaymentMethodFilter)(e.target.value)}
               >
                 <option value="">Todas as formas</option>
                 {PAYMENT_METHODS.map((pm) => (
@@ -376,7 +387,7 @@ export default function ReceivablesManager() {
                 Icon={Search}
                 placeholder="Buscar por descrição..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => changeFilter(setSearch)(e.target.value)}
               />
             </Field>
           </div>
@@ -456,89 +467,119 @@ export default function ReceivablesManager() {
 
                 {/* Lista Expandida de Parcelas */}
                 {isExpanded && (
-                  <div className="border-t border-slate-100 bg-slate-50/50 p-4 space-y-3">
-                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Parcelas do Título
-                    </h4>
-                    <div className="space-y-2">
-                      {rec.installments?.map((inst) => {
-                        const instTone = RECEIVABLE_STATUS_TONES[inst.status] || 'amber'
-                        const instLabel = RECEIVABLE_STATUS_LABELS[inst.status] || inst.status
+                  <div className="px-4 pb-4">
+                    <Card inset tone="muted" padding="sm" className="space-y-3">
+                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Parcelas do Título
+                      </h4>
+                      <div className="space-y-2">
+                        {rec.installments?.map((inst) => {
+                          const instTone = RECEIVABLE_STATUS_TONES[inst.status] || 'amber'
+                          const instLabel = RECEIVABLE_STATUS_LABELS[inst.status] || inst.status
 
-                        return (
-                          <div
-                            key={inst.id}
-                            className="bg-white border border-slate-200 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                          >
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-sm text-slate-900">
-                                  Parcela {inst.installmentNumber}/{inst.totalInstallments}
-                                </span>
-                                <Badge tone={instTone}>{instLabel}</Badge>
-                                {inst.overdue && <Badge tone="rose">Atrasado</Badge>}
-                              </div>
-                              <p className="text-xs text-slate-500 flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5" />
-                                Vencimento: <span className="font-medium text-slate-700">{formatDateBR(inst.dueDate)}</span>
-                                {inst.receivedAt && (
-                                  <> · Liquidado em {formatDateBR(inst.receivedAt)}</>
-                                )}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center justify-between sm:justify-end gap-4">
-                              <div className="text-left sm:text-right">
-                                <p className="text-xs text-slate-500">
-                                  Líquido: <span className="font-semibold text-slate-900">{formatCurrencyBRL(inst.netAmount)}</span>
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  Recebido: <span className="font-semibold text-emerald-600">{formatCurrencyBRL(inst.receivedAmount)}</span>
+                          return (
+                            <Card
+                              key={inst.id}
+                              inset
+                              padding="sm"
+                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-sm text-slate-900">
+                                    Parcela {inst.installmentNumber}/{inst.totalInstallments}
+                                  </span>
+                                  <Badge tone={instTone}>{instLabel}</Badge>
+                                  {inst.overdue && <Badge tone="rose">Atrasado</Badge>}
+                                </div>
+                                <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  Vencimento: <span className="font-medium text-slate-700">{formatDateBR(inst.dueDate)}</span>
+                                  {inst.receivedAt && (
+                                    <> · Liquidado em {formatDateBR(inst.receivedAt)}</>
+                                  )}
                                 </p>
                               </div>
 
-                              <div className="flex items-center gap-2">
-                                {inst.status !== 'RECEIVED' && (
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    Icon={ArrowDownCircle}
-                                    onClick={() =>
-                                      setSettleModal({
-                                        installment: inst,
-                                        receivable: rec,
-                                        amount: currencyToDigits(inst.remainingAmount || inst.netAmount),
-                                        receivedAt: today(),
-                                        notes: ''
-                                      })
-                                    }
-                                  >
-                                    Baixar
-                                  </Button>
-                                )}
+                              <div className="flex items-center justify-between sm:justify-end gap-4">
+                                <div className="text-left sm:text-right">
+                                  <p className="text-xs text-slate-500">
+                                    Líquido: <span className="font-semibold text-slate-900">{formatCurrencyBRL(inst.netAmount)}</span>
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    Recebido: <span className="font-semibold text-emerald-600">{formatCurrencyBRL(inst.receivedAmount)}</span>
+                                  </p>
+                                </div>
 
-                                {Number(inst.receivedAmount) > 0 && (
-                                  <Button
-                                    size="sm"
-                                    variant="soft"
-                                    tone="rose"
-                                    Icon={RotateCcw}
-                                    onClick={() => setReverseTarget(inst)}
-                                  >
-                                    Estornar
-                                  </Button>
-                                )}
+                                <div className="flex items-center gap-2">
+                                  {inst.status !== 'RECEIVED' && (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      Icon={ArrowDownCircle}
+                                      onClick={() =>
+                                        setSettleModal({
+                                          installment: inst,
+                                          receivable: rec,
+                                          amount: currencyToDigits(inst.remainingAmount || inst.netAmount),
+                                          receivedAt: today(),
+                                          notes: ''
+                                        })
+                                      }
+                                    >
+                                      Baixar
+                                    </Button>
+                                  )}
+
+                                  {Number(inst.receivedAmount) > 0 && (
+                                    <Button
+                                      size="sm"
+                                      variant="soft"
+                                      tone="rose"
+                                      Icon={RotateCcw}
+                                      onClick={() => setReverseTarget(inst)}
+                                    >
+                                      Estornar
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                            </Card>
+                          )
+                        })}
+                      </div>
+                    </Card>
                   </div>
                 )}
               </Card>
             )
           })
+        )}
+
+        {(totalPages > 1 || page > 0) && (
+          <nav aria-label="Paginação dos títulos" className="flex items-center justify-between gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              Icon={ChevronLeft}
+              disabled={loading || page === 0}
+              onClick={() => setPage((current) => Math.max(0, current - 1))}
+            >
+              Anterior
+            </Button>
+            <p className="text-xs text-slate-500">
+              Página {page + 1} de {Math.max(totalPages, page + 1)}
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              TrailingIcon={ChevronRight}
+              disabled={loading || page + 1 >= totalPages}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              Próxima
+            </Button>
+          </nav>
         )}
       </section>
 
