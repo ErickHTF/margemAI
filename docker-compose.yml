@@ -44,6 +44,9 @@ services:
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
       - MANAGEMENT_HEALTH_SHOW_DETAILS=always
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - MARGEMAI_AI_MODEL=${MARGEMAI_AI_MODEL:-claude-sonnet-5-5}
+      - MARGEMAI_AI_DAILY_MESSAGE_LIMIT=${MARGEMAI_AI_DAILY_MESSAGE_LIMIT:-30}
     depends_on:
       db:
         condition: service_healthy
