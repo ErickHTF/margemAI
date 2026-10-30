@@ -12,10 +12,12 @@ on:
       - 'chore/**'
       - 'docs/**'
       - 'develop'
+      - 'PPS'
       - 'main'
   pull_request:
     branches:
       - 'develop'
+      - 'PPS'
       - 'main'
   # Reaproveitado pelos workflows de release: nada é publicado sem passar por aqui.
   workflow_call:
@@ -26,7 +28,7 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   # Em develop/main cada push precisa do próprio resultado; só PRs e branches de trabalho cancelam a execução anterior.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/PPS' && github.ref != 'refs/heads/main' }}
 
 jobs:
   commit-lint:

@@ -24,10 +24,10 @@ scripts/check.sh frontend   # or: backend
 Run `scripts/check.sh` before every commit. Never claim something passed without running it; if it fails, report the
 real output.
 
-**CI gates merges.** `develop` and `main` accept a PR only when the `CI OK` check passes (commit lint, backend on H2
+**CI gates merges.** `develop`, `PPS` and `main` accept a PR only when the `CI OK` check passes (commit lint, backend on H2
 and on PostgreSQL, frontend lint/tests/build) **and** the branch is up to date with its base: after another PR merges,
 update yours (`git merge origin/develop`) and let CI run again. *Prévia de integração* merges every open PR into
-`develop` and runs `scripts/check.sh`; its summary shows which PRs conflict or break together — fix those before
+its base (`develop`, `PPS`) and runs `scripts/check.sh`; its summary shows which PRs conflict or break together — fix those before
 merging. Releases reuse `ci.yml` and publish only the artifacts CI tested.
 
 ---

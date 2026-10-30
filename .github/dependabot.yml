@@ -3,7 +3,7 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
-    target-branch: develop
+    target-branch: PPS
     schedule:
       interval: weekly
     commit-message:
@@ -14,7 +14,7 @@ updates:
 
   - package-ecosystem: maven
     directory: /backend
-    target-branch: develop
+    target-branch: PPS
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -26,7 +26,7 @@ updates:
 
   - package-ecosystem: npm
     directory: /frontend
-    target-branch: develop
+    target-branch: PPS
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
