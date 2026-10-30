@@ -15,3 +15,7 @@ frontend/.vite/
 *.iml
 .DS_Store
 Thumbs.db
+# Segredos locais (chave da IA, senhas). Copie .env.example para .env e preencha.
+.env
+.env.*
+!.env.example

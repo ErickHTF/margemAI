@@ -89,6 +89,28 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(AssistantUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleAssistantUnavailable(AssistantUnavailableException ex) {
+        ErrorResponse response = ErrorResponse.builder()
+                .code("ASSISTANT_UNAVAILABLE")
+                .message(ex.getMessage())
+                .details(List.of(ex.getMessage()))
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+
+    @ExceptionHandler(AssistantLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleAssistantLimitExceeded(AssistantLimitExceededException ex) {
+        ErrorResponse response = ErrorResponse.builder()
+                .code("ASSISTANT_LIMIT_EXCEEDED")
+                .message(ex.getMessage())
+                .details(List.of(ex.getMessage()))
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
+    }
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         Object rejectedValue = ex.getValue();

@@ -9,6 +9,11 @@ export const MENU_TOURS = {
     step('products-list', 'O custo mudou? Revise o item', 'Mantenha custos e preços dos itens atualizados.', 'Se o custo sobe e o preço fica igual, sua margem diminui.'),
     step('products-search', 'Encontre sem perder tempo', 'Busque pelo nome ou filtre por tipo.')
   ],
+  assistant: [
+    step('assistant-suggestions', 'Comece pelo diagnóstico', 'Peça para a Margô analisar seu negócio ou projetar os próximos meses.'),
+    step('assistant-conversation', 'Respostas com os seus números', 'A Margô consulta produtos, custos, taxas e vendas e mostra cartões com os valores exatos.', 'Confira em “Calculado com” quais telas foram usadas na conta.'),
+    step('assistant-composer', 'Pergunte do seu jeito', 'Escreva como falaria com uma consultora. Ela também está no balão de todas as telas.')
+  ],
   accounts: [
     step('accounts-new', 'Onde fica seu dinheiro?', 'Cadastre seu banco PJ ou caixa e informe o saldo inicial. Uma conta pode bastar.'),
     step('accounts-movement', 'Entrou ou saiu? Registre', 'Lance aportes, retiradas, pró-labore ou transferências.', 'Confira também as vendas e despesas: elas ainda não entram automaticamente nestas contas.'),

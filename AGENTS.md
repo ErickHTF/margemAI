@@ -3,8 +3,8 @@
 The only instructions file for AI coding agents in this repository (`CLAUDE.md` just imports it).
 
 Margem.AI is a pricing, cost and cash-flow tool for Brazilian MEIs (micro-entrepreneurs), based on SEBRAE guidance:
-a Spring Boot REST API (`backend/`) and a React SPA (`frontend/`). Despite the name, it does **not** call any AI/LLM;
-all calculations are deterministic business rules.
+a Spring Boot REST API (`backend/`) and a React SPA (`frontend/`). All calculations are deterministic business rules;
+the optional **Assistente IA** (Claude) only explains them — see *AI assistant* below.
 
 **Language.** This file is in English; the product is Brazilian. UI text, error messages, commits, cards, PRs and test
 names (`@DisplayName`, Vitest descriptions) are in **Brazilian Portuguese**.
@@ -34,7 +34,7 @@ merging. Releases reuse `ci.yml` and publish only the artifacts CI tested.
 
 ## Workflow: card → branch → commits → PR
 
-Every change starts from a card on the [Margem.AI board (GitHub Project #2)](https://github.com/users/ErickHTF/projects/2).
+Every change starts from a card on the [PPS-margemAI board (GitHub Project #1)](https://github.com/users/Camocardi/projects/1).
 Always use `scripts/card`; prefix with `DRY_RUN=1` to preview.
 
 | Step | Command | Result |
@@ -59,7 +59,7 @@ Read the card and the issues it links before coding.
   (the first six require a scope).
 - Scopes: `auth` `perfil` `produtos` `categorias` `custos` `vendas` `contas` `dashboard` (fluxo de caixa) `pricing`
   (markup) `taxas` `alerts` `sebrae` `tours` `ui` `layout` `menu` `precision` `security` `api` `db` `infra` `devops`
-  `ci` `deps` `docs` `agentes`.
+  `ci` `deps` `docs` `agentes` `assistente`.
 - Card ID: `[US-12]`, `[TECH-08]`, `[US-32 a US-35]`.
 - Source of truth: `scripts/lib/conventions.sh` (change it and this list together). Stage files by path, never `git add -A`.
 
@@ -221,6 +221,26 @@ stale responses and maps errors with `getApiErrorMessage` (`services/apiError.js
 
 **Adding an endpoint:** request/response DTOs → service + test → controller + MockMvc test → `openapi.yaml` →
 frontend service method + row in `endpoints.test.js`.
+
+---
+
+## AI assistant — Margô (`service/assistant`; screens `AssistantChat`, `AssistantBubble`, `MargoChat`)
+
+- **Numbers come from tools, never from the model.** Each tool in `AssistantTools` calls an existing service with the
+  authenticated `userId`, validates the model's arguments with Bean Validation and returns JSON. The assistant is
+  read-only: never add a tool that creates, updates or deletes records.
+- New tool: definition + `case` + Portuguese label in `LABELS` + test in `AssistantToolsTest`, and a renderer in
+  `AssistantCards.jsx` keyed by the tool name (the card shows the tool's raw result; never let the model write numbers
+  into a card). Mention it in the system prompt only if the analysis method changes.
+- Projection (`BusinessProjectionService`) and diagnosis (`BusinessDiagnosisService`) are deterministic and tested;
+  "good/bad" always compares with platform references (minimum price, recommended fee, MEI cap, configured risk).
+- One conversation per session lives in `AssistantProvider` (shared by the tab and the floating bubble); the bubble
+  sends the current menu key as `screen` for context.
+- Claude is reached only through `ClaudeGateway` (official SDK `com.anthropic:anthropic-java`); tests mock it — never
+  call the real API in tests.
+- Config: `ANTHROPIC_API_KEY` (no key → assistant disabled, 503), `MARGEMAI_AI_MODEL` (default `claude-sonnet-5-5`, with server-side refusal fallback),
+  `MARGEMAI_AI_DAILY_MESSAGE_LIMIT`. Locally in `.env` (git-ignored; template `.env.example`), in production in AWS SSM
+  `/margemai/prod/*`. Never commit a key.
 
 ---
 
