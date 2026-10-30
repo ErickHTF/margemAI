@@ -348,6 +348,32 @@ public class PayableAccountControllerTest {
                 () -> payableAccountRepository.saveAndFlush(recurringFor(fixedCostId)));
     }
 
+    @Test
+    @DisplayName("Retorna 409 ao editar conta recorrente para competência já gerada do mesmo custo fixo")
+    void deveRetornarConflitoAoEditarParaCompetenciaJaGerada() throws Exception {
+        UUID fixedCostId = UUID.randomUUID();
+        payableAccountRepository.saveAndFlush(recurringFor(fixedCostId));
+        PayableAccount november = recurringFor(fixedCostId);
+        november.setCompetency("2026-11");
+        november.setDueDate(LocalDate.of(2026, 11, 10));
+        november = payableAccountRepository.saveAndFlush(november);
+
+        PayableAccountRequest request = PayableAccountRequest.builder()
+                .description("Aluguel da Loja")
+                .competency("2026-10")
+                .dueDate(LocalDate.of(2026, 10, 10))
+                .totalAmount(new BigDecimal("1500.00"))
+                .build();
+
+        mockMvc.perform(put("/v1/payables/" + november.getId())
+                        .header("Authorization", bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message")
+                        .value("Já existe uma conta a pagar deste custo fixo para a competência informada."));
+    }
+
     private PayableAccount recurringFor(UUID fixedCostId) {
         return PayableAccount.builder()
                 .user(savedUser)

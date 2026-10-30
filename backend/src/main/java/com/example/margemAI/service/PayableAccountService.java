@@ -21,6 +21,7 @@ import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.util.Money;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ public class PayableAccountService {
     private static final String NOT_FOUND_MESSAGE = "Conta a pagar não encontrada.";
     private static final String DUPLICATE_RECURRING_MESSAGE =
             "Já existe uma conta a pagar deste custo fixo para a competência informada.";
+    private static final String DUPLICATE_RECURRING_CONSTRAINT = "uk_payable_user_fixed_cost_competency";
     private static final String INVALID_COMPETENCY_MESSAGE = "Competência inválida. Use o formato AAAA-MM.";
 
     private final PayableAccountRepository payableAccountRepository;
@@ -160,7 +162,13 @@ public class PayableAccountService {
                 .notes(request.getNotes())
                 .build();
 
-        PayableAccount saved = payableAccountRepository.save(payable);
+        // O exists acima não bloqueia: dois cadastros simultâneos só se encontram na constraint única.
+        PayableAccount saved;
+        try {
+            saved = payableAccountRepository.saveAndFlush(payable);
+        } catch (DataIntegrityViolationException ex) {
+            throw translateDuplicateCompetency(ex);
+        }
         return toResponse(saved, List.of());
     }
 
@@ -176,8 +184,14 @@ public class PayableAccountService {
         }
 
         if (request.getCompetency() != null && !request.getCompetency().isBlank()) {
-            YearMonth parsed = parseCompetency(request.getCompetency());
-            payable.setCompetency(parsed.toString());
+            String newCompetency = parseCompetency(request.getCompetency()).toString();
+            if (payable.getFixedCostId() != null
+                    && !newCompetency.equals(payable.getCompetency())
+                    && payableAccountRepository.existsByUserIdAndFixedCostIdAndCompetencyAndIdNot(
+                            userId, payable.getFixedCostId(), newCompetency, payable.getId())) {
+                throw new DuplicateResourceException(DUPLICATE_RECURRING_MESSAGE);
+            }
+            payable.setCompetency(newCompetency);
         }
 
         payable.setDescription(request.getDescription().trim());
@@ -201,6 +215,11 @@ public class PayableAccountService {
             payable.setStatus(PayableStatus.PENDING);
         }
 
+        try {
+            payableAccountRepository.flush();
+        } catch (DataIntegrityViolationException ex) {
+            throw translateDuplicateCompetency(ex);
+        }
         return toResponseWithPayments(payable);
     }
 
@@ -351,6 +370,16 @@ public class PayableAccountService {
                 .totalOpenPayable(Money.round(totalOpen))
                 .totalOverduePayable(Money.round(totalOverdue))
                 .build();
+    }
+
+    private RuntimeException translateDuplicateCompetency(DataIntegrityViolationException ex) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            String message = cause.getMessage();
+            if (message != null && message.toLowerCase().contains(DUPLICATE_RECURRING_CONSTRAINT)) {
+                return new DuplicateResourceException(DUPLICATE_RECURRING_MESSAGE);
+            }
+        }
+        return ex;
     }
 
     private PayableAccount findForUpdate(UUID userId, UUID id) {
