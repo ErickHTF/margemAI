@@ -27,6 +27,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -469,6 +470,63 @@ class PayableAccountServiceTest {
                 .build();
 
         assertThrows(DuplicateResourceException.class, () -> payableAccountService.create(userId, request));
-        verify(payableAccountRepository, never()).save(any(PayableAccount.class));
+        verify(payableAccountRepository, never()).saveAndFlush(any(PayableAccount.class));
+    }
+
+    @Test
+    @DisplayName("Traduz violação da constraint única em cadastros simultâneos para conflito")
+    void deveTraduzirViolacaoDaConstraintEmCadastroSimultaneo() {
+        UUID fixedCostId = UUID.randomUUID();
+        when(payableAccountRepository.existsByUserIdAndFixedCostIdAndCompetency(userId, fixedCostId, "2026-10"))
+                .thenReturn(false);
+        when(payableAccountRepository.saveAndFlush(any(PayableAccount.class))).thenThrow(
+                new DataIntegrityViolationException("could not execute statement",
+                        new RuntimeException("Unique index or primary key violation: \"UK_PAYABLE_USER_FIXED_COST_COMPETENCY\"")));
+
+        PayableAccountRequest request = PayableAccountRequest.builder()
+                .description("Aluguel do Ponto")
+                .fixedCostId(fixedCostId)
+                .competency("2026-10")
+                .dueDate(LocalDate.of(2026, 10, 15))
+                .totalAmount(new BigDecimal("1200.00"))
+                .build();
+
+        DuplicateResourceException ex = assertThrows(DuplicateResourceException.class,
+                () -> payableAccountService.create(userId, request));
+        assertEquals("Já existe uma conta a pagar deste custo fixo para a competência informada.", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Rejeita edição que move conta recorrente para competência já gerada do mesmo custo fixo")
+    void deveRejeitarEdicaoParaCompetenciaJaGerada() {
+        UUID accountId = UUID.randomUUID();
+        UUID fixedCostId = UUID.randomUUID();
+        PayableAccount account = PayableAccount.builder()
+                .id(accountId)
+                .user(user)
+                .type(PayableType.RECURRING)
+                .fixedCostId(fixedCostId)
+                .competency("2026-10")
+                .description("Aluguel do Ponto")
+                .category("ALUGUEL")
+                .dueDate(LocalDate.of(2026, 10, 10))
+                .totalAmount(new BigDecimal("1200.00"))
+                .paidAmount(BigDecimal.ZERO)
+                .status(PayableStatus.PENDING)
+                .build();
+        when(payableAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)).thenReturn(Optional.of(account));
+        when(payableAccountRepository.existsByUserIdAndFixedCostIdAndCompetencyAndIdNot(
+                userId, fixedCostId, "2026-11", accountId)).thenReturn(true);
+
+        PayableAccountRequest request = PayableAccountRequest.builder()
+                .description("Aluguel do Ponto")
+                .competency("2026-11")
+                .dueDate(LocalDate.of(2026, 11, 10))
+                .totalAmount(new BigDecimal("1200.00"))
+                .build();
+
+        assertThrows(DuplicateResourceException.class, () -> payableAccountService.update(userId, accountId, request));
+        assertEquals("2026-10", account.getCompetency());
+        verify(payableAccountRepository, never()).flush();
     }
 }

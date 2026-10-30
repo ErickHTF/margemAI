@@ -24,6 +24,8 @@ public interface PayableAccountRepository extends JpaRepository<PayableAccount, 
 
     boolean existsByUserIdAndFixedCostIdAndCompetency(UUID userId, UUID fixedCostId, String competency);
 
+    boolean existsByUserIdAndFixedCostIdAndCompetencyAndIdNot(UUID userId, UUID fixedCostId, String competency, UUID id);
+
     List<PayableAccount> findByUserId(UUID userId);
 
     List<PayableAccount> findByUserIdAndCompetency(UUID userId, String competency);
