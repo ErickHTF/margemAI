@@ -1,96 +1,60 @@
-# 🚀 Guia de Deploy, Releases e Rollback — Margem.AI
+# 🚀 Guia de CI, Releases e Deploy — Margem.AI
 
-Este documento descreve o fluxo de trabalho de Integração Contínua e Entrega Contínua (**CI/CD**), explicando como disparar, monitorar, executar os deploys e realizar **procedimentos de rollback de emergência** nos ambientes de **Homologação (Staging)** e **Produção (Main)**.
+Este documento descreve os workflows do GitHub Actions do projeto: o **CI** que valida cada PR, a **Prévia de integração** dos PRs abertos e a **Release de produção** publicada a cada merge na `main`, além de como voltar para uma versão anterior.
 
 ---
 
-## 🏗️ 1. Visão Geral dos Ambientes
+## 🏗️ 1. Visão Geral
 
 ```mermaid
 flowchart LR
-    DEV["💻 Feature Branch (Dev Local)"] --> PR["👀 Pull Request (CI Check)"]
-    PR --> STG["🎯 Branch Staging / Homolog"]
-    PR --> MAIN["🚢 Branch Main (Produção)"]
-
-    STG --> REL_STG["📦 Pre-Release GitHub (Homologação)"]
-    MAIN --> REL_PROD["📦 Release Oficial GitHub (Produção)"]
-
-    REL_PROD -.->|Falha em Produção| RB["🚨 Esteira de Rollback Automático"]
-    RB -.->|Restaura Artefato Estável| PROD_RESTORE["🔄 Versão Estável Anterior Ativa"]
+    DEV["💻 Branch do card"] --> PR["👀 PR para develop (CI OK)"]
+    PR --> DEVELOP["🧩 develop"]
+    DEVELOP -.->|PRs abertos + develop| PREV["🔍 Prévia de integração"]
+    DEVELOP --> PRMAIN["👀 PR develop → main (CI OK)"]
+    PRMAIN --> MAIN["🚢 main"]
+    MAIN --> REL["📦 Release de produção (GitHub Release)"]
 ```
 
-| Ambiente | Branch / Gatilho | Objetivo | Artefatos Gerados |
+| Workflow | Arquivo | Gatilho | O que faz |
 | :--- | :--- | :--- | :--- |
-| **Local / Dev** | `feature/us-XX-...` | Desenvolvimento e testes locais | `target/` e `dist/` |
-| **Homologação** | Branch `staging` / `homolog` ou disparo manual | Validação de novas features pela equipe/cliente | `margemai-backend-homolog.jar`<br>`margemai-frontend-homolog.zip` |
-| **Produção** | Merge de PR na branch `main` | Versão estável oficial para usuários finais | `margemai-backend-production.jar`<br>`margemai-frontend-production.zip` |
-| **Rollback** | Disparo manual (`workflow_dispatch`) | Reversão rápida para versão estável anterior | Binários estáveis reempacotados e tag de auditoria |
+| **CI** | `ci.yml` | Push em branches de trabalho, `develop` e `main`; PRs para `develop`/`main`; chamado pela release | Lint dos commits (em PRs), backend em H2 e em PostgreSQL, lint/testes/build do frontend; gera os artefatos `backend-jar` e `frontend-dist`. O job final **`CI OK`** resume tudo |
+| **Prévia de integração** | `integration-preview.yml` | Push em `develop`, dias úteis às 11h UTC ou manual | Junta `develop` com todos os PRs abertos para `develop` e roda `scripts/check.sh`; o resumo mostra quais PRs conflitam ou quebram juntos |
+| **Release de produção** | `release-prod.yml` | Push em `main` ou manual (`workflow_dispatch`) | Roda o `ci.yml` e publica no GitHub Releases os artefatos que o CI testou |
 
 ---
 
-## 🎯 2. Como Executar o Deploy de Homologação
+## ✅ 2. CI e regras de merge
 
-O pipeline de homologação gera uma **Pre-Release no GitHub** contendo as notas de versão automáticas e os binários compilados.
+`develop` e `main` só aceitam um PR quando o check **`CI OK`** passa **e** a branch está atualizada com a base. Depois que outro PR entra, atualize a sua (`git merge origin/develop`) e espere o CI rodar de novo.
 
-### Opção A: Automático via Git (Branch Staging)
-1. Certifique-se de que sua branch de feature está atualizada com a `main`.
-2. Envie suas alterações para a branch `staging` ou `homolog`:
-   ```bash
-   git checkout staging
-   git merge feature/us-01-cadastro-usuario-mei
-   git push origin staging
-   ```
-3. O GitHub Actions iniciará automaticamente o workflow **`Release Homologação (Pre-Release)`**.
-
-### Opção B: Disparo Manual pelo Painel do GitHub Actions
-1. Acesse a aba [**Actions do Repositório**](https://github.com/ErickHTF/margemAI/actions).
-2. No menu lateral esquerdo, clique em **`Release Homologação (Pre-Release)`**.
-3. Clique no botão **`Run workflow`**.
-4. *(Opcional)* Escolha a branch desejada e defina o sufixo da versão (ex: `rc.1`, `beta.1`).
-5. Clique em **`Run workflow`**.
+Antes de fazer merge, confira o resumo da última execução da **Prévia de integração** (aba [Actions](https://github.com/ErickHTF/margemAI/actions)): se o seu PR conflita ou quebra junto com outro, resolva antes.
 
 ---
 
-## 🚢 3. Como Executar o Deploy de Produção
+## 🚢 3. Release de produção
 
-O deploy de produção segue o padrão **Trunk-Based**: ao aprovar e realizar o merge de um Pull Request na branch `main`, o GitHub Actions valida os testes, compila os artefatos de produção e publica uma **Release Oficial no GitHub**.
+### Automático (merge na `main`)
+1. Abra um PR de `develop` para `main` e aguarde o **`CI OK`**.
+2. Faça o merge. O workflow **`Release de produção`** roda o CI de novo no commit da `main` e, se passar, publica uma Release com:
+   * `margemai-backend-production.jar`
+   * `margemai-frontend-production.zip`
+3. A tag é `v0.1.<número de commits da main>` (ex.: `v0.1.312`), com notas de versão geradas automaticamente.
 
-### Opção A: Automático via Merge de Pull Request (Recomendado)
-1. Abra um **Pull Request** da sua branch `feature/*` apontando para a `main`.
-2. Aguarde a execução e aprovação do workflow **`Continuous Integration (CI)`**.
-3. Realize o **Merge** do Pull Request no GitHub.
-4. O workflow **`Release Produção (Main Merge)`** será disparado automaticamente.
+### Manual com tag customizada
+1. Na aba [Actions](https://github.com/ErickHTF/margemAI/actions), abra **`Release de produção`** › **`Run workflow`**.
+2. Selecione a branch `main` e informe `version_tag` (ex.: `v1.0.0`). Vazio usa a numeração automática.
 
-### Opção B: Disparo Manual com Tag Customizada
-1. Acesse a aba [**Actions do Repositório**](https://github.com/ErickHTF/margemAI/actions).
-2. Clique no workflow **`Release Produção (Main Merge)`**.
-3. Clique em **`Run workflow`**, selecione a branch `main` e informe a tag desejada no campo `version_tag` (ex: `v1.0.0`).
-4. Clique em **`Run workflow`**.
+### Deploy em margemai.site (`deploy.yml`)
+Roda ao enviar uma tag `v*` (`git tag v0.1.N <commit>` e `git push origin v0.1.N`): publica o frontend no S3/CloudFront e atualiza o backend na EC2. Tags criadas pelo workflow de release não disparam o deploy; envie a tag manualmente.
 
----
-
-## 🚨 4. Esteira de Rollback de Emergência
-
-Caso uma nova versão apresente instabilidade, regressão ou erros críticos em produção ou homologação, utilize a **Esteira de Rollback**.
-
-### Passo a Passo para Executar o Rollback:
-
-1. Acesse a aba [**Actions do Repositório**](https://github.com/ErickHTF/margemAI/actions).
-2. No menu à esquerda, clique no workflow **`Rollback de Emergência`**.
-3. Clique no botão **`Run workflow`** e preencha os parâmetros:
-   * **`target_tag`**: A tag da última versão estável conhecida (ex: `v0.1.34` ou `v1.0.0`).
-   * **`environment`**: Selecione `production` ou `homologation`.
-   * **`reason`**: Descreva resumidamente o motivo do rollback (para histórico e auditoria).
-4. Clique em **`Run workflow`**.
-
-### O que o Workflow de Rollback faz:
-* Localiza a Release correspondente à tag informada e recupera os binários (`.jar` e `.zip`) que já foram testados e aprovados anteriormente.
-* Publica uma **Release de Auditoria** (ex: `rollback-production-v0.1.34-20260825-1430`) contendo os arquivos prontos e registrando quem executou, data/hora e o motivo da reversão.
-* Não exige recompilação de código, permitindo restaurar o ambiente em **segundos**.
+### Voltando para uma versão anterior
+* **Redeploy de versão estável:** envie uma tag nova apontando para o commit estável anterior.
+* **Reverter o commit:** abra um PR com o `git revert` do commit problemático e faça o deploy com uma tag nova.
 
 ---
 
-## 💻 5. Como Executar os Artefatos Baixados
+## 💻 4. Como Executar os Artefatos Baixados
 
 ### ☕ Executando o Backend (Java / Spring Boot)
 Requisito: Java 21 instalado (`java -version`).
@@ -118,7 +82,7 @@ O arquivo `.zip` contém os arquivos estáticos pré-compilados (`index.html`, `
 
 ---
 
-## 🔒 6. Variáveis de Ambiente e Configurações
+## 🔒 5. Variáveis de Ambiente e Configurações
 
 | Variável / Propriedade | Padrão | Descrição |
 | :--- | :--- | :--- |
