@@ -1,13 +1,14 @@
 name: Prévia de integração
 
 # Cada PR passa no CI sozinho, mas PRs abertos ao mesmo tempo podem quebrar quando juntos.
-# Este workflow junta develop + todos os PRs abertos para develop e roda a mesma validação do CI,
+# Este workflow junta a branch base + todos os PRs abertos para ela (develop e PPS) e roda a mesma validação do CI,
 # avisando antes do merge quais PRs conflitam ou quebram em conjunto.
 
 on:
   push:
     branches:
       - 'develop'
+      - 'PPS'
   schedule:
     - cron: '0 11 * * 1-5'
   workflow_dispatch:
@@ -17,20 +18,24 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: integration-preview
+  group: integration-preview-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   integrate:
-    name: Integrar PRs abertos e validar
+    name: Integrar PRs abertos em ${{ matrix.base }}
+    strategy:
+      fail-fast: false
+      matrix:
+        base: ${{ github.event_name == 'push' && fromJSON(format('["{0}"]', github.ref_name)) || fromJSON('["develop", "PPS"]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
     steps:
-      - name: Checkout develop
+      - name: Checkout base
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: develop
+          ref: ${{ matrix.base }}
           fetch-depth: 0
 
       - name: Set up JDK 21
@@ -47,7 +52,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./frontend/package-lock.json
 
-      - name: Merge open PRs into develop
+      - name: Merge open PRs into base
         id: merge
         env:
           GH_TOKEN: ${{ github.token }}
@@ -56,7 +61,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           {
-            echo "## Prévia de integração sobre \`develop\` ($(git rev-parse --short HEAD))"
+            echo "## Prévia de integração sobre \`${{ matrix.base }}\` ($(git rev-parse --short HEAD))"
             echo
             echo "| PR | Branch | Merge |"
             echo "|---|---|---|"
@@ -73,10 +78,10 @@ jobs:
               files="$(git diff --name-only --diff-filter=U | paste -sd ',' - | sed 's/,/, /g')"
               git merge --abort
               echo "| #${number} | \`${branch}\` | ❌ conflito: ${files} |" >> "$GITHUB_STEP_SUMMARY"
-              echo "::error::PR #${number} (${branch}) conflita com develop + PRs anteriores: ${files}"
+              echo "::error::PR #${number} (${branch}) conflita com ${{ matrix.base }} + PRs anteriores: ${files}"
               conflicts=$((conflicts + 1))
             fi
-          done < <(gh pr list --base develop --state open --draft=false --limit 100 \
+          done < <(gh pr list --base "${{ matrix.base }}" --state open --draft=false --limit 100 \
                      --json number,headRefName --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)"')
 
           echo >> "$GITHUB_STEP_SUMMARY"
