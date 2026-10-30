@@ -24,6 +24,12 @@ scripts/check.sh frontend   # or: backend
 Run `scripts/check.sh` before every commit. Never claim something passed without running it; if it fails, report the
 real output.
 
+**CI gates merges.** `develop`, `PPS` and `main` accept a PR only when the `CI OK` check passes (commit lint, backend on H2
+and on PostgreSQL, frontend lint/tests/build) **and** the branch is up to date with its base: after another PR merges,
+update yours (`git merge origin/develop`) and let CI run again. *Prévia de integração* merges every open PR into
+its base (`develop`, `PPS`) and runs `scripts/check.sh`; its summary shows which PRs conflict or break together — fix those before
+merging. Releases reuse `ci.yml` and publish only the artifacts CI tested.
+
 ---
 
 ## Workflow: card → branch → commits → PR
@@ -210,7 +216,8 @@ stale responses and maps errors with `getApiErrorMessage` (`services/apiError.js
   `DuplicateResourceException` → 409; validation → 400 with `ErrorResponse`; missing → `ResourceNotFoundException` → 404.
 - **Contract:** update `src/main/resources/openapi.yaml` with every DTO/endpoint change.
 - **Tests:** services with JUnit 5 + Mockito (`@ExtendWith(MockitoExtension.class)`), controllers with MockMvc,
-  `@DisplayName` in Portuguese, H2 in tests (avoid vendor-specific SQL).
+  `@DisplayName` in Portuguese, H2 in tests (avoid vendor-specific SQL). CI also runs the suite on PostgreSQL, the
+  production database.
 
 **Adding an endpoint:** request/response DTOs → service + test → controller + MockMvc test → `openapi.yaml` →
 frontend service method + row in `endpoints.test.js`.

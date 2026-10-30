@@ -1,4 +1,4 @@
-name: Continuous Integration (CI)
+name: CI
 
 on:
   push:
@@ -12,27 +12,34 @@ on:
       - 'chore/**'
       - 'docs/**'
       - 'develop'
-      - 'staging'
+      - 'PPS'
       - 'main'
   pull_request:
     branches:
       - 'develop'
+      - 'PPS'
       - 'main'
-      - 'staging'
+  # Reaproveitado pelos workflows de release: nada é publicado sem passar por aqui.
+  workflow_call:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Em develop/main cada push precisa do próprio resultado; só PRs e branches de trabalho cancelam a execução anterior.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/PPS' && github.ref != 'refs/heads/main' }}
 
 jobs:
   commit-lint:
     name: Commit Messages
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
@@ -42,13 +49,14 @@ jobs:
   backend-ci:
     name: Backend Tests & Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -57,31 +65,73 @@ jobs:
       - name: Grant execute permission for mvnw
         run: chmod +x backend/mvnw
 
-      - name: Run Backend Unit & Integration Tests
+      - name: Run Backend Tests & Package
         working-directory: ./backend
-        run: ./mvnw test
-
-      - name: Package Backend Application
-        working-directory: ./backend
-        run: ./mvnw package -DskipTests
+        run: ./mvnw -B verify
 
       - name: Upload Backend Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: backend-jar
           path: backend/target/*.jar
           retention-days: 7
 
-  frontend-ci:
-    name: Frontend Lint, Tests & Build
+  backend-postgres:
+    name: Backend Tests on PostgreSQL
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Produção roda em PostgreSQL; a suíte padrão usa H2. Esta execução pega o que só quebra no banco real
+    # (tamanho de coluna, constraints, tipos, locks).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: margemai
+          POSTGRES_USER: margem
+          POSTGRES_PASSWORD: margem
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U margem"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Grant execute permission for mvnw
+        run: chmod +x backend/mvnw
+
+      - name: Run Backend Tests against PostgreSQL
+        working-directory: ./backend
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/margemai
+          SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+          SPRING_DATASOURCE_USERNAME: margem
+          SPRING_DATASOURCE_PASSWORD: margem
+        run: ./mvnw -B test
+
+  frontend-ci:
+    name: Frontend Lint, Tests & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set up Node.js 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
           cache: 'npm'
@@ -104,8 +154,28 @@ jobs:
         run: npm run build
 
       - name: Upload Frontend Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: frontend-dist
           path: frontend/dist/
           retention-days: 7
+
+  # Único check obrigatório nas regras de develop/main. Agrega os demais para que novos jobs
+  # (ou jobs pulados, como commit-lint fora de PR) não exijam mexer nas regras do repositório.
+  ci-ok:
+    name: CI OK
+    if: always()
+    needs: [commit-lint, backend-ci, backend-postgres, frontend-ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check required jobs
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "Resultados: $RESULTS"
+          if echo "$RESULTS" | grep -qE '"(failure|cancelled)"'; then
+            echo "::error::Algum job do CI falhou ou foi cancelado. O merge fica bloqueado."
+            exit 1
+          fi

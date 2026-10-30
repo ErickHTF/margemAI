@@ -8,7 +8,7 @@ O Margem.AI ajuda o microempreendedor sem formação financeira a responder, ant
 
 ## Navegação Rápida e Documentação
 
-* [**Guia de Deploy e Releases (Homologação & Produção)**](DEPLOY.md)
+* [**Guia de CI, Releases e Deploy**](DEPLOY.md)
 * [**Padrões de código, UI e fluxo de trabalho (cards, branches, commits e PRs)**](AGENTS.md)
 * [**Contrato da API (OpenAPI 3)**](backend/src/main/resources/openapi.yaml)
 * [**Quadro Kanban no GitHub Projects**](https://github.com/users/ErickHTF/projects/2/views/2)
@@ -44,7 +44,7 @@ Também fazem parte do projeto: health check via Spring Boot Actuator (`/actuato
 * **Banco de dados:** PostgreSQL (16 no `docker-compose.yml` da raiz; 13 no `backend/docker-compose.yml` de desenvolvimento) — H2 em memória apenas nos testes.
 * **Frontend:** React 19, Vite, Tailwind CSS v4, lucide-react, Axios, Vitest, ESLint.
 * **Infra:** Docker multi-stage (JRE 21 Alpine e Nginx Alpine com proxy reverso para `/v1` e `/actuator`).
-* **CI/CD:** GitHub Actions — testes do backend, lint e build do frontend em todo PR; Pre-Releases de homologação, Releases de produção e esteira de rollback (ver [DEPLOY.md](DEPLOY.md)).
+* **CI/CD:** GitHub Actions — testes do backend (H2 e PostgreSQL), lint, testes e build do frontend em todo PR; prévia de integração dos PRs abertos e Release de produção a cada merge na `main` (ver [DEPLOY.md](DEPLOY.md)).
 
 ---
 
