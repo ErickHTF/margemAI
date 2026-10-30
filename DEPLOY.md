@@ -45,11 +45,12 @@ Antes de fazer merge, confira o resumo da última execução da **Prévia de int
 1. Na aba [Actions](https://github.com/ErickHTF/margemAI/actions), abra **`Release de produção`** › **`Run workflow`**.
 2. Selecione a branch `main` e informe `version_tag` (ex.: `v1.0.0`). Vazio usa a numeração automática.
 
-> ℹ️ Nenhum workflow faz deploy em servidor: a release só disponibiliza os artefatos. O deploy é feito baixando-os (seção 4).
+### Deploy em margemai.site (`deploy.yml`)
+Roda ao enviar uma tag `v*` (`git tag v0.1.N <commit>` e `git push origin v0.1.N`): publica o frontend no S3/CloudFront e atualiza o backend na EC2. Tags criadas pelo workflow de release não disparam o deploy; envie a tag manualmente.
 
 ### Voltando para uma versão anterior
-* **Reverter o commit na `main`:** abra um PR com o `git revert` do commit problemático. O CI roda e o merge publica uma nova release já sem a alteração.
-* **Usar artefatos antigos:** baixe o `.jar` e o `.zip` de uma release anterior na página [Releases](https://github.com/ErickHTF/margemAI/releases) e execute-os como na seção 4.
+* **Redeploy de versão estável:** envie uma tag nova apontando para o commit estável anterior.
+* **Reverter o commit:** abra um PR com o `git revert` do commit problemático e faça o deploy com uma tag nova.
 
 ---
 
