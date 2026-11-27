@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -136,7 +137,7 @@ public class PayableAccountControllerTest {
                 .build());
 
         GenerateRecurringPayablesRequest request = GenerateRecurringPayablesRequest.builder()
-                .competency("2026-10")
+                .competency(YearMonth.now().toString())
                 .build();
 
         // 1ª execução: gera 1 título
