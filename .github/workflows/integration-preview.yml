@@ -1,14 +1,13 @@
 name: Prévia de integração
 
 # Cada PR passa no CI sozinho, mas PRs abertos ao mesmo tempo podem quebrar quando juntos.
-# Este workflow junta a branch base + todos os PRs abertos para ela (develop e PPS) e roda a mesma validação do CI,
+# Este workflow junta a branch base + todos os PRs abertos para ela (main) e roda a mesma validação do CI,
 # avisando antes do merge quais PRs conflitam ou quebram em conjunto.
 
 on:
   push:
     branches:
-      - 'develop'
-      - 'PPS'
+      - 'main'
   schedule:
     - cron: '0 11 * * 1-5'
   workflow_dispatch:
@@ -27,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        base: ${{ github.event_name == 'push' && fromJSON(format('["{0}"]', github.ref_name)) || fromJSON('["develop", "PPS"]') }}
+        base: ${{ github.event_name == 'push' && fromJSON(format('["{0}"]', github.ref_name)) || fromJSON('["main"]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
 

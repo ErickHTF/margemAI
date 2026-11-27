@@ -6,11 +6,11 @@
 #       --priority must|should|could
 #       --domain auth|costs|pricing|dashboard|sales|alerts|products
 #       --body-file <arquivo.md>     corpo pronto (padrão: modelo do tipo, abaixo em card_body)
-#   scripts/card start <issue> [--prefix feature|fix|test|refactor|chore|docs] [--base develop]
+#   scripts/card start <issue> [--prefix feature|fix|test|refactor|chore|docs] [--base main]
 #                                    cria a branch a partir da base atualizada e move o card para In Progress
 #   scripts/card link <issue>        associa a branch atual a um card já existente (In Progress)
 #   scripts/card pr --body-file <arquivo.md> [--draft]
-#                                    publica a branch, abre o PR para develop com "Closes #N" e move o card para In Review
+#                                    publica a branch, abre o PR para main com "Closes #N" e move o card para In Review
 #
 # DRY_RUN=1 mostra o que seria feito sem alterar nada.
 set -euo pipefail
