@@ -23,14 +23,20 @@ Todas as funcionalidades abaixo estão implementadas no backend (endpoints em `/
 |---|---|---|
 | **Conta › Meu Perfil** | Cadastro e login com JWT (access + refresh token); perfil com segmento de atuação (Comércio, Serviços, Indústria, Alimentação...) e teto anual de faturamento. | `feature/auth` |
 | **Cadastros › Catálogo** | Catálogo de produtos e serviços com custo base manual ou calculado a partir dos custos variáveis vinculados. | US-06 |
+| **Financeiro › Contas Empresariais** | Contas da empresa com saldo inicial e movimentos por titular (aporte, retirada, pró-labore e transferência entre contas). Vendas e despesas não lançam movimentos nessas contas automaticamente. | US-19 |
+| **Financeiro › Contas a Receber** | Recebíveis parcelados com baixa e estorno de parcelas e totais a receber, recebidos e vencidos. | US-20 |
+| **Financeiro › Contas a Pagar** | Contas pontuais e recorrentes com pagamento (total ou parcial), estorno e geração das recorrentes do mês. | US-21 |
+| **Financeiro › Reserva Financeira** | Meta de reserva por valor fixo ou por meses de custos, com depósitos e retiradas e acompanhamento do progresso. | US-23 |
 | **Financeiro › Vendas** | Registro rápido de vendas com várias formas de pagamento (dinheiro, Pix, débito, crédito à vista e parcelado), prévia do valor líquido após a taxa configurada e resumo do período. | US-10 |
-| **Financeiro › Fluxo de Caixa** | Histórico e evolução mensal de receita, custos fixos e variáveis, taxas de pagamento e saldo. | US-12 |
+| **Financeiro › Fluxo de Caixa** | Histórico e evolução mensal de receita, custos fixos e variáveis, taxas de pagamento e saldo, com os custos preservados no momento de cada venda e competência. | US-12, TECH-02 |
+| **Financeiro › Dívidas e Quitação** | Dívidas com juros mensais, tarifas e parcelas; cronograma, pagamento de parcelas e simulação de quitação antecipada. | US-24 |
 | **Financeiro › Custos** | Gestão de custos fixos (com rateio) e custos variáveis por produto/serviço, com filtros por categoria. | US-04, US-05 |
 | **Financeiro › Calculadora Markup** | Precificação por markup no método SEBRAE, simulador de descontos e cálculo de ponto de equilíbrio (break-even); opção de incluir a taxa de pagamento configurada nas despesas variáveis. | US-07, US-09 |
+| **Financeiro › Obrigações MEI** | Agenda do DAS mensal e da DASN-SIMEI anual, com status (pendente, pago/declarado), lembrete configurável (1 a 30 dias) e links para os portais oficiais. | US-25 |
 | **Configurações › Padrões de Preço** | Categorias com parâmetros de precificação (margem de lucro alvo, alíquota de impostos, percentual de despesas variáveis e desconto máximo) reutilizados pela calculadora, com revalidação dos preços dos produtos da categoria. | — |
 | **Configurações › Taxas de Pagamento** | Matriz global de taxas (MDR + tarifa fixa) e prazos de liquidação por forma de pagamento e número de parcelas (1x a 12x), comparada ao padrão recomendado. | US-17 |
 | **Alerta de teto MEI** | Monitoramento do faturamento anual em relação ao teto do MEI (R$ 81.000,00 por padrão), proporcional aos meses de atividade no ano de abertura, com modo de simulação. | US-13 |
-| **Pílulas educativas SEBRAE** | Dicas contextuais de educação financeira em cada tela (botão "?"). | US-14 |
+| **Pílulas educativas SEBRAE** | Dicas contextuais de educação financeira em cada tela (botão "?"), dica educativa na calculadora quando o ajuste de preço evita perda de margem e orientações por segmento do MEI em Custos e Reserva Financeira. | US-14, US-29, US-31 |
 
 Também fazem parte do projeto: suporte a Progressive Web App (PWA, TECH-07) para instalação na tela inicial com App Shell estático seguro, health check via Spring Boot Actuator (`/actuator/health`, INFRA-05), conteinerização com Docker Compose (INFRA-04) e uma suíte de testes de precisão financeira com `BigDecimal` (TECH-01).
 
@@ -46,13 +52,13 @@ O Margem.AI é instalável como Progressive Web App (PWA) em dispositivos móvei
 
 ## Limites da versão atual
 
-O painel financeiro apresenta receitas pela data da venda e despesas calculadas a partir dos custos cadastrados. O saldo exibido é uma estimativa dos registros do sistema, não uma confirmação de dinheiro recebido, lucro contábil ou saldo bancário. Alterações nos custos fixos e variáveis atuais podem afetar a apuração de períodos anteriores. O painel contabiliza custos variáveis ativos vinculados aos produtos vendidos; não inclui o custo base manual de produtos sem esses vínculos nem o custo de vendas avulsas, o que pode superestimar o saldo.
+O Fluxo de Caixa apresenta receitas pela data da venda e despesas pelos custos registrados. O custo de cada venda é gravado no registro (custos variáveis vinculados ao produto ou, na falta deles, o custo base; em vendas avulsas, o custo informado) e os custos fixos de meses passados ficam preservados por competência. Vendas anteriores a essa mudança têm custo estimado. O saldo exibido é uma estimativa dos registros do sistema, não uma confirmação de dinheiro recebido, lucro contábil ou saldo bancário.
 
-A configuração de prazos de liquidação não substitui um calendário de contas a receber e a pagar. A versão atual não oferece controle completo de inadimplência, cobrança, dívidas, reservas, estoque ou obrigações como emissão de DAS e entrega da DASN-SIMEI. O alerta de teto MEI acompanha faturamento; não comprova regularidade fiscal.
+Contas a receber, contas a pagar, dívidas e reserva são controles separados: não alimentam o Fluxo de Caixa nem as Contas Empresariais automaticamente. Não há projeção de caixa com alerta de falta de capital de giro (US-22), controle de estoque (US-26) nem planejamento de compras e investimentos (US-27). A agenda de obrigações acompanha prazos e status; o DAS é emitido e a DASN-SIMEI é entregue nos portais oficiais. O alerta de teto MEI acompanha faturamento; não comprova regularidade fiscal.
 
 Os cálculos dependem de custos e parâmetros completos e corretos. Não há descoberta automática de todos os custos, assistente conversacional ou integração com IA/LLM. A aplicação é acessível pelo navegador; instalação como PWA e funcionamento offline não foram validados nesta revisão. A redução de 50% no tempo de fechamento é uma meta do projeto, ainda sem resultado medido apresentado.
 
-- [Cards propostos para requisitos pendentes](docs/cards-requisitos.md).
+- [Cards propostos para requisitos (com o status atual de cada um)](docs/cards-requisitos.md).
 - [Problemas financeiros de MEIs e cobertura atual](docs/mei-problemas-financeiros-margemai.md).
 - [Revisão da documentação originalmente presente na main](docs/margemai-docs-main-desatualizadas.md).
 - [Relatório acadêmico e atualização do estado de implementação](backend/margem.md).
@@ -125,13 +131,13 @@ A senha do banco pode ser definida pela variável `POSTGRES_PASSWORD` (há um va
 ### Testes e verificações locais
 
 ```bash
-cd backend  && ./mvnw test
-cd frontend && npm run lint && npm test && npm run build
+scripts/setup.sh   # uma vez por clone: ativa os hooks do git e instala as dependências do frontend
+scripts/check.sh   # ou: scripts/check.sh backend | scripts/check.sh frontend
 ```
 
 ---
 
-O CI atual executa testes do backend e lint/build do frontend; a execução de Vitest no CI ainda precisa ser incluída.
+`scripts/check.sh` roda a mesma validação do CI (testes do backend, lint, Vitest e build do frontend) e imprime as contagens.
 
 ## API
 
@@ -139,7 +145,7 @@ O contrato completo está em [`backend/src/main/resources/openapi.yaml`](backend
 
 Recursos principais (todos sob `/v1`; exceto `auth`, `segments` e `actuator`, exigem `Authorization: Bearer <token>`):
 
-`/auth` · `/me` · `/profile` · `/segments` · `/products` · `/categories` · `/costs/fixed` · `/costs/variable` · `/pricing` · `/sales` · `/dashboard/monthly-flow` · `/alerts/mei-cap` · `/settings/financial/payment-methods` · `/settings/operational`
+`/auth` · `/me` · `/profile` · `/segments` · `/products` · `/categories` · `/costs/fixed` · `/costs/variable` · `/pricing` · `/sales` · `/accounts` · `/receivables` · `/payables` · `/reserves` · `/debts` · `/obligations` · `/dashboard/monthly-flow` · `/alerts/mei-cap` · `/settings/financial/payment-methods` · `/settings/operational`
 
 ---
 
@@ -165,7 +171,7 @@ Recursos principais (todos sob `/v1`; exceto `auth`, `segments` e `actuator`, ex
 ├── frontend/                     # SPA React + Vite
 │   ├── src/{components,hooks,services,utils,constants,data,security}/
 │   └── nginx.conf                # Servidor e proxy reverso usados na imagem Docker
-├── .github/workflows/            # CI, releases e rollback
+├── .github/workflows/            # CI, prévia de integração e release de produção
 ├── scripts/                      # check.sh, setup.sh e card (fluxo de cards, branches e commits)
 ├── shared/fixtures/              # Casos de teste compartilhados entre backend e frontend
 ├── docker-compose.yml            # Stack completa: db + backend + frontend

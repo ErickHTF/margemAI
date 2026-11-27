@@ -4,6 +4,30 @@ Preparados em 12/10/2026 a partir da develop e da revisão dos requisitos. **Nã
 
 O padrão confirmado em AGENTS.md exige US/TECH/INFRA, critérios de aceite, branches a partir de develop, Conventional Commits em português e PRs para develop. Esta integração documental à main foi solicitada expressamente pelo usuário.
 
+**Status em 26/11/2026.** A `develop` foi removida; branches e PRs partem da `main` (ver [AGENTS.md](../AGENTS.md)). As propostas viraram cards no quadro:
+
+| Proposta | Card | Status |
+| --- | --- | --- |
+| 1 — Preservar custos históricos | TECH-02 (#67) | Entregue |
+| 2 — Contas empresariais | US-19 (#68) | Entregue |
+| 3 — Contas a receber | US-20 (#69) | Entregue |
+| 4 — Contas a pagar | US-21 (#70) | Entregue |
+| 5 — Projeção de caixa e capital de giro | US-22 (#71) | Aberto |
+| 6 — Reserva financeira | US-23 (#72) | Entregue |
+| 7 — Dívidas e quitação | US-24 (#73) | Entregue |
+| 8 — Obrigações MEI | US-25 (#74) | Entregue |
+| 9 — Estoque | US-26 (#75) | Aberto |
+| 10 — Compras e investimentos | US-27 (#76) | Aberto |
+| 11 — Vitest no CI | TECH-03 (#77) | Entregue |
+| 12 — Revisar contrato OpenAPI | TECH-04 (#78) | Aberto |
+| 13 — Diagramas e relatório acadêmico | Sem card próprio; relacionado a DOCS-01 (#12) | Aberto |
+| 14 — Medir tempo de fechamento | TECH-06 (#80) | Aberto |
+| 15 — Suporte a PWA | TECH-07 (#81) | Entregue |
+| 16 — Assistente conversacional | US-28 (#82) | Aberto |
+| 17 — Orientações por segmento | US-29 (#83) | Entregue |
+| 18 — Relatório de impacto da correção de preços | US-30 (#84) | Aberto |
+| 19 — Dica após margem evitada | US-31 (#85) | Entregue |
+
 ## Requisitos comuns de implementação
 
 - Reutilizar a organização existente de controller/service/repository/model/dto e frontend services/hooks/utils/components.
