@@ -18,6 +18,15 @@ export const SEBRAE_PILLS = [
     tip: 'Prefira oferecer bônus, serviços agregados ou brindes de baixo custo unitário em vez de reduzir o preço nominal do produto.'
   },
   {
+    id: 'margin-avoided',
+    category: 'discount',
+    categoryLabel: 'Preservação de Margem',
+    title: 'Decisão de Margem Evitada: Proteja seu Lucro',
+    summary: 'Ajustar o desconto a tempo evita operar no prejuízo e preserva a margem de contribuição do negócio.',
+    content: 'Cada ponto percentual de desconto concedido é retirado diretamente do lucro líquido da empresa. Ao recuar de um desconto prejudicial, você garante que o preço praticado cubra integralmente os custos e gere margem real para manter o negócio saudável.',
+    tip: 'Lembre-se: Vender abaixo do custo é pagar para trabalhar. Prefira agregar valor com pequenos diferenciais ou melhores condições em vez de reduzir o preço nominal.'
+  },
+  {
     id: 'pro-labore',
     category: 'costs',
     categoryLabel: 'Custos Fixos',
@@ -43,6 +52,51 @@ export const SEBRAE_PILLS = [
     summary: 'Vender a prazo e comprar à vista cria um buraco no caixa que pode levar o MEI ao endividamento.',
     content: 'Se você paga seu fornecedor em 15 dias, mas recebe de seus clientes em 30 ou 60 dias, precisará de capital de giro próprio para financiar essa diferença de tempo.',
     tip: 'Tente sempre negociar prazos com fornecedores maiores ou iguais aos prazos que concede a seus clientes.'
+  },
+  {
+    id: 'financial-reserve',
+    category: 'reserves',
+    categoryLabel: 'Reserva Financeira',
+    title: 'Quanto guardar na reserva de emergência do MEI?',
+    summary: 'O SEBRAE recomenda manter de 3 a 6 meses dos seus custos fixos guardados para atravessar imprevistos e meses fracos sem recorrer a empréstimos caros.',
+    content: 'Separar o saldo reservado do dinheiro livre das contas empresariais evita que o colchão de segurança seja consumido nas despesas do dia a dia. Além disso, aportes e resgates na reserva são transferências internas do patrimônio e não devem ser confundidos com faturamento de vendas.',
+    tip: 'Comece com uma meta de 3 meses dos seus custos fixos mensais e faça aportes regulares sempre que fechar o mês no azul.'
+  },
+  {
+    id: 'mei-obligations',
+    category: 'obligations',
+    categoryLabel: 'Obrigações Fiscais MEI',
+    title: 'DAS mensal e DASN-SIMEI anual: como manter o CNPJ protegido',
+    summary: 'O pagamento do DAS vence todo dia 20 e a declaração anual DASN-SIMEI deve ser entregue até 31 de maio nos portais oficiais da Receita Federal.',
+    content: 'Mesmo sem faturamento no mês, o MEI precisa emitir e pagar o DAS no PGMEI e entregar a DASN-SIMEI anual. Guardar o código do comprovante no sistema ajuda na sua organização interna, mas a situação fiscal oficial deve ser sempre conferida diretamente no PGMEI ou e-CAC.',
+    tip: 'Inclua o valor fixo do DAS nos seus Custos Fixos mensais e consulte periodicamente o extrato oficial no PGMEI.'
+  },
+  {
+    id: 'payables-management',
+    category: 'payables',
+    categoryLabel: 'Contas a Pagar',
+    title: 'Despesa vs. Desembolso: controle a competência e o caixa',
+    summary: 'Registrar a conta quando ela chega (competência) evita surpresas no dia em que o dinheiro sai do caixa (desembolso).',
+    content: 'No regime de competência, a despesa pertence ao mês do consumo (energia, aluguel, DAS-MEI). No regime de caixa, o desembolso ocorre na data do pagamento efetivo. Acompanhar contas a pagar com antecedência protege o MEI contra juros e multas por atraso.',
+    tip: 'Gere os títulos recorrentes no início de cada mês e registre baixas parciais ou totais assim que efetuar o pagamento.'
+  },
+  {
+    id: 'debt-avalanche',
+    category: 'debts',
+    categoryLabel: 'Gestão de Dívidas',
+    title: 'Priorize a quitação das dívidas mais caras (Método SEBRAE)',
+    summary: 'Quitar primeiro a dívida com maior taxa de juros estanca o vazamento financeiro do seu negócio.',
+    content: 'Nem todas as dívidas pesam igual. Um empréstimo com taxa de 5% a.m. consome muito mais caixa do que um de 1,5% a.m. No método recomendado pelo SEBRAE, o MEI deve pagar as parcelas normais de todas e direcionar qualquer folga ou reserva de caixa para abater ou antecipar as parcelas da dívida com maior taxa de juros (Método Avalanche), usufruindo do desconto proporcional obrigatório por lei (CDC Art. 52, § 2º).',
+    tip: 'Sempre exija o abatimento proporcional de juros futuros ao antecipar parcelas de financiamentos.'
+  },
+  {
+    id: 'receivables-control',
+    category: 'working_capital',
+    categoryLabel: 'Contas a Receber',
+    title: 'A diferença crucial entre Venda Realizada e Dinheiro no Caixa',
+    summary: 'Vender no crédito parcelado gera faturamento contábil imediato, mas o dinheiro real entra aos poucos segundo o prazo da operadora.',
+    content: 'Acompanhar as datas de liquidação e dar baixa nas parcelas recebidas evita que o MEI conte com um dinheiro que ainda não caiu na conta bancária. Além disso, monitorar parcelas atrasadas permite agir rápido para renegociar ou cobrar o cliente.',
+    tip: 'Compare o valor líquido das parcelas com seu extrato bancário para garantir que nenhuma taxa indevida foi descontada pela maquininha.'
   }
 ]
 
@@ -55,7 +109,7 @@ export const getPillsByCategory = (category) =>
  * Seleciona a pílula educativa do SEBRAE mais adequada para o contexto atual do usuário.
  *
  * @param {Object} context
- * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing'
+ * @param {string} [context.action] - Ação atual: 'discount' | 'payment' | 'working_capital' | 'fixed_costs' | 'pricing' | 'margin_avoided'
  * @param {boolean} [context.discountActive] - Se está simulando desconto
  * @param {string} [context.paymentMethod] - Forma de pagamento (ex: 'CREDIT_CARD', 'INSTALLMENTS', 'CARD')
  * @param {boolean} [context.isTermSale] - Se é venda a prazo
@@ -71,12 +125,37 @@ export function selectContextualPill({
   fixedCostPercent = 0,
   variableCostPercent = 0
 } = {}) {
+  // 0. Decisão de margem evitada
+  if (action === 'margin_avoided') {
+    return getPillById('margin-avoided') || getPillById('discount-danger')
+  }
+
+  if (action === 'reserves') {
+    return getPillById('financial-reserve')
+  }
+
+  if (action === 'obligations') {
+    return getPillById('mei-obligations')
+  }
+
+  if (action === 'payables') {
+    return getPillById('payables-management')
+  }
+
+  if (action === 'debts') {
+    return getPillById('debt-avalanche')
+  }
+
+  if (action === 'receivables') {
+    return getPillById('receivables-control')
+  }
+
   // 1. Simulação ou concessão de desconto
   if (action === 'discount' || discountActive) {
     return getPillById('discount-danger')
   }
 
-  // 2. Meios de pagamento e taxas de maquininha/cartão
+  // 3. Meios de pagamento e taxas de maquininha/cartão
   if (
     action === 'payment' ||
     paymentMethod === 'CREDIT_CARD' ||
@@ -87,17 +166,17 @@ export function selectContextualPill({
     return getPillById('card-fees')
   }
 
-  // 3. Vendas a prazo ou impacto no capital de giro
+  // 4. Vendas a prazo ou impacto no capital de giro
   if (action === 'working_capital' || isTermSale) {
     return getPillById('working-capital')
   }
 
-  // 4. Custos fixos elevados / pró-labore
+  // 5. Custos fixos elevados / pró-labore
   if (action === 'fixed_costs' || Number(fixedCostPercent) >= 25) {
     return getPillById('pro-labore')
   }
 
-  // 5. Formação de preço padrão (Markup Divisor SEBRAE)
+  // 6. Formação de preço padrão (Markup Divisor SEBRAE)
   return getPillById('markup-divisor')
 }
 

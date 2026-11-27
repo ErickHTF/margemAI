@@ -14,6 +14,22 @@ export const MENU_TOURS = {
     step('accounts-movement', 'Entrou ou saiu? Registre', 'Lance aportes, retiradas, pró-labore ou transferências.', 'Confira também as vendas e despesas: elas ainda não entram automaticamente nestas contas.'),
     step('accounts-filter', 'Olhe uma conta de cada vez', 'Escolha uma conta para conferir saldo e movimentos.', 'Conferir com o extrato ajuda a encontrar registros esquecidos.')
   ],
+  receivables: [
+    step('receivables-summary', 'O que entrou e o que falta', 'Acompanhe o faturamento emitido, o caixa recebido e valores em atraso.', 'Diferencie a venda no papel do dinheiro efetivamente no bolso.'),
+    step('receivables-filter', 'Encontre o que precisa', 'Filtre por status para focar em cobranças pendentes ou atrasadas.'),
+    step('receivables-list', 'Dê baixa nas parcelas', 'Registre quando a operadora liquidar a parcela ou estorne se necessário.', 'Manter as baixas em dia garante que seu fluxo de caixa reflita a realidade.')
+  ],
+  payables: [
+    step('payables-summary', 'Despesa vs. Desembolso', 'Acompanhe compromissos do mês e o que já foi efetivamente pago no caixa.', 'Separar despesa de desembolso evita surpresas na hora de pagar as contas.'),
+    step('payables-generate', 'Custos Fixos viram Títulos', 'Gere as contas do mês automaticamente a partir dos custos fixos com um clique.', 'A geração é idempotente: você nunca terá contas duplicadas.'),
+    step('payables-new', 'Despesas pontuais', 'Cadastre boletos avulsos, compras de insumos e contas extras.'),
+    step('payables-list', 'Dê baixa ou estorne', 'Registre pagamentos parciais, quitações ou estornos com total rastreabilidade.')
+  ],
+  reserves: [
+    step('reserves-summary', 'Reserva separada do caixa livre', 'Veja quanto já está guardado na reserva e quanto continua livre nas contas empresariais.'),
+    step('reserves-goal', 'Defina sua meta de segurança', 'Escolha um valor fixo em reais ou dimensione por meses dos seus custos fixos ativos.', 'O SEBRAE recomenda guardar de 3 a 6 meses de custos fixos para imprevistos.'),
+    step('reserves-movement', 'Registre aportes e resgates', 'Guarde parte da sobra mensal ou resgate em emergências sem gerar receita fictícia no faturamento.')
+  ],
   sales: [
     step('sales-form', 'Vendeu? Registre aqui', 'Confira item, preço e pagamento neste formulário.', 'Vendas esquecidas deixam seu faturamento incompleto.'),
     step('sales-metrics', 'Veja o que sobra', 'O valor líquido desconta as taxas do faturamento.', 'Compare as formas de pagamento para entender o peso das taxas.'),
@@ -24,6 +40,12 @@ export const MENU_TOURS = {
     step('flow-summary', 'Receitas e despesas lado a lado', 'Compare receitas, despesas e resultado. Este painel não é seu saldo bancário.'),
     step('flow-chart', 'Encontre o ritmo do negócio', 'Compare os meses no gráfico.', 'Use os meses mais fracos como referência ao planejar despesas.')
   ],
+  debts: [
+    step('debts-summary', 'Raio-X do seu endividamento', 'Veja o saldo devedor total, parcelas do mês e o ranking de prioridade.'),
+    step('debts-new', 'Contratou um empréstimo?', 'Cadastre a dívida informando taxa, parcelas e credor.'),
+    step('debts-simulation', 'Simule a quitação com desconto', 'Veja quanto economiza de juros ao antecipar parcelas finais (CDC Art. 52).'),
+    step('debts-schedule', 'Acompanhe os vencimentos', 'Dê baixa nas parcelas pagas sem duplicar seus custos fixos.')
+  ],
   costs: [
     step('costs-tabs', 'Cada custo no seu lugar', 'Separe despesas fixas de custos variáveis.'),
     step('costs-content', 'Mudou o valor? Atualize', 'Revise aluguel, insumos e pró-labore regularmente.', 'Uma despesa esquecida pode fazer o preço parecer lucrativo sem ser.')
@@ -32,6 +54,12 @@ export const MENU_TOURS = {
     step('pricing-product', 'Comece pelo custo certo', 'Selecione um item ou preencha os dados da simulação.'),
     step('pricing-parameters', 'Proteja sua margem', 'Revise margem, despesas e taxa de pagamento, sem contar a taxa duas vezes.'),
     step('pricing-results', 'Compare antes de decidir', 'Confira o preço sugerido e o impacto dos descontos.', 'Um desconto pode consumir mais margem do que parece.')
+  ],
+  obligations: [
+    step('obligations-summary', 'Acompanhe o calendário do ano', 'Escolha o ano e veja quantas obrigações estão pendentes, próximas do vencimento ou com comprovante anotado.'),
+    step('obligations-reminders', 'Antecipe seus lembretes', 'Configure com quantos dias de antecedência quer destacar vencimentos próximos.'),
+    step('obligations-links', 'Use apenas os portais oficiais', 'Emita a guia DAS no PGMEI e envie a declaração anual no DASN-SIMEI da Receita Federal.'),
+    step('obligations-list', 'Anote seus comprovantes', 'Registre o número do recibo para seu controle interno.', 'A anotação aqui é declaratória e não substitui a consulta de regularidade na Receita Federal.')
   ],
   categories: [
     step('categories-new', 'Uma regra, vários itens', 'Crie um padrão de preço para seus produtos ou serviços.'),

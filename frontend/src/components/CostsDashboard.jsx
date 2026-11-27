@@ -1,18 +1,31 @@
 import useDraft from '../hooks/useDraft'
+import useApiResource from '../hooks/useApiResource'
 import { useState, useEffect } from 'react'
-import { Package, Landmark, Wallet } from 'lucide-react'
+import { Package, Landmark, Wallet, Sparkles, SlidersHorizontal } from 'lucide-react'
 import PageHeader from './PageHeader'
-import { SegmentedControl } from './ui'
+import { Badge, Button, Card, Notice, SegmentedControl } from './ui'
 import CostManager from './CostManager'
 import fixedCostService from '../services/fixedCostService'
 import variableCostService from '../services/variableCostService'
 import productService from '../services/productService'
-import { FIXED_COST_CATEGORIES, VARIABLE_COST_CATEGORIES } from '../constants/costCategories'
+import segmentService from '../services/segmentService'
+import { formatCurrencyBRL } from '../utils/formatters'
+import { normalizeSegmentGuidance, suggestionToCostDraft } from '../utils/segmentGuidance'
+import { FIXED_COST_CATEGORIES, VARIABLE_COST_CATEGORIES, costCategoryLabel } from '../constants/costCategories'
 
 export default function CostsDashboard() {
   const { guard } = useDraft(null)
   const [activeTab, setActiveTab] = useState('fixed')
   const [products, setProducts] = useState([])
+  const [pendingSuggestion, setPendingSuggestion] = useState(null)
+
+  const { data: rawGuidance } = useApiResource(
+    () => segmentService.getSegmentGuidance(),
+    [],
+    { errorMessage: 'Não foi possível carregar as sugestões do seu segmento.' }
+  )
+
+  const guidance = normalizeSegmentGuidance(rawGuidance)
 
   useEffect(() => {
     let cancelled = false
@@ -42,6 +55,19 @@ export default function CostsDashboard() {
     }
   }, [])
 
+  const handleUseSuggestion = (suggestion) => {
+    const converted = suggestionToCostDraft(suggestion)
+    if (!converted) return
+    guard(() => {
+      setActiveTab(converted.kind)
+      setPendingSuggestion({
+        nonce: Date.now(),
+        kind: converted.kind,
+        draft: converted.draft
+      })
+    })
+  }
+
   const tabs = [
     {
       key: 'fixed',
@@ -55,6 +81,11 @@ export default function CostsDashboard() {
     }
   ]
 
+  const fixedDraft = pendingSuggestion?.kind === 'fixed' ? pendingSuggestion.draft : null
+  const variableDraft = pendingSuggestion?.kind === 'variable' ? pendingSuggestion.draft : null
+  const fixedKey = pendingSuggestion?.kind === 'fixed' ? `fixed-${pendingSuggestion.nonce}` : 'fixed'
+  const variableKey = pendingSuggestion?.kind === 'variable' ? `variable-${pendingSuggestion.nonce}` : 'variable'
+
   return (
     <div className="w-full space-y-6">
       <PageHeader
@@ -62,6 +93,73 @@ export default function CostsDashboard() {
         title="Gestão de Custos"
         description="Registre despesas fixas e custos variáveis, vinculando matéria-prima e embalagem a cada produto."
       />
+
+      <Card padding="md" className="w-full space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-bold text-slate-900">
+                Sugestões do seu Segmento: {guidance.segmentName}
+              </h2>
+              <Badge tone="indigo" Icon={Sparkles}>
+                Regras v{guidance.ruleVersion}
+              </Badge>
+              <Badge tone="emerald">
+                100% opcionais
+              </Badge>
+              {guidance.fallbackUsed && (
+                <Badge tone="amber">
+                  Catálogo geral MEI
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-slate-600">
+              {guidance.sebraeGuidanceSummary}
+            </p>
+          </div>
+        </div>
+
+        <Notice tone="sky" size="sm" title="Nenhum custo é criado automaticamente">
+          Use as sugestões abaixo apenas como ponto de partida. Ao clicar em &ldquo;Usar como base / Ajustar&rdquo;, você pode alterar descrição, padrão de precificação e valor antes de salvar.
+        </Notice>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {guidance.costSuggestions.map((item) => {
+            const isVariable = item.costType === 'VARIABLE'
+            const categoryList = isVariable ? VARIABLE_COST_CATEGORIES : FIXED_COST_CATEGORIES
+            return (
+              <Card key={item.code} tone="muted" inset padding="sm" className="flex flex-col justify-between gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-semibold text-sm text-slate-900">{item.name}</p>
+                    <Badge tone={isVariable ? 'sky' : 'indigo'}>
+                      {isVariable ? 'Custo Variável' : 'Custo Fixo'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs font-medium text-slate-700">
+                    Padrão: {costCategoryLabel(categoryList, item.category)}
+                    {item.suggestedAmount != null ? ` • Base sugerida: ${formatCurrencyBRL(item.suggestedAmount)}` : ''}
+                    {item.suggestedPercent != null ? ` (${item.suggestedPercent}% ref.)` : ''}
+                  </p>
+                  <p className="text-xs text-slate-600">
+                    {item.whyItMatters}
+                  </p>
+                </div>
+                <div className="pt-1">
+                  <Button
+                    variant="soft"
+                    size="sm"
+                    Icon={SlidersHorizontal}
+                    onClick={() => handleUseSuggestion(item)}
+                  >
+                    Usar como base / Ajustar
+                  </Button>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      </Card>
 
       <SegmentedControl
         data-tour="costs-tabs"
@@ -75,19 +173,21 @@ export default function CostsDashboard() {
       <div data-tour="costs-content">
       {activeTab === 'fixed' && (
         <CostManager
-          key="fixed"
+          key={fixedKey}
           kind="fixed"
           service={fixedCostService}
           categories={FIXED_COST_CATEGORIES}
+          initialDraft={fixedDraft}
         />
       )}
       {activeTab === 'variable' && (
         <CostManager
-          key="variable"
+          key={variableKey}
           kind="variable"
           service={variableCostService}
           categories={VARIABLE_COST_CATEGORIES}
           products={products}
+          initialDraft={variableDraft}
         />
       )}
       </div>
