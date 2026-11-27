@@ -1,3 +1,5 @@
+import useDraft from '../hooks/useDraft'
+import PageHeader from './PageHeader'
 import { useState, useEffect, useRef } from 'react'
 import {
   Package,
@@ -8,7 +10,6 @@ import {
   Search,
   RefreshCw,
   AlertCircle,
-  Loader2,
   TrendingUp,
   Percent,
   DollarSign,
@@ -17,10 +18,13 @@ import {
 import { productService } from '../services/productService'
 import { formatCurrencyBRL } from '../utils/formatters'
 import ProductForm from './ProductForm'
+import ConfirmDialog from './ConfirmDialog'
+import { Badge, Button, Card, EmptyState, IconButton, Input, Notice, SegmentedControl } from './ui'
 
 const PAGE_SIZE = 50
 
 export default function ProductManager() {
+  const { guard } = useDraft(null)
   const [products, setProducts] = useState([])
   const [totalElements, setTotalElements] = useState(0)
   const [selectedType, setSelectedType] = useState('')
@@ -28,9 +32,12 @@ export default function ProductManager() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [formVersion, setFormVersion] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const formRef = useRef(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
+  const [deleteError, setDeleteError] = useState(null)
 
   useEffect(() => {
     if (showForm && formRef.current) {
@@ -70,28 +77,35 @@ export default function ProductManager() {
     setReloadKey((k) => k + 1)
   }
 
+  const hasFilters = Boolean(selectedType || searchTerm.trim())
+  const clearFilters = () => {
+    setLoading(true)
+    setSelectedType('')
+    setSearchTerm('')
+  }
+
   const handleNew = () => {
+    setFormVersion(version => version + 1)
     setEditingProduct(null)
     setShowForm(true)
   }
 
   const handleEdit = (product) => {
+    setFormVersion(version => version + 1)
     setEditingProduct(product)
     setShowForm(true)
   }
 
-  const handleDelete = async (product) => {
-    const confirmed = window.confirm(
-      `Excluir "${product.name}"? O item será desativado do catálogo.`
-    )
-    if (!confirmed) return
-
+  const handleDelete = async () => {
+    const product = pendingDelete
+    setPendingDelete(null)
+    setDeleteError(null)
     setSaving(true)
     try {
       await productService.deleteProduct(product.id)
       reload()
     } catch {
-      window.alert('Não foi possível excluir o item. Tente novamente.')
+      setDeleteError('Não foi possível excluir o item. Tente novamente.')
     } finally {
       setSaving(false)
     }
@@ -103,12 +117,12 @@ export default function ProductManager() {
     reload()
   }
 
-  const getMarginBadgeClass = (percentage) => {
+  const getMarginTone = (percentage) => {
     const p = Number(percentage) || 0
-    if (p >= 30) return 'bg-emerald-50 text-emerald-700 border-emerald-200'
-    if (p >= 15) return 'bg-teal-50 text-teal-700 border-teal-200'
-    if (p >= 0) return 'bg-amber-50 text-amber-700 border-amber-200'
-    return 'bg-rose-50 text-rose-700 border-rose-200'
+    if (p >= 30) return 'emerald'
+    if (p >= 15) return 'sky'
+    if (p >= 0) return 'amber'
+    return 'rose'
   }
 
   const totalProducts = products.filter((p) => p.type === 'PRODUTO').length
@@ -116,141 +130,84 @@ export default function ProductManager() {
 
   return (
     <div className="w-full space-y-6">
+      <PageHeader Icon={Package} title="Catálogo de Produtos e Serviços" description="Gerencie os itens, custos e preços do seu negócio.">
+        <Button data-tour="products-new" Icon={Plus} onClick={() => guard(handleNew)}>
+          Novo Item
+        </Button>
+      </PageHeader>
       {showForm && (
         <div ref={formRef}>
           <ProductForm
-          initialProduct={editingProduct}
-          onCancel={() => {
-            setShowForm(false)
-            setEditingProduct(null)
-          }}
-          onSaved={handleSaved}
+            key={formVersion}
+            initialProduct={editingProduct}
+            onCancel={() => {
+              setShowForm(false)
+              setEditingProduct(null)
+            }}
+            onSaved={handleSaved}
           />
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
-              <Package className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Catálogo de Produtos e Serviços</h2>
-              <p className="text-xs text-slate-500">
-                Gerencie itens comercializados, custos base dinâmicos e preços de venda com margem calculada.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleNew}
-            className="inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium shadow-sm transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Item
-          </button>
-        </div>
-
+      <Card padding="none" data-tour="products-list" className="overflow-hidden">
         <div className="p-4 sm:p-6 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           <div className="flex flex-1 flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <Search className="w-4 h-4" />
-              </span>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por nome do produto ou serviço..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
-              />
-            </div>
+            <Input
+              type="text"
+              Icon={Search}
+              className="flex-1"
+              aria-label="Buscar item do catálogo"
+              value={searchTerm}
+              onChange={(e) => { setLoading(true); setSearchTerm(e.target.value) }}
+              data-tour="products-search"
+              placeholder="Buscar por nome do produto ou serviço..."
+            />
 
-            <div className="flex rounded-xl bg-slate-200/70 p-1 self-start">
-              <button
-                type="button"
-                onClick={() => setSelectedType('')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  selectedType === ''
-                    ? 'bg-white text-indigo-600 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Todos ({totalElements})
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedType('PRODUTO')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  selectedType === 'PRODUTO'
-                    ? 'bg-white text-indigo-600 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Produtos
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedType('SERVICO')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  selectedType === 'SERVICO'
-                    ? 'bg-white text-indigo-600 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Serviços
-              </button>
-            </div>
+            <SegmentedControl
+              label="Filtrar por tipo"
+              className="self-start"
+              options={[
+                { value: '', label: `Todos (${totalElements})` },
+                { value: 'PRODUTO', label: 'Produtos' },
+                { value: 'SERVICO', label: 'Serviços' }
+              ]}
+              value={selectedType}
+              onChange={(value) => {
+                if (selectedType !== value) setLoading(true)
+                setSelectedType(value)
+              }}
+            />
           </div>
 
           <div className="flex items-center gap-2 self-end md:self-auto">
-            <button
-              type="button"
-              onClick={reload}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-white text-xs font-medium transition cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <Button variant="secondary" size="sm" Icon={RefreshCw} loading={loading} onClick={reload}>
               Atualizar
-            </button>
+            </Button>
           </div>
         </div>
 
+        {deleteError && <Notice tone="rose" size="sm" className="m-5">{deleteError}</Notice>}
+
         {loading ? (
-          <div className="p-12 text-center">
-            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-3" />
-            <p className="text-sm text-slate-500">Carregando catálogo...</p>
-          </div>
+          <EmptyState loading title="Carregando catálogo..." />
         ) : error ? (
-          <div className="p-10 text-center">
-            <AlertCircle className="w-8 h-8 text-rose-500 mx-auto mb-3" />
-            <p className="text-sm text-rose-600 font-medium mb-4">{error}</p>
-            <button
-              type="button"
-              onClick={reload}
-              className="py-2 px-4 rounded-xl bg-indigo-600 text-white text-sm font-medium"
-            >
-              Tentar novamente
-            </button>
-          </div>
+          <EmptyState
+            tone="rose"
+            Icon={AlertCircle}
+            title={error}
+            action={<Button onClick={reload}>Tentar novamente</Button>}
+          />
         ) : products.length === 0 ? (
-          <div className="p-12 text-center">
-            <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-base font-semibold text-slate-700 mb-1">Nenhum item encontrado</p>
-            <p className="text-xs text-slate-500 mb-4">
-              Cadastre seu primeiro produto ou serviço para acompanhar margens e custos.
-            </p>
-            <button
-              type="button"
-              onClick={handleNew}
-              className="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-indigo-600 text-white text-xs font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Cadastrar Primeiro Item
-            </button>
-          </div>
+          <EmptyState
+            Icon={Package}
+            title={hasFilters ? 'Nenhum resultado para os filtros selecionados' : 'Nenhum item cadastrado'}
+            description={hasFilters
+              ? 'Altere a busca ou limpe os filtros para ver os registros disponíveis.'
+              : 'Cadastre produtos e serviços para reutilizá-los nas vendas e acompanhar seus custos e margens.'}
+            action={hasFilters
+              ? <Button size="sm" variant="secondary" onClick={clearFilters}>Limpar filtros</Button>
+              : <Button size="sm" Icon={Plus} onClick={() => guard(handleNew)}>Cadastrar primeiro item</Button>}
+          />
         ) : (
           <div className="divide-y divide-slate-100">
             {products.map((item) => (
@@ -269,14 +226,8 @@ export default function ProductManager() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                        {item.type === 'SERVICO' ? 'Serviço' : 'Produto'}
-                      </span>
-                      {item.categoryName && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600">
-                          {item.categoryName}
-                        </span>
-                      )}
+                      <Badge>{item.type === 'SERVICO' ? 'Serviço' : 'Produto'}</Badge>
+                      {item.categoryName && <Badge tone="indigo">{item.categoryName}</Badge>}
                     </div>
                     {item.description && (
                       <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{item.description}</p>
@@ -314,28 +265,26 @@ export default function ProductManager() {
                     </span>
                   </div>
 
-                  <div className={`px-2.5 py-1 rounded-lg border text-xs font-bold ${getMarginBadgeClass(item.marginPercentage)}`}>
-                    {item.marginPercentage}%
-                  </div>
+                  <Badge tone={getMarginTone(item.marginPercentage)}>{item.marginPercentage}%</Badge>
 
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(item)}
+                    <IconButton
+                      label={`Editar ${item.name}`}
                       title="Editar"
-                      className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(item)}
-                      disabled={saving}
+                      Icon={Pencil}
+                      tone="indigo"
+                      size="md"
+                      onClick={() => guard(() => handleEdit(item))}
+                    />
+                    <IconButton
+                      label={`Excluir ${item.name}`}
                       title="Excluir"
-                      className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      Icon={Trash2}
+                      tone="rose"
+                      size="md"
+                      onClick={() => setPendingDelete(item)}
+                      disabled={saving}
+                    />
                   </div>
                 </div>
               </div>
@@ -351,7 +300,16 @@ export default function ProductManager() {
             Margem calculada: (Preço Venda - Custo Base) / Preço Venda
           </span>
         </div>
-      </div>
+      </Card>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Excluir item do catálogo?"
+        message={`"${pendingDelete?.name}" será desativado do catálogo.`}
+        confirmLabel="Excluir item"
+        cancelLabel="Manter item"
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

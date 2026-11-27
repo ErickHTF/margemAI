@@ -53,6 +53,16 @@ public class Sale {
     @Column(name = "unit_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal unitPrice;
 
+    @Column(name = "unit_cost", precision = 12, scale = 2)
+    private BigDecimal unitCost;
+
+    @Column(name = "operation_cost", precision = 12, scale = 2)
+    private BigDecimal operationCost;
+
+    @Builder.Default
+    @Column(name = "cost_estimated")
+    private Boolean costEstimated = false;
+
     @Column(name = "gross_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal grossAmount;
 

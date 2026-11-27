@@ -3,6 +3,8 @@ package com.example.margemAI.service;
 import com.example.margemAI.dto.request.SaleRequest;
 import com.example.margemAI.dto.response.SaleResponse;
 import com.example.margemAI.dto.response.SaleSummaryResponse;
+import com.example.margemAI.event.SaleDeletedEvent;
+import com.example.margemAI.event.SaleRegisteredEvent;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.ItemType;
@@ -10,9 +12,11 @@ import com.example.margemAI.model.PaymentMethod;
 import com.example.margemAI.model.Product;
 import com.example.margemAI.model.Sale;
 import com.example.margemAI.model.User;
+import com.example.margemAI.model.VariableCost;
 import com.example.margemAI.repository.ProductRepository;
 import com.example.margemAI.repository.SaleRepository;
 import com.example.margemAI.repository.UserRepository;
+import com.example.margemAI.repository.VariableCostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,8 +25,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -36,7 +42,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,6 +56,12 @@ class SaleServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private VariableCostRepository variableCostRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @Spy
     private PaymentFeeCalculator paymentFeeCalculator = new PaymentFeeCalculator();
@@ -80,7 +91,6 @@ class SaleServiceTest {
                 .name("Consultoria MEI")
                 .type(ItemType.SERVICO)
                 .sellingPrice(new BigDecimal("150.00"))
-                .active(true)
                 .build();
     }
 
@@ -115,6 +125,7 @@ class SaleServiceTest {
         assertEquals(new BigDecimal("9.60"), response.getFeeAmount());
         assertEquals(new BigDecimal("290.40"), response.getNetAmount());
         verify(saleRepository).save(any(Sale.class));
+        verify(eventPublisher).publishEvent(any(SaleRegisteredEvent.class));
     }
 
     @Test
@@ -144,18 +155,25 @@ class SaleServiceTest {
         assertEquals(new BigDecimal("50.00"), response.getGrossAmount());
         assertEquals(new BigDecimal("0.00"), response.getFeeAmount());
         assertEquals(new BigDecimal("50.00"), response.getNetAmount());
+        verify(eventPublisher).publishEvent(any(SaleRegisteredEvent.class));
     }
 
     @Test
-    @DisplayName("Deve falhar ao tentar registrar venda para produto inexistente ou de outro usuário")
-    void shouldThrowWhenProductNotFound() {
+    @DisplayName("Deve lançar exceção ao tentar criar venda para usuário inexistente")
+    void shouldThrowExceptionWhenUserNotFoundOnCreate() {
         // Arrange
-        SaleRequest request = SaleRequest.builder()
-                .productId(productId)
-                .quantity(new BigDecimal("1.00"))
-                .paymentMethod(PaymentMethod.DINHEIRO)
-                .build();
+        SaleRequest request = SaleRequest.builder().build();
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class, () -> saleService.create(userId, request));
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção quando produto vinculado não for encontrado")
+    void shouldThrowExceptionWhenProductNotFoundOnCreate() {
+        // Arrange
+        SaleRequest request = SaleRequest.builder().productId(productId).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(productRepository.findByIdAndUserId(productId, userId)).thenReturn(Optional.empty());
 
@@ -164,15 +182,13 @@ class SaleServiceTest {
     }
 
     @Test
-    @DisplayName("Deve falhar se nem produto nem descrição forem fornecidos")
-    void shouldThrowWhenNoProductAndNoDescriptionProvided() {
+    @DisplayName("Deve lançar exceção ao tentar criar venda avulsa sem descrição")
+    void shouldThrowExceptionWhenDescriptionMissingForStandaloneSale() {
         // Arrange
         SaleRequest request = SaleRequest.builder()
-                .quantity(new BigDecimal("1.00"))
+                .quantity(BigDecimal.ONE)
                 .unitPrice(new BigDecimal("10.00"))
-                .paymentMethod(PaymentMethod.DINHEIRO)
                 .build();
-
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
 
         // Act & Assert
@@ -180,8 +196,8 @@ class SaleServiceTest {
     }
 
     @Test
-    @DisplayName("Deve listar vendas com consolidação financeira dos totais")
-    void shouldFindAllSalesWithSummaryTotals() {
+    @DisplayName("Deve calcular resumo de vendas corretamente com múltiplos itens")
+    void shouldCalculateSummaryCorrectly() {
         // Arrange
         Sale sale1 = Sale.builder()
                 .id(UUID.randomUUID())
@@ -190,7 +206,7 @@ class SaleServiceTest {
                 .quantity(BigDecimal.ONE)
                 .unitPrice(new BigDecimal("100.00"))
                 .grossAmount(new BigDecimal("100.00"))
-                .paymentMethod(PaymentMethod.PIX)
+                .paymentMethod(PaymentMethod.DINHEIRO)
                 .feePercentage(BigDecimal.ZERO)
                 .feeAmount(BigDecimal.ZERO)
                 .netAmount(new BigDecimal("100.00"))
@@ -212,13 +228,13 @@ class SaleServiceTest {
                 .build();
 
         List<Sale> sales = List.of(sale1, sale2);
-        Page<Sale> page = new PageImpl<>(sales);
+        Page<Sale> page = new PageImpl<>(List.of(sale1), PageRequest.of(0, 1), 2);
 
         when(saleRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
         when(saleRepository.findAll(any(Specification.class))).thenReturn(sales);
 
         // Act
-        SaleSummaryResponse summary = saleService.findAll(userId, null, null, null, null, 0, 20);
+        SaleSummaryResponse summary = saleService.findAll(userId, null, null, null, null, 0, 1);
 
         // Assert
         assertNotNull(summary);
@@ -226,7 +242,8 @@ class SaleServiceTest {
         assertEquals(new BigDecimal("200.00"), summary.getTotalGrossRevenue());
         assertEquals(new BigDecimal("1.50"), summary.getTotalFeeAmount());
         assertEquals(new BigDecimal("198.50"), summary.getTotalNetRevenue());
-        assertEquals(2, summary.getSales().getContent().size());
+        assertEquals(1, summary.getSales().getContent().size());
+        assertEquals(2, summary.getSales().getTotalElements());
     }
 
     @Test
@@ -286,5 +303,50 @@ class SaleServiceTest {
 
         // Assert
         verify(saleRepository).delete(sale);
+        verify(eventPublisher).publishEvent(any(SaleDeletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("Deve usar custo base manual sem somá-lo aos custos vinculados")
+    void shouldResolveManualAndLinkedCostsWithoutDuplication() {
+        testProduct.setBaseCost(new BigDecimal("12.00"));
+        assertEquals(new BigDecimal("12.00"), saleService.resolveUnitCost(userId, testProduct, null));
+        when(variableCostRepository.findByProductIdAndUserIdAndActiveTrue(productId, userId))
+                .thenReturn(List.of(VariableCost.builder()
+                        .unitAmount(new BigDecimal("3.00")).build(),
+                        VariableCost.builder().unitAmount(new BigDecimal("2.00")).build()));
+        assertEquals(new BigDecimal("5.00"), saleService.resolveUnitCost(userId, testProduct, null));
+    }
+
+    @Test
+    @DisplayName("Deve aceitar custo avulso, zero explícito e arredondar quantidade fracionária")
+    void shouldResolveStandaloneCostAndRoundHalfUp() {
+        assertEquals(new BigDecimal("0.00"), saleService.resolveUnitCost(userId, null, null));
+        assertEquals(new BigDecimal("0.00"), saleService.resolveUnitCost(userId, testProduct, BigDecimal.ZERO));
+        Sale sale = Sale.builder().quantity(new BigDecimal("1.50")).build();
+        saleService.snapshotCost(sale, saleService.resolveUnitCost(userId, null, new BigDecimal("2.35")));
+        assertEquals(new BigDecimal("3.53"), sale.getOperationCost());
+        assertThrows(InvalidRequestException.class,
+                () -> saleService.resolveUnitCost(userId, null, new BigDecimal("-1")));
+    }
+
+    @Test
+    @DisplayName("Deve preservar custo unitário na edição e recalcular apenas o total")
+    void shouldPreserveHistoricalCostOnEdit() {
+        Sale sale = Sale.builder().id(UUID.randomUUID()).product(testProduct)
+                .quantity(new BigDecimal("2.00")).unitCost(new BigDecimal("5.00"))
+                .operationCost(new BigDecimal("10.00")).soldAt(LocalDateTime.now()).build();
+        testProduct.setBaseCost(new BigDecimal("999.00"));
+        when(saleRepository.findByIdAndUserId(sale.getId(), userId)).thenReturn(Optional.of(sale));
+        when(productRepository.findByIdAndUserId(productId, userId)).thenReturn(Optional.of(testProduct));
+        when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        SaleRequest request = SaleRequest.builder().productId(productId).quantity(new BigDecimal("3.00"))
+                .paymentMethod(PaymentMethod.PIX).build();
+        SaleResponse response = saleService.update(userId, sale.getId(), request);
+        assertEquals(new BigDecimal("5.00"), response.getUnitCost());
+        assertEquals(new BigDecimal("15.00"), response.getOperationCost());
+        request.setUnitCost(new BigDecimal("7.00"));
+        response = saleService.update(userId, sale.getId(), request);
+        assertEquals(new BigDecimal("21.00"), response.getOperationCost());
     }
 }

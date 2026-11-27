@@ -4,12 +4,12 @@ import com.example.margemAI.dto.response.MeiCapResponse;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.UserRepository;
+import com.example.margemAI.util.Money;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -20,7 +20,6 @@ public class AlertService {
 
     public static final BigDecimal STANDARD_ANNUAL_CAP = new BigDecimal("81000.00");
     public static final BigDecimal MONTHLY_MEI_CAP = new BigDecimal("6750.00");
-    private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
 
     private final UserRepository userRepository;
     private final com.example.margemAI.repository.SaleRepository saleRepository;
@@ -40,7 +39,7 @@ public class AlertService {
         if (proRata) {
             int openingMonth = createdAt.getMonthValue();
             activeMonths = 12 - openingMonth + 1;
-            annualLimit = MONTHLY_MEI_CAP.multiply(BigDecimal.valueOf(activeMonths)).setScale(2, RoundingMode.HALF_UP);
+            annualLimit = Money.round(MONTHLY_MEI_CAP.multiply(BigDecimal.valueOf(activeMonths)));
         } else {
             annualLimit = user.getCustomAnnualCap() != null ? user.getCustomAnnualCap() : STANDARD_ANNUAL_CAP;
         }
@@ -65,12 +64,12 @@ public class AlertService {
         }
 
         BigDecimal usagePercent = annualLimit.compareTo(BigDecimal.ZERO) > 0
-                ? accumulatedRevenue.multiply(ONE_HUNDRED).divide(annualLimit, 2, RoundingMode.HALF_UP)
+                ? Money.percentageOf(accumulatedRevenue, annualLimit)
                 : BigDecimal.ZERO;
 
         BigDecimal remainingAmount = annualLimit.subtract(accumulatedRevenue);
         if (remainingAmount.compareTo(BigDecimal.ZERO) < 0) {
-            remainingAmount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            remainingAmount = Money.ZERO;
         }
 
         String severity;
@@ -95,9 +94,9 @@ public class AlertService {
                 .proRata(proRata)
                 .activeMonths(activeMonths)
                 .monthlyCap(MONTHLY_MEI_CAP)
-                .accumulatedRevenue(accumulatedRevenue.setScale(2, RoundingMode.HALF_UP))
+                .accumulatedRevenue(Money.round(accumulatedRevenue))
                 .usagePercent(usagePercent)
-                .remainingAmount(remainingAmount.setScale(2, RoundingMode.HALF_UP))
+                .remainingAmount(Money.round(remainingAmount))
                 .severity(severity)
                 .recommendationMessage(recommendationMessage)
                 .simulationMode(simulationMode)

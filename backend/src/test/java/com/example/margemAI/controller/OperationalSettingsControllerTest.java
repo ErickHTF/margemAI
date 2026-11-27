@@ -1,21 +1,27 @@
 package com.example.margemAI.controller;
 
 import com.example.margemAI.dto.request.RateioConfigRequest;
+import com.example.margemAI.event.FixedCostsRecalculatedEvent;
 import com.example.margemAI.model.FixedCost;
 import com.example.margemAI.model.FixedCostCategory;
 import com.example.margemAI.model.RevenueBaselineMode;
 import com.example.margemAI.model.Segment;
 import com.example.margemAI.model.User;
+import com.example.margemAI.repository.FixedCostProfileRepository;
 import com.example.margemAI.repository.FixedCostRepository;
 import com.example.margemAI.repository.SegmentRepository;
 import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.security.service.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -53,6 +59,15 @@ public class OperationalSettingsControllerTest {
 
     @Autowired
     private JwtService jwtService;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    private FixedCostProfileRepository profileRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     private User savedUser;
     private String accessToken;
@@ -167,5 +182,28 @@ public class OperationalSettingsControllerTest {
                                 .manualAllocatedFixedCostPercent(new BigDecimal("150.00"))
                                 .build())))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Deve recalcular e persistir rateio ao publicar evento de custos fixos")
+    void shouldRecalculateProfileThroughPublishedEvent() throws Exception {
+        mockMvc.perform(patch("/v1/settings/operational/rateio-config")
+                        .header("Authorization", bearerHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(RateioConfigRequest.builder()
+                                .revenueBaselineMode(RevenueBaselineMode.TARGET_REVENUE)
+                                .monthlyRevenueTarget(new BigDecimal("1000.00"))
+                                .automaticRateio(true).build())))
+                .andExpect(status().isOk());
+        createFixedCost("300.00", true);
+        createFixedCost("900.00", false);
+        eventPublisher.publishEvent(new FixedCostsRecalculatedEvent(savedUser.getId()));
+        entityManager.flush();
+        entityManager.clear();
+
+        var profile = profileRepository.findByUserId(savedUser.getId()).orElseThrow();
+        Assertions.assertEquals(0, new BigDecimal("300.00").compareTo(profile.getTotalFixedCostsSnapshot()));
+        Assertions.assertEquals(0, new BigDecimal("30.00").compareTo(profile.getAllocatedFixedCostPercent()));
+        Assertions.assertNotNull(profile.getLastRecalculatedAt());
     }
 }

@@ -7,11 +7,8 @@ import com.example.margemAI.model.FixedCost;
 import com.example.margemAI.model.FixedCostCategory;
 import com.example.margemAI.model.Product;
 import com.example.margemAI.model.Sale;
-import com.example.margemAI.model.VariableCost;
-import com.example.margemAI.model.VariableCostCategory;
 import com.example.margemAI.repository.FixedCostRepository;
 import com.example.margemAI.repository.SaleRepository;
-import com.example.margemAI.repository.VariableCostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,9 +40,6 @@ class DashboardServiceTest {
     @Mock
     private FixedCostRepository fixedCostRepository;
 
-    @Mock
-    private VariableCostRepository variableCostRepository;
-
     @InjectMocks
     private DashboardService dashboardService;
 
@@ -60,20 +54,12 @@ class DashboardServiceTest {
 
     private Sale sale(String gross, String fee, String quantity, Product saleProduct, LocalDateTime soldAt) {
         return Sale.builder()
+                .operationCost(saleProduct != null ? new BigDecimal("7.50").multiply(new BigDecimal(quantity)) : BigDecimal.ZERO)
                 .grossAmount(new BigDecimal(gross))
                 .feeAmount(new BigDecimal(fee))
                 .quantity(new BigDecimal(quantity))
                 .product(saleProduct)
                 .soldAt(soldAt)
-                .build();
-    }
-
-    private VariableCost variableCost(String unitAmount) {
-        return VariableCost.builder()
-                .unitAmount(new BigDecimal(unitAmount))
-                .category(VariableCostCategory.EMBALAGEM)
-                .productId(product.getId())
-                .active(true)
                 .build();
     }
 
@@ -105,8 +91,6 @@ class DashboardServiceTest {
                 sale("100.00", "3.00", "2", product, LocalDateTime.of(2026, 3, 10, 14, 0)),
                 sale("200.00", "0.00", "1", null, LocalDateTime.of(2026, 6, 30, 23, 59))
         ));
-        when(variableCostRepository.findByUserIdAndActiveTrueAndProductIdIsNotNull(userId))
-                .thenReturn(List.of(variableCost("5.00"), variableCost("2.50")));
         LocalDateTime createdInMay = LocalDateTime.of(2026, 5, 10, 9, 0);
         when(fixedCostRepository.findByUserId(userId))
                 .thenReturn(List.of(fixedCost("1000.00", true, true, null, createdInMay, createdInMay)));

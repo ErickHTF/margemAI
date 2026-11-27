@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Lightbulb, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
+import { Badge, Button, Card, IconButton, Notice } from './ui'
 
 export default function EducationalPill({
   pill,
@@ -12,28 +13,22 @@ export default function EducationalPill({
   if (!pill) return null
 
   return (
-    <div
-      data-testid="educational-pill"
-      className="bg-indigo-50/60 border border-indigo-100/80 rounded-2xl p-4 sm:p-5 text-slate-800 transition-all shadow-sm"
-    >
+    <Card data-testid="educational-pill" tone="indigo" className="text-slate-800">
       {allPills.length > 1 && onSelectPill && (
         <div className="flex flex-wrap items-center gap-1.5 mb-3.5 pb-3 border-b border-indigo-100/70 text-[11px]">
           <span className="text-slate-400 font-medium mr-1">Tópicos SEBRAE:</span>
           {allPills.map((item) => {
             const isActive = item.id === pill.id
             return (
-              <button
+              <Button
                 key={item.id}
-                type="button"
+                variant={isActive ? 'primary' : 'secondary'}
+                size="sm"
+                aria-pressed={isActive}
                 onClick={() => onSelectPill(item.id)}
-                className={`px-2.5 py-1 rounded-full font-medium transition cursor-pointer ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-white/80 text-slate-600 hover:bg-white hover:text-indigo-600 border border-indigo-100'
-                }`}
               >
                 {item.categoryLabel || item.title}
-              </button>
+              </Button>
             )
           })}
         </div>
@@ -46,25 +41,21 @@ export default function EducationalPill({
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">
-                {pill.categoryLabel || 'Pílula SEBRAE'}
-              </span>
+              <Badge tone="indigo">{pill.categoryLabel || 'Pílula SEBRAE'}</Badge>
             </div>
             <h4 className="text-sm font-semibold text-slate-900">{pill.title}</h4>
             <p className="text-xs text-slate-600 mt-1 leading-relaxed">{pill.summary}</p>
           </div>
         </div>
 
-        <button
-          type="button"
+        <IconButton
+          label={expanded ? 'Recolher detalhes' : 'Ver explicação completa'}
+          Icon={expanded ? ChevronUp : ChevronDown}
+          tone="indigo"
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
           aria-controls={`pill-content-${pill.id}`}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-white/80 transition cursor-pointer shrink-0"
-          title={expanded ? 'Recolher detalhes' : 'Ver explicação completa'}
-        >
-          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
+        />
       </div>
 
       {expanded && (
@@ -74,15 +65,12 @@ export default function EducationalPill({
         >
           <p className="text-slate-700 leading-relaxed">{pill.content}</p>
           {pill.tip && (
-            <div className="flex items-start gap-2 p-2.5 rounded-xl bg-white/90 border border-indigo-100 text-indigo-900 font-medium">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
-              <span>
-                <strong>Dica de ouro:</strong> {pill.tip}
-              </span>
-            </div>
+            <Notice tone="indigo" size="sm" Icon={Sparkles} role="note" className="font-medium">
+              <strong>Dica de ouro:</strong> {pill.tip}
+            </Notice>
           )}
         </div>
       )}
-    </div>
+    </Card>
   )
 }

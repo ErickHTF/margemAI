@@ -1,41 +1,21 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import paymentMethodService from '../services/paymentMethodService'
 import { resolvePaymentFee } from '../utils/paymentFees'
+import { useApiResource } from './useApiResource'
+
+const NO_CONFIGS = []
 
 // Padrão do projeto: toda tela que exibe ou calcula taxa de pagamento usa este hook,
 // nunca valores fixos. Se a matriz falhar ao carregar, getFee cai nos padrões recomendados.
-export function usePaymentFees() {
-  const [matrix, setMatrix] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    const load = async () => {
-      try {
-        const data = await paymentMethodService.getPaymentMethodConfigs()
-        if (!cancelled) {
-          setMatrix(data || [])
-          setError(null)
-        }
-      } catch (err) {
-        if (!cancelled) {
-          const msg =
-            err.response?.data?.message ||
-            'Não foi possível carregar suas taxas configuradas. Usando as taxas recomendadas.'
-          setError(msg)
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+export function usePaymentFees(refreshKey = 0) {
+  const { data: matrix, loading, error } = useApiResource(
+    async () => (await paymentMethodService.getPaymentMethodConfigs()) || NO_CONFIGS,
+    [refreshKey],
+    {
+      initialData: NO_CONFIGS,
+      errorMessage: 'Não foi possível carregar suas taxas configuradas. Usando as taxas recomendadas.'
     }
-
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  )
 
   const getFee = useCallback(
     (paymentMethod, installments = 1) => resolvePaymentFee(matrix, paymentMethod, installments),

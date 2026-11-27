@@ -8,12 +8,12 @@ import com.example.margemAI.model.PaymentMethodConfig;
 import com.example.margemAI.model.User;
 import com.example.margemAI.repository.PaymentMethodConfigRepository;
 import com.example.margemAI.repository.UserRepository;
+import com.example.margemAI.util.Money;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -62,9 +62,8 @@ public class PaymentMethodConfigService {
 
         // 5. Crédito Parcelado (2x até 12x)
         for (int i = 2; i <= 12; i++) {
-            BigDecimal defaultMdr = PaymentMethod.CREDITO_PARCELADO.getDefaultFeePercentage()
-                    .add(INSTALLMENT_STEP_FEE.multiply(BigDecimal.valueOf(i - 1L)))
-                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal defaultMdr = Money.round(PaymentMethod.CREDITO_PARCELADO.getDefaultFeePercentage()
+                    .add(INSTALLMENT_STEP_FEE.multiply(BigDecimal.valueOf(i - 1L))));
 
             matrix.add(buildResponseItem(savedMap, PaymentMethod.CREDITO_PARCELADO, i,
                     defaultMdr, BigDecimal.ZERO, 30));
@@ -84,7 +83,7 @@ public class PaymentMethodConfigService {
 
         for (PaymentMethodConfigRequest req : requests) {
             int installments = req.getPaymentMethod() == PaymentMethod.CREDITO_PARCELADO
-                    ? Math.max(2, req.getInstallments() != null ? req.getInstallments() : 2)
+                    ? req.getPaymentMethod().normalizeInstallments(req.getInstallments())
                     : 1;
 
             Optional<PaymentMethodConfig> existingOpt = configRepository
@@ -93,9 +92,9 @@ public class PaymentMethodConfigService {
             PaymentMethodConfig config;
             if (existingOpt.isPresent()) {
                 config = existingOpt.get();
-                config.setMdrFeePercent(req.getMdrFeePercent().setScale(2, RoundingMode.HALF_UP));
+                config.setMdrFeePercent(Money.round(req.getMdrFeePercent()));
                 config.setFixedFeeAmount(req.getFixedFeeAmount() != null
-                        ? req.getFixedFeeAmount().setScale(2, RoundingMode.HALF_UP)
+                        ? Money.round(req.getFixedFeeAmount())
                         : BigDecimal.ZERO);
                 config.setSettlementDays(req.getSettlementDays() != null ? req.getSettlementDays() : 0);
                 config.setIsActive(req.getIsActive() != null ? req.getIsActive() : true);
@@ -104,9 +103,9 @@ public class PaymentMethodConfigService {
                         .user(user)
                         .paymentMethod(req.getPaymentMethod())
                         .installments(installments)
-                        .mdrFeePercent(req.getMdrFeePercent().setScale(2, RoundingMode.HALF_UP))
+                        .mdrFeePercent(Money.round(req.getMdrFeePercent()))
                         .fixedFeeAmount(req.getFixedFeeAmount() != null
-                                ? req.getFixedFeeAmount().setScale(2, RoundingMode.HALF_UP)
+                                ? Money.round(req.getFixedFeeAmount())
                                 : BigDecimal.ZERO)
                         .settlementDays(req.getSettlementDays() != null ? req.getSettlementDays() : 0)
                         .isActive(req.getIsActive() != null ? req.getIsActive() : true)
@@ -123,8 +122,8 @@ public class PaymentMethodConfigService {
         if (userId == null || paymentMethod == null) {
             return Optional.empty();
         }
-        int validInstallments = (paymentMethod == PaymentMethod.CREDITO_PARCELADO && installments != null && installments >= 2)
-                ? installments
+        int validInstallments = paymentMethod == PaymentMethod.CREDITO_PARCELADO
+                ? paymentMethod.normalizeInstallments(installments)
                 : 1;
 
         return configRepository.findByUserIdAndPaymentMethodAndInstallments(userId, paymentMethod, validInstallments);
