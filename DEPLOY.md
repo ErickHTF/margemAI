@@ -87,16 +87,16 @@ O arquivo `.zip` contém os arquivos estáticos pré-compilados (`index.html`, `
 | `JWT_SECRET` / `jwt.secret` | *(obrigatório em produção)* | Segredo HMAC-SHA (≥ 256 bits) para assinatura de tokens JWT. Injetado via variável de ambiente — nunca commitado |
 | `JWT_ACCESS_TOKEN_EXPIRATION` / `jwt.access-token-expiration` | `3600` | Expiração do access token em segundos (1h) |
 | `JWT_REFRESH_TOKEN_EXPIRATION` / `jwt.refresh-token-expiration` | `604800` | Expiração do refresh token em segundos (7 dias) |
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/margemai` | URL de conexão com o banco de dados (PostgreSQL 16) |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5435/margemai` (perfil `local`: porta `5432`) | URL de conexão com o banco de dados PostgreSQL |
 | `SPRING_DATASOURCE_USERNAME` | `margemai` | Usuário do banco de dados |
 | `SPRING_DATASOURCE_PASSWORD` | `margemai` | Senha do banco de dados |
-| `VITE_API_BASE_URL` | `http://localhost:8080/v1` | URL base do backend consumida pelo frontend |
+| `VITE_API_URL` | `http://localhost:8080/v1` | URL base do backend consumida pelo frontend (definida no build) |
 
 Todas as configurações são resolvidas a partir de **variáveis de ambiente** (com fallback padrão) diretamente no `application.properties`. Não há arquivo `.env`.
 
-### Executando Localmente com Docker (PostgreSQL 16)
+### Executando Localmente com Docker
 
-O backend usa **PostgreSQL 16** por padrão. Para subir o banco localmente com Docker:
+O `backend/docker-compose.yml` sobe o **PostgreSQL 13** de desenvolvimento na porta `5435`, a esperada pelo perfil padrão. O `docker-compose.yml` da raiz usa **PostgreSQL 16** na porta `5432`, a esperada pelo perfil `local`. Para subir o banco de desenvolvimento:
 
 ```bash
 cd backend
