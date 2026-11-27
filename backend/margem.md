@@ -1,3 +1,44 @@
+# Relatório acadêmico — proposta original e estado atual
+
+## Atualização de implementação — 12/10/2026
+
+Esta seção atualiza a leitura do relatório original preservado abaixo. A proposta foi confrontada com a implementação da `develop` no commit `24dc09346a58ffe82fb56ed2f55a52a1c9d04556`. O texto original registra intenções e metas do projeto; suas descrições no futuro não representam necessariamente o estado atual.
+
+| Recurso ou resultado | Estado verificado no código |
+| --- | --- |
+| Cadastro de custos fixos e variáveis, catálogo e registro de vendas | Implementados. |
+| Precificação por markup e simulação de descontos | Implementadas, com parâmetros cadastrados e taxas configuráveis. |
+| Ponto de equilíbrio | Implementado no backend e integrado à calculadora no frontend. |
+| Painel mensal | Implementado com receitas, custos, taxas e saldo estimado; não concilia saldos bancários nem confirma recebimentos. |
+| Padrões de preço e rateio de custos fixos | Implementados, com herança de parâmetros e revalidação de preços. |
+| Taxas de pagamento e prazos de liquidação | Configuráveis; não constituem um calendário completo de recebimentos. |
+| Alerta de teto de faturamento MEI | Implementado; não emite DAS nem entrega declarações fiscais. |
+| Pílulas educativas | Implementadas como dicas contextuais; não foi confirmado o disparo após cada decisão prejudicial evitada descrito na proposta. |
+| Assistente conversacional e IA/LLM | Não implementados na versão revisada. Cálculos e recomendações usam regras determinísticas. |
+| Alerta automático de capital de giro | Proposto; há dicas educativas, mas não foi identificado o monitoramento completo descrito. |
+| Personalização por nicho | Cadastro de segmento disponível; recomendações específicas por nicho continuam como proposta. |
+| Relatório de lucro recuperado | Proposto; não identificado na implementação revisada. |
+| Redução de pelo menos 50% no tempo de fechamento | Meta, sem medição com usuários apresentada nesta revisão. |
+| PWA e funcionamento offline | Não validados. A disponibilidade pelo navegador está contemplada na aplicação web. |
+
+### Interpretação dos cálculos
+
+O painel agrega vendas pela data em que foram registradas como realizadas. Seu saldo não comprova lucro contábil ou dinheiro disponível no banco. Os custos usados na apuração refletem o cadastro atual, portanto a edição de custos fixos e variáveis pode mudar resultados calculados para períodos anteriores. O painel soma apenas custos variáveis ativos vinculados aos produtos vendidos: custo base manual sem esses vínculos e custos de vendas avulsas não entram nessa apuração, podendo superestimar o saldo.
+
+A cobertura de custos depende do cadastro realizado pelo usuário: a ferramenta não garante identificar automaticamente todos os custos invisíveis. Parâmetros de tributos e custos devem refletir a realidade de cada negócio e evitar duplicidade no cálculo.
+
+### Arquitetura efetivamente adotada
+
+Backend em Java 21 e Spring Boot, com API REST, JPA e autenticação JWT; frontend em React e Vite; persistência em PostgreSQL, com H2 nos testes. Os caminhos, comandos de execução e validação estão no [README](../README.md). O contrato está em [openapi.yaml](src/main/resources/openapi.yaml), e os padrões técnicos em [backend/STANDARDS.md](STANDARDS.md) e [frontend/STANDARDS.md](../frontend/STANDARDS.md).
+
+### Pendências editoriais e de comprovação
+
+Os títulos de diagramas no texto convertido abaixo não contêm os respectivos artefatos. É necessário incluir os diagramas originais ou elaborar e validar versões que representem a implementação. As referências bibliográficas e os trechos corrompidos pela conversão do PDF também exigem revisão contra as fontes originais. Esta atualização não certifica resultados de pesquisa nem corrige citações sem consultar essas fontes.
+
+---
+
+## Proposta original — transcrição preservada
+
 | INSTITUTO            | FEDERAL       | DE EDUCAÇÃO,CIÊNCIA |                    | E TECNOLOGIA |
 | -------------------- | ------------- | ------------------- | ------------------ | ------------ |
 |                      |               | DE SÃO              | PAULO              |              |
