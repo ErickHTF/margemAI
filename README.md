@@ -160,7 +160,7 @@ Recursos principais (todos sob `/v1`; exceto `auth`, `segments` e `actuator`, ex
 
 ## Fluxo de trabalho
 
-A branch de integração é a `develop`: cada card do quadro gera uma branch (`feature/us-xx-...`, `fix/...`, `test/...`) e um Pull Request para a `develop`, com commits no padrão Conventional Commits em português. Use `scripts/card` para criar cards, branches e PRs no padrão; detalhes em [AGENTS.md](AGENTS.md).
+A branch principal é a `main`: cada card do quadro gera uma branch (`feature/us-xx-...`, `fix/...`, `test/...`) e um Pull Request para a `main` (cada merge gera uma release de produção), com commits no padrão Conventional Commits em português. Use `scripts/card` para criar cards, branches e PRs no padrão; detalhes em [AGENTS.md](AGENTS.md).
 
 ---
 

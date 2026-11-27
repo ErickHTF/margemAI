@@ -24,10 +24,10 @@ scripts/check.sh frontend   # or: backend
 Run `scripts/check.sh` before every commit. Never claim something passed without running it; if it fails, report the
 real output.
 
-**CI gates merges.** `develop`, `PPS` and `main` accept a PR only when the `CI OK` check passes (commit lint, backend on H2
+**CI gates merges.** `main` accepts a PR only when the `CI OK` check passes (commit lint, backend on H2
 and on PostgreSQL, frontend lint/tests/build) **and** the branch is up to date with its base: after another PR merges,
-update yours (`git merge origin/develop`) and let CI run again. *Prévia de integração* merges every open PR into
-its base (`develop`, `PPS`) and runs `scripts/check.sh`; its summary shows which PRs conflict or break together — fix those before
+update yours (`git merge origin/main`) and let CI run again. *Prévia de integração* merges every open PR into
+its base (`main`) and runs `scripts/check.sh`; its summary shows which PRs conflict or break together — fix those before
 merging. Releases reuse `ci.yml` and publish only the artifacts CI tested.
 
 ---
@@ -40,17 +40,17 @@ Always use `scripts/card`; prefix with `DRY_RUN=1` to preview.
 | Step | Command | Result |
 |---|---|---|
 | Create card | `scripts/card new US "Reaproveitar venda registrada" --layer frontend --priority should --domain sales` | Next free ID (`[US-36] — …`), body template, labels, column *Backlog* |
-| Start card | `scripts/card start 91` | Branch `feature/us-35-reaproveitar-…` from fresh `origin/develop`, assignee, column *In Progress* |
+| Start card | `scripts/card start 91` | Branch `feature/us-35-reaproveitar-…` from fresh `origin/main`, assignee, column *In Progress* |
 | Commit | `git commit -m "feat(vendas): reaproveitar venda registrada"` | Hook validates the format and inserts `[US-35]` from the branch |
 | Existing branch | `scripts/card link 95` | Associates the current branch with the card, column *In Progress* |
 | Adopt a branch | `scripts/card link 95` | Links the current branch to an existing card, column *In Progress* |
-| Open PR | `scripts/card pr --body-file <arquivo.md>` | Lints commits, pushes, PR to `develop` titled like the main commit, `Closes #N`, column *In Review* |
+| Open PR | `scripts/card pr --body-file <arquivo.md>` | Lints commits, pushes, PR to `main` titled like the main commit, `Closes #N`, column *In Review* |
 
 **Cards.** Types `US` (value for the MEI), `TECH` (refactor/tests/tooling), `BUG`, `INFRA`, `DOCS`. Title
 `[<TYPE>-<NN>] — <título no infinitivo>`. Body: Contexto, Critérios de aceite (verifiable), Fora do escopo, Dependências.
 Read the card and the issues it links before coding.
 
-**Branches.** `<prefix>/<type>-<nn>-<slug>` from an up-to-date `develop` (`main` never receives card PRs). Prefixes:
+**Branches.** `<prefix>/<type>-<nn>-<slug>` from an up-to-date `main` (every merge into `main` publishes a production release). Prefixes:
 `feature` (US), `fix` (BUG), `test`, `refactor`, `chore` (TECH/INFRA), `docs`. Branching from another feature branch:
 `scripts/card start <n> --base <branch>`, and say so in the PR.
 
@@ -63,7 +63,7 @@ Read the card and the issues it links before coding.
 - Card ID: `[US-12]`, `[TECH-08]`, `[US-32 a US-35]`.
 - Source of truth: `scripts/lib/conventions.sh` (change it and this list together). Stage files by path, never `git add -A`.
 
-**Pull requests.** Target `develop`. Body:
+**Pull requests.** Target `main`. Body:
 
 ```markdown
 ## 📌 Contexto
@@ -251,6 +251,6 @@ A test exists to fail when the behavior it names breaks. Name the bug it would c
 
 ## Gotchas
 
-- `develop` often lags open feature PRs (stacked work): check `gh pr list` before assuming something is missing.
+- `main` often lags open feature PRs (stacked work): check `gh pr list` before assuming something is missing.
 - Sales and expenses do **not** post into Contas Empresariais automatically; account movements are separate records.
 - Code is comment-free by convention: no comments restating *what* the code does; a short *why* is fine.

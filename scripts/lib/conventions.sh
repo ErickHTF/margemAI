@@ -7,7 +7,7 @@ COMMIT_SCOPES="auth perfil produtos categorias custos vendas contas dashboard pr
 CARD_TYPES="US TECH BUG INFRA DOCS"
 BRANCH_PREFIXES="feature fix test refactor chore docs"
 MAX_HEADER_LENGTH=100
-BASE_BRANCH="develop"
+BASE_BRANCH="main"
 PROJECT_OWNER="ErickHTF"
 PROJECT_NUMBER=2
 

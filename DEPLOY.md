@@ -8,25 +8,23 @@ Este documento descreve os workflows do GitHub Actions do projeto: o **CI** que 
 
 ```mermaid
 flowchart LR
-    DEV["💻 Branch do card"] --> PR["👀 PR para develop (CI OK)"]
-    PR --> DEVELOP["🧩 develop"]
-    DEVELOP -.->|PRs abertos + develop| PREV["🔍 Prévia de integração"]
-    DEVELOP --> PRMAIN["👀 PR develop → main (CI OK)"]
-    PRMAIN --> MAIN["🚢 main"]
+    DEV["💻 Branch do card"] --> PR["👀 PR para main (CI OK)"]
+    PR --> MAIN["🚢 main"]
+    MAIN -.->|PRs abertos + main| PREV["🔍 Prévia de integração"]
     MAIN --> REL["📦 Release de produção (GitHub Release)"]
 ```
 
 | Workflow | Arquivo | Gatilho | O que faz |
 | :--- | :--- | :--- | :--- |
-| **CI** | `ci.yml` | Push em branches de trabalho, `develop` e `main`; PRs para `develop`/`main`; chamado pela release | Lint dos commits (em PRs), backend em H2 e em PostgreSQL, lint/testes/build do frontend; gera os artefatos `backend-jar` e `frontend-dist`. O job final **`CI OK`** resume tudo |
-| **Prévia de integração** | `integration-preview.yml` | Push em `develop`, dias úteis às 11h UTC ou manual | Junta `develop` com todos os PRs abertos para `develop` e roda `scripts/check.sh`; o resumo mostra quais PRs conflitam ou quebram juntos |
+| **CI** | `ci.yml` | Push em branches de trabalho e na `main`; PRs para a `main`; chamado pela release | Lint dos commits (em PRs), backend em H2 e em PostgreSQL, lint/testes/build do frontend; gera os artefatos `backend-jar` e `frontend-dist`. O job final **`CI OK`** resume tudo |
+| **Prévia de integração** | `integration-preview.yml` | Push na `main`, dias úteis às 11h UTC ou manual | Junta a `main` com todos os PRs abertos para a `main` e roda `scripts/check.sh`; o resumo mostra quais PRs conflitam ou quebram juntos |
 | **Release de produção** | `release-prod.yml` | Push em `main` ou manual (`workflow_dispatch`) | Roda o `ci.yml` e publica no GitHub Releases os artefatos que o CI testou |
 
 ---
 
 ## ✅ 2. CI e regras de merge
 
-`develop` e `main` só aceitam um PR quando o check **`CI OK`** passa **e** a branch está atualizada com a base. Depois que outro PR entra, atualize a sua (`git merge origin/develop`) e espere o CI rodar de novo.
+A `main` só aceita um PR quando o check **`CI OK`** passa **e** a branch está atualizada com a base. Depois que outro PR entra, atualize a sua (`git merge origin/main`) e espere o CI rodar de novo.
 
 Antes de fazer merge, confira o resumo da última execução da **Prévia de integração** (aba [Actions](https://github.com/ErickHTF/margemAI/actions)): se o seu PR conflita ou quebra junto com outro, resolva antes.
 
@@ -35,7 +33,7 @@ Antes de fazer merge, confira o resumo da última execução da **Prévia de int
 ## 🚢 3. Release de produção
 
 ### Automático (merge na `main`)
-1. Abra um PR de `develop` para `main` e aguarde o **`CI OK`**.
+1. Abra o PR do card para a `main` e aguarde o **`CI OK`**.
 2. Faça o merge. O workflow **`Release de produção`** roda o CI de novo no commit da `main` e, se passar, publica uma Release com:
    * `margemai-backend-production.jar`
    * `margemai-frontend-production.zip`
