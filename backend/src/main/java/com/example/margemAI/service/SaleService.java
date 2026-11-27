@@ -4,6 +4,8 @@ import com.example.margemAI.dto.request.SaleRequest;
 import com.example.margemAI.dto.response.PaginatedResponse;
 import com.example.margemAI.dto.response.SaleResponse;
 import com.example.margemAI.dto.response.SaleSummaryResponse;
+import com.example.margemAI.event.SaleDeletedEvent;
+import com.example.margemAI.event.SaleRegisteredEvent;
 import com.example.margemAI.exception.InvalidRequestException;
 import com.example.margemAI.exception.ResourceNotFoundException;
 import com.example.margemAI.model.PaymentMethod;
@@ -17,6 +19,7 @@ import com.example.margemAI.repository.UserRepository;
 import com.example.margemAI.repository.VariableCostRepository;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -48,6 +51,7 @@ public class SaleService {
     private final UserRepository userRepository;
     private final PaymentFeeCalculator paymentFeeCalculator;
     private final VariableCostRepository variableCostRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public SaleResponse create(UUID userId, SaleRequest request) {
@@ -108,6 +112,9 @@ public class SaleService {
 
         snapshotCost(sale, resolveUnitCost(userId, product, request.getUnitCost()));
         Sale saved = saleRepository.save(sale);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new SaleRegisteredEvent(saved));
+        }
         return toResponse(saved);
     }
 
@@ -246,6 +253,9 @@ public class SaleService {
     public void delete(UUID userId, UUID id) {
         Sale sale = saleRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(SALE_NOT_FOUND_MESSAGE));
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new SaleDeletedEvent(sale.getId(), userId));
+        }
         saleRepository.delete(sale);
     }
 

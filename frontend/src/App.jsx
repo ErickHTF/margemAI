@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Landmark,
+  PiggyBank,
   Sparkles,
   LogOut,
   CheckCircle2,
@@ -13,7 +14,11 @@ import {
   ChevronRight,
   ShoppingBag,
   CreditCard,
-  BarChart3
+  BarChart3,
+  CalendarCheck,
+  FileSpreadsheet,
+  Scale,
+  Receipt
 } from 'lucide-react'
 import useAuth from './hooks/useAuth'
 import LoginForm from './components/LoginForm'
@@ -27,6 +32,11 @@ import SalesManager from './components/SalesManager'
 import PaymentMethodSettings from './components/PaymentMethodSettings'
 import MonthlyFlowDashboard from './components/MonthlyFlowDashboard'
 import BusinessAccounts from './components/BusinessAccounts'
+import FinancialReserveManager from './components/FinancialReserveManager'
+import MeiObligationsManager from './components/MeiObligationsManager'
+import PayablesManager from './components/PayablesManager'
+import DebtManager from './components/DebtManager'
+import ReceivablesManager from './components/ReceivablesManager'
 import SectionTour from './components/SectionTour'
 import { DraftContext } from './components/DraftContext'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -50,10 +60,15 @@ const NAV_GROUPS = [
     label: 'Financeiro',
     items: [
       { key: 'accounts', label: 'Contas Empresariais', Icon: Landmark },
+      { key: 'receivables', label: 'Contas a Receber', Icon: Receipt },
+      { key: 'payables', label: 'Contas a Pagar', Icon: FileSpreadsheet },
+      { key: 'reserves', label: 'Reserva Financeira', Icon: PiggyBank },
       { key: 'sales', label: 'Vendas', Icon: ShoppingBag },
       { key: 'cashflow', label: 'Fluxo de Caixa', Icon: BarChart3 },
+      { key: 'debts', label: 'Dívidas e Quitação', Icon: Scale },
       { key: 'costs', label: 'Custos', Icon: Wallet },
-      { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator }
+      { key: 'pricing', label: 'Calculadora Markup', Icon: Calculator },
+      { key: 'obligations', label: 'Obrigações MEI', Icon: CalendarCheck }
     ]
   },
   {
@@ -255,16 +270,26 @@ export default function App() {
         return <CategoryManager />
       case 'accounts':
         return <BusinessAccounts />
+      case 'receivables':
+        return <ReceivablesManager onNavigate={navigateContext} />
+      case 'payables':
+        return <PayablesManager onNavigate={navigateContext} />
+      case 'reserves':
+        return <FinancialReserveManager onNavigate={navigateContext} />
       case 'sales':
         return <SalesManager key={userKey} onNavigate={navigateContext} draft={currentDraft} onDraftChange={saveSaleDraft} onBusyChange={setSaleBusy} />
       case 'cashflow':
         return <MonthlyFlowDashboard onNavigate={navigateContext} />
       case 'payment-methods':
         return <PaymentMethodSettings />
+      case 'debts':
+        return <DebtManager onNavigate={navigateContext} />
       case 'costs':
         return <CostsDashboard />
       case 'pricing':
         return <PricingCalculator onNavigate={navigateContext} />
+      case 'obligations':
+        return <MeiObligationsManager />
       default:
         return <ProfilePanel user={user} onUserUpdate={updateUser} />
     }

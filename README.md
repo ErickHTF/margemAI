@@ -32,9 +32,15 @@ Todas as funcionalidades abaixo estão implementadas no backend (endpoints em `/
 | **Alerta de teto MEI** | Monitoramento do faturamento anual em relação ao teto do MEI (R$ 81.000,00 por padrão), proporcional aos meses de atividade no ano de abertura, com modo de simulação. | US-13 |
 | **Pílulas educativas SEBRAE** | Dicas contextuais de educação financeira em cada tela (botão "?"). | US-14 |
 
-Também fazem parte do projeto: health check via Spring Boot Actuator (`/actuator/health`, INFRA-05), conteinerização com Docker Compose (INFRA-04) e uma suíte de testes de precisão financeira com `BigDecimal` (TECH-01).
+Também fazem parte do projeto: suporte a Progressive Web App (PWA, TECH-07) para instalação na tela inicial com App Shell estático seguro, health check via Spring Boot Actuator (`/actuator/health`, INFRA-05), conteinerização com Docker Compose (INFRA-04) e uma suíte de testes de precisão financeira com `BigDecimal` (TECH-01).
 
 > Apesar do nome, a versão atual **não** integra nenhum modelo de IA/LLM: os cálculos e recomendações são regras determinísticas baseadas no método SEBRAE.
+
+### Instalação PWA e Política de Segurança Offline
+
+O Margem.AI é instalável como Progressive Web App (PWA) em dispositivos móveis e desktop:
+* **App Shell Instalável:** A casca estática da interface (`index.html`, manifesto, ícones e assets versionados) é gerenciada pelo Service Worker (`NetworkFirst` para HTML e `StaleWhileRevalidate` para assets), garantindo carregamento rápido e acesso à casca da aplicação.
+* **Proteção Estrita de Dados Financeiros:** Requisições para a API (`/v1/*`), rotas de monitoramento (`/actuator/*`), requisições autenticadas com `Authorization` e métodos de mutação (`POST`, `PUT`, `DELETE`) **nunca** são armazenadas em Cache Storage (`NetworkOnly`), garantindo que dados confidenciais de vendas, custos ou saldo do MEI não fiquem persistidos desprotegidos em disco.
 
 ---
 
@@ -42,7 +48,7 @@ Também fazem parte do projeto: health check via Spring Boot Actuator (`/actuato
 
 * **Backend:** Java 21, Spring Boot 3.4.2 (Web, Validation, Data JPA, Security, Actuator), JJWT 0.12.6, Lombok, Maven Wrapper.
 * **Banco de dados:** PostgreSQL (16 no `docker-compose.yml` da raiz; 13 no `backend/docker-compose.yml` de desenvolvimento) — H2 em memória apenas nos testes.
-* **Frontend:** React 19, Vite, Tailwind CSS v4, lucide-react, Axios, Vitest, ESLint.
+* **Frontend:** React 19, Vite, Tailwind CSS v4, PWA (App Shell e Service Worker), lucide-react, Axios, Vitest, ESLint.
 * **Infra:** Docker multi-stage (JRE 21 Alpine e Nginx Alpine com proxy reverso para `/v1` e `/actuator`).
 * **CI/CD:** GitHub Actions — testes do backend (H2 e PostgreSQL), lint, testes e build do frontend em todo PR; prévia de integração dos PRs abertos e Release de produção a cada merge na `main` (ver [DEPLOY.md](DEPLOY.md)).
 

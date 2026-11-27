@@ -1,16 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import api from './api'
 import { accountService } from './accountService'
+import { reserveService } from './reserveService'
 import alertService from './alertService'
+import { obligationService } from './obligationService'
+import { debtService } from './debtService'
 import { categoryService } from './categoryService'
 import dashboardService from './dashboardService'
 import fixedCostService from './fixedCostService'
+import payableService from './payableService'
 import { paymentMethodService } from './paymentMethodService'
 import { calculatePricing, simulateDiscount, calculateBreakEven } from './pricingService'
 import { productService } from './productService'
 import profileService from './profileService'
+import { receivableService } from './receivableService'
 import { saleService } from './saleService'
-import { getSegments } from './segmentService'
+import { getSegments, getSegmentGuidance } from './segmentService'
 import variableCostService from './variableCostService'
 import { authService } from '../security/services/authService'
 
@@ -33,8 +38,25 @@ const CASES = [
   { label: 'accountService.history sem conta não envia filtro', call: () => accountService.history(''), verb: 'get', args: ['/accounts/movements', { params: { accountId: undefined } }] },
   { label: 'accountService.create', call: () => accountService.create(payload), verb: 'post', args: ['/accounts', payload] },
   { label: 'accountService.movement', call: () => accountService.movement(payload), verb: 'post', args: ['/accounts/movements', payload] },
-  // Alertas e dashboard
+  // Dívidas e simulação de quitação
+  { label: 'debtService.list', call: () => debtService.list(), verb: 'get', args: ['/debts'] },
+  { label: 'debtService.get', call: () => debtService.get('d-1'), verb: 'get', args: ['/debts/d-1'] },
+  { label: 'debtService.getSummary', call: () => debtService.getSummary(), verb: 'get', args: ['/debts/summary'] },
+  { label: 'debtService.getSchedule', call: () => debtService.getSchedule({ status: 'PENDING' }), verb: 'get', args: ['/debts/schedule', { params: { status: 'PENDING' } }] },
+  { label: 'debtService.create', call: () => debtService.create(payload), verb: 'post', args: ['/debts', payload] },
+  { label: 'debtService.update', call: () => debtService.update('d-1', payload), verb: 'put', args: ['/debts/d-1', payload] },
+  { label: 'debtService.remove', call: () => debtService.remove('d-1'), verb: 'delete', args: ['/debts/d-1'], returns: 'void' },
+  { label: 'debtService.simulatePayoff', call: () => debtService.simulatePayoff('d-1', payload), verb: 'post', args: ['/debts/d-1/simulate-payoff', payload] },
+  { label: 'debtService.payInstallment', call: () => debtService.payInstallment('inst-1', payload), verb: 'post', args: ['/debts/installments/inst-1/pay', payload] },
+  // Reserva financeira
+  { label: 'reserveService.getSummary', call: () => reserveService.getSummary(), verb: 'get', args: ['/reserves'] },
+  { label: 'reserveService.updateGoal', call: () => reserveService.updateGoal(payload), verb: 'put', args: ['/reserves/goal', payload] },
+  { label: 'reserveService.createMovement', call: () => reserveService.createMovement(payload), verb: 'post', args: ['/reserves/movements', payload] },
+  // Alertas, obrigações MEI e dashboard
   { label: 'alertService.getMeiCapStatus', call: () => alertService.getMeiCapStatus({ accumulatedRevenue: 50000 }), verb: 'get', args: ['/alerts/mei-cap', { params: { accumulatedRevenue: 50000 } }] },
+  { label: 'obligationService.getSchedule', call: () => obligationService.getSchedule({ year: 2026 }), verb: 'get', args: ['/obligations', { params: { year: 2026 } }] },
+  { label: 'obligationService.updateStatus', call: () => obligationService.updateStatus('ob-1', payload), verb: 'patch', args: ['/obligations/ob-1/status', payload] },
+  { label: 'obligationService.updateReminders', call: () => obligationService.updateReminders({ reminderDaysBefore: 7, year: 2026 }), verb: 'patch', args: ['/obligations/reminders', { reminderDaysBefore: 7, year: 2026 }] },
   { label: 'dashboardService.getMonthlyFlow', call: () => dashboardService.getMonthlyFlow({ months: 6 }), verb: 'get', args: ['/dashboard/monthly-flow', { params: { months: 6 } }] },
   { label: 'dashboardService.getMonthlyFlow sem filtros', call: () => dashboardService.getMonthlyFlow(), verb: 'get', args: ['/dashboard/monthly-flow', { params: {} }] },
   // Categorias
@@ -58,6 +80,15 @@ const CASES = [
   { label: 'variableCostService.update', call: () => variableCostService.update('8', payload), verb: 'put', args: ['/costs/variable/8', payload] },
   { label: 'variableCostService.patch', call: () => variableCostService.patch('8', payload), verb: 'patch', args: ['/costs/variable/8', payload] },
   { label: 'variableCostService.remove', call: () => variableCostService.remove('8'), verb: 'delete', args: ['/costs/variable/8'] },
+  // Contas a pagar
+  { label: 'payableService.list', call: () => payableService.list({ competency: '2026-10' }), verb: 'get', args: ['/payables', { params: { competency: '2026-10' } }] },
+  { label: 'payableService.get', call: () => payableService.get('pay-1'), verb: 'get', args: ['/payables/pay-1'] },
+  { label: 'payableService.create', call: () => payableService.create(payload), verb: 'post', args: ['/payables', payload] },
+  { label: 'payableService.update', call: () => payableService.update('pay-1', payload), verb: 'put', args: ['/payables/pay-1', payload] },
+  { label: 'payableService.remove', call: () => payableService.remove('pay-1'), verb: 'delete', args: ['/payables/pay-1'] },
+  { label: 'payableService.pay', call: () => payableService.pay('pay-1', payload), verb: 'post', args: ['/payables/pay-1/pay', payload] },
+  { label: 'payableService.reverse', call: () => payableService.reverse('pay-1'), verb: 'post', args: ['/payables/pay-1/reverse'] },
+  { label: 'payableService.generateRecurring', call: () => payableService.generateRecurring(payload), verb: 'post', args: ['/payables/generate-recurring', payload] },
   // Taxas de pagamento
   { label: 'paymentMethodService.getPaymentMethodConfigs', call: () => paymentMethodService.getPaymentMethodConfigs(), verb: 'get', args: ['/settings/financial/payment-methods'] },
   { label: 'paymentMethodService.updatePaymentMethodConfigs', call: () => paymentMethodService.updatePaymentMethodConfigs([payload]), verb: 'put', args: ['/settings/financial/payment-methods', [payload]] },
@@ -76,6 +107,13 @@ const CASES = [
   { label: 'profileService.get', call: () => profileService.get(), verb: 'get', args: ['/profile'] },
   { label: 'profileService.update', call: () => profileService.update(payload), verb: 'put', args: ['/profile', payload] },
   { label: 'profileService.patch', call: () => profileService.patch(payload), verb: 'patch', args: ['/profile', payload] },
+  // Contas a receber
+  { label: 'receivableService.list', call: () => receivableService.list({ status: 'PENDING', page: 0, size: 20 }), verb: 'get', args: ['/receivables', { params: { status: 'PENDING', page: 0, size: 20 } }] },
+  { label: 'receivableService.get', call: () => receivableService.get('rec-123'), verb: 'get', args: ['/receivables/rec-123'] },
+  { label: 'receivableService.create', call: () => receivableService.create(payload), verb: 'post', args: ['/receivables', payload] },
+  { label: 'receivableService.delete', call: () => receivableService.delete('rec-123'), verb: 'delete', args: ['/receivables/rec-123'], returns: 'void' },
+  { label: 'receivableService.settleInstallment', call: () => receivableService.settleInstallment('inst-123', payload), verb: 'post', args: ['/receivables/installments/inst-123/settle', payload] },
+  { label: 'receivableService.reverseInstallment', call: () => receivableService.reverseInstallment('inst-123', payload), verb: 'post', args: ['/receivables/installments/inst-123/reverse', payload] },
   // Vendas
   { label: 'saleService.getSales', call: () => saleService.getSales({ paymentMethod: 'CREDITO_A_VISTA', page: 0, size: 10 }), verb: 'get', args: ['/sales', { params: { paymentMethod: 'CREDITO_A_VISTA', page: 0, size: 10 } }] },
   { label: 'saleService.getSale', call: () => saleService.getSale('sale-123'), verb: 'get', args: ['/sales/sale-123'] },
@@ -84,6 +122,8 @@ const CASES = [
   { label: 'saleService.deleteSale', call: () => saleService.deleteSale('sale-123'), verb: 'delete', args: ['/sales/sale-123'], returns: 'void' },
   // Segmentos
   { label: 'getSegments', call: () => getSegments(), verb: 'get', args: ['/segments'] },
+  { label: 'getSegmentGuidance sem filtros', call: () => getSegmentGuidance(), verb: 'get', args: ['/segments/guidance', { params: {} }] },
+  { label: 'getSegmentGuidance por segmento', call: () => getSegmentGuidance({ segmentName: 'COMERCIO' }), verb: 'get', args: ['/segments/guidance', { params: { segmentName: 'COMERCIO' } }] },
   // Autenticação
   { label: 'authService.register', call: () => authService.register(payload), verb: 'post', args: ['/auth/register', payload] },
   { label: 'authService.login', call: () => authService.login(payload), verb: 'post', args: ['/auth/login', payload] },
